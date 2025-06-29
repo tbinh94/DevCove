@@ -1,0 +1,547 @@
+{% extends 'posts/base.html' %}
+
+{% block content %}
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #dae0e6;
+        color: #1c1c1c;
+        line-height: 1.4;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Main Container */
+    .main-container {
+        max-width: 1248px;
+        margin: 20px auto;
+        padding: 0 20px;
+        display: grid !important;
+        grid-template-columns: 1fr 320px !important;
+        gap: 24px !important;
+        align-items: start !important;
+    }
+    
+    /* Force override any existing layout */
+    .main-container * {
+        box-sizing: border-box !important;
+    }
+
+    /* New Post Form */
+    .post-container {
+        background-color: #ffffff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        width: 100% !important;
+        max-width: none !important;
+        grid-column: 1 !important;
+    }
+
+    .post-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edeff1;
+        background-color: #f6f7f8;
+    }
+
+    .post-title {
+        font-size: 18px;
+        font-weight: 500;
+        color: #1c1c1c;
+        margin: 0 0 12px 0;
+    }
+
+    .post-type-tabs {
+        display: flex;
+        gap: 2px;
+    }
+
+    .post-type-tab {
+        padding: 8px 16px;
+        background-color: #ffffff;
+        border: 1px solid #edeff1;
+        color: #878a8c;
+        cursor: pointer;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .post-type-tab.active {
+        background-color: #0079d3;
+        color: white;
+        border-color: #0079d3;
+    }
+
+    .post-type-tab:hover:not(.active) {
+        background-color: #f6f7f8;
+        color: #1c1c1c;
+    }
+
+    .post-form {
+        padding: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1c1c1c;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        background-color: #ffffff;
+        border: 1px solid #edeff1;
+        border-radius: 4px;
+        color: #1c1c1c;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+    .form-input:focus {
+        border-color: #0079d3;
+        box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.2);
+    }
+
+    .form-textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .file-upload {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .file-upload input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .file-upload-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background-color: #ffffff;
+        border: 1px solid #0079d3;
+        border-radius: 4px;
+        color: #0079d3;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .file-upload-label:hover {
+        background-color: #0079d3;
+        color: white;
+    }
+
+    .submit-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #edeff1;
+    }
+
+    .btn {
+        padding: 8px 24px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        font-family: inherit;
+    }
+
+    .btn-primary {
+        background-color: #0079d3;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #0060a8;
+    }
+
+    .btn-primary:disabled {
+        background-color: #878a8c;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background-color: transparent;
+        color: #0079d3;
+        border: 1px solid #0079d3;
+    }
+
+    .btn-secondary:hover {
+        background-color: #0079d3;
+        color: white;
+    }
+
+    /* Django Form Integration */
+    .django-form p {
+        margin-bottom: 16px;
+    }
+
+    .django-form label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1c1c1c;
+    }
+
+    .django-form input[type="text"],
+    .django-form input[type="url"],
+    .django-form input[type="email"],
+    .django-form textarea,
+    .django-form select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #edeff1;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #1c1c1c;
+        background-color: #ffffff;
+        font-family: inherit;
+        transition: border-color 0.2s ease;
+    }
+
+    .django-form input:focus,
+    .django-form textarea:focus,
+    .django-form select:focus {
+        outline: none;
+        border-color: #0079d3;
+        box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.2);
+    }
+
+    .django-form textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .django-form .helptext {
+        font-size: 12px;
+        color: #878a8c;
+        margin-top: 4px;
+        font-style: italic;
+    }
+
+    .django-form .errorlist {
+        color: #ea0027;
+        font-size: 12px;
+        margin-top: 4px;
+        list-style: none;
+        padding: 0;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .sidebar-card {
+        background-color: #ffffff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .sidebar-header {
+        padding: 12px 16px;
+        background-color: #0079d3;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .sidebar-content {
+        padding: 16px;
+    }
+
+    .sidebar-rule {
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: #878a8c;
+        line-height: 1.4;
+    }
+
+    .sidebar-rule:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Post Preview */
+    .post-preview {
+        margin-top: 20px;
+        padding: 16px;
+        background-color: #f6f7f8;
+        border: 1px solid #edeff1;
+        border-radius: 4px;
+    }
+
+    .preview-header {
+        font-size: 14px;
+        color: #878a8c;
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+
+    .preview-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1c1c1c;
+        margin-bottom: 8px;
+    }
+
+    .preview-content {
+        color: #1c1c1c;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .main-container {
+            grid-template-columns: 1fr;
+            padding: 0 16px;
+            margin: 16px auto;
+        }
+        
+        .sidebar {
+            order: -1;
+        }
+        
+        .post-type-tabs {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .post-type-tab {
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+    }
+</style>
+
+<!-- Main Container -->
+<div class="main-container">
+    <!-- New Post Form -->
+    <div class="post-container">
+        <div class="post-header">
+            <h2 class="post-title">Create a post</h2>
+            <div class="post-type-tabs">
+                <button class="post-type-tab active" data-type="text">📝 Post</button>
+                <button class="post-type-tab" data-type="image">🖼️ Images & Video</button>
+                <button class="post-type-tab" data-type="link">🔗 Link</button>
+                <button class="post-type-tab" data-type="poll">📊 Poll</button>
+            </div>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="post-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Title *</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.content.id_for_label }}" class="form-label">Content</label>
+                            {{ form.content }}
+                            {% if form.content.errors %}
+                                <div class="text-danger">{{ form.content.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.image.id_for_label }}" class="form-label">Image</label>
+                            {{ form.image }}
+                            {% if form.image.errors %}
+                                <div class="text-danger">{{ form.image.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if form.community %}
+                        <div class="mb-3">
+                            <label for="{{ form.community.id_for_label }}" class="form-label">Community</label>
+                            {{ form.community }}
+                            {% if form.community.errors %}
+                                <div class="text-danger">{{ form.community.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if form.tags %}
+                        <div class="mb-3">
+                            <label class="form-label">Tags</label>
+                            {{ form.tags }}
+                            {% if form.tags.errors %}
+                                <div class="text-danger">{{ form.tags.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                {% if is_edit %}Update Post{% else %}Create Post{% endif %}
+                            </button>
+                        </div>
+        </form>
+
+        <!-- Post Preview -->
+        <div class="post-preview" id="postPreview" style="display: none;">
+            <div class="preview-header">Preview</div>
+            <div class="preview-title" id="previewTitle"></div>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-card">
+            <div class="sidebar-header">📋 Posting to Reddit</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule"><strong>1. Remember the human</strong><br>Reddit is a place for creating community and belonging, not for attacking marginalized or vulnerable groups of people.</div>
+                <div class="sidebar-rule"><strong>2. Behave like you would in real life</strong><br>Don't be a jerk. Be authentic and accountable.</div>
+                <div class="sidebar-rule"><strong>3. Look for the original source</strong><br>Where possible, please provide a link to the original source.</div>
+                <div class="sidebar-rule"><strong>4. Search for duplicates before posting</strong><br>Check if your link or topic has already been submitted.</div>
+                <div class="sidebar-rule"><strong>5. Read the community's rules</strong><br>Each community has its own rules and guidelines.</div>
+            </div>
+        </div>
+
+        <div class="sidebar-card">
+            <div class="sidebar-header">💡 Tips for better posts</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule">• <strong>Write descriptive titles</strong><br>Clear, specific titles help readers understand your post</div>
+                <div class="sidebar-rule">• <strong>Add flair when posting</strong><br>Flair helps organize and filter content</div>
+                <div class="sidebar-rule">• <strong>Include sources for news/facts</strong><br>Credible sources build trust with readers</div>
+                <div class="sidebar-rule">• <strong>Engage with comments</strong><br>Respond to questions and feedback from users</div>
+                <div class="sidebar-rule">• <strong>Follow reddiquette</strong><br>Be respectful and contribute to healthy discussions</div>
+            </div>
+        </div>
+
+        <div class="sidebar-card">
+            <div class="sidebar-header">🎯 Content Policy</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule">• No harassment or bullying</div>
+                <div class="sidebar-rule">• No spam or self-promotion</div>
+                <div class="sidebar-rule">• Mark NSFW content appropriately</div>
+                <div class="sidebar-rule">• No illegal or harmful content</div>
+                <div class="sidebar-rule">• Respect copyright and intellectual property</div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    // Post type tabs functionality
+    const tabs = document.querySelectorAll('.post-type-tab');
+    const textContent = document.getElementById('textContent');
+    const imageContent = document.getElementById('imageContent');
+    const linkContent = document.getElementById('linkContent');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Hide all content types
+            textContent.style.display = 'none';
+            imageContent.style.display = 'none';
+            linkContent.style.display = 'none';
+            
+            // Show selected content type
+            const type = tab.dataset.type;
+            if (type === 'text') {
+                textContent.style.display = 'block';
+            } else if (type === 'image') {
+                imageContent.style.display = 'block';
+            } else if (type === 'link') {
+                linkContent.style.display = 'block';
+            }
+        });
+    });
+
+    // Form validation and preview
+    const form = document.querySelector('.post-form');
+    const submitBtn = document.getElementById('submitBtn');
+    const postPreview = document.getElementById('postPreview');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewContent = document.getElementById('previewContent');
+
+    // Auto-preview functionality
+    function updatePreview() {
+        const titleInput = form.querySelector('input[name*="title"], input[id*="title"]');
+        const contentInput = document.getElementById('content');
+        
+        if (titleInput && titleInput.value.trim()) {
+            previewTitle.textContent = titleInput.value;
+            previewContent.textContent = contentInput ? contentInput.value || 'No additional text' : 'No content';
+            postPreview.style.display = 'block';
+        } else {
+            postPreview.style.display = 'none';
+        }
+    }
+
+    // Add event listeners for preview
+    form.addEventListener('input', updatePreview);
+
+    // File upload preview
+    const imageInput = document.getElementById('image');
+    const fileLabel = document.querySelector('.file-upload-label');
+    
+    imageInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files.length > 0) {
+            fileLabel.innerHTML = `📁 ${files.length} file(s) selected`;
+        } else {
+            fileLabel.innerHTML = '📁 Choose Files';
+        }
+    });
+
+    // Form submission
+    form.addEventListener('submit', (e) => {
+        submitBtn.textContent = 'Posting...';
+        submitBtn.disabled = true;
+    });
+
+    // Auto-resize textareas
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    });
+</script>
+{% endblock %}

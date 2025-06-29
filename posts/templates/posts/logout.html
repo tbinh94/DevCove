@@ -1,0 +1,10 @@
+{% extends 'posts/base.html' %}
+<meta http-equiv="refresh" content="3; URL={% url 'posts:post_list' %}">
+
+{% block content %}
+  <div class="logout-page">
+    <h2>You have been logged out</h2>
+    <p>Thanks for spending some time with us.</p>
+    <p><a href="{% url 'posts:post_list' %}">Back to home</a> | <a href="{% url 'login' %}">Log in again</a></p>
+  </div>
+{% endblock %}

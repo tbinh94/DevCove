@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Reddit Clone{% endblock %}</title>
+  <link rel="icon" href="{% static 'posts/favicon.png' %}" type="image/png">
+  <link rel="stylesheet" href="{% static 'posts/css/style.css' %}">
+  {% block extra_css %}{% endblock %}
+
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a class="logo" href="{% url 'posts:post_list' %}">
+        <span class="logo-icon">📱</span>
+        Reddit Clone
+      </a>
+      <form class="search-form" method="get" action="{% url 'posts:user_search' %}">
+        <input type="text" name="q" placeholder="Search Reddit…" value="{{ request.GET.q|default:'' }}">
+        <button type="submit">🔍</button>
+      </form>
+
+      <nav class="nav-right">
+        {% if user.is_authenticated %}
+          <!-- User dropdown menu -->
+          <div class="user-menu" id="userMenu">
+            <div class="user-greeting">Hello, {{ user.username }}</div>
+            <div class="dropdown">
+              <a href="{% url 'posts:user_profile' user.username %}">👤 Profile</a>
+              <a href="{% url 'posts:user_settings' %}">⚙️ Settings</a>
+              <a href="{% url 'posts:password_change' %}">🔑 Change Password</a>
+              <hr style="margin: 0; border: none; border-top: 1px solid #f6f7f8;">
+              <a href="{% url 'logout' %}" class="logout-link">🚪 Logout</a>
+            </div>
+          </div>
+        {% else %}
+          <a href="{% url 'login' %}" class="nav-btn">Log In</a>
+          <a href="{% url 'posts:register' %}" class="nav-btn">Sign Up</a>
+          
+
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <div id="custom-alert-container" class="hidden">
+    <div id="custom-alert">
+      <span id="custom-alert-message"></span>
+      <button id="custom-alert-close">×</button>
+    </div>
+  </div>
+
+  <!-- JavaScript files -->
+  <script src="{% static 'posts/js/dropdown.js' %}"></script> 
+  
+
+  {% block extra_js %}{% endblock %}
+ 
+
+</body>
+</html>

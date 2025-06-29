@@ -1,0 +1,137 @@
+{% extends 'posts/base.html' %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'posts\css\auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <form class="auth-form" method="post">
+    {% csrf_token %}
+    
+    <!-- Brand Section -->
+    <div class="auth-brand">
+      <span class="brand-icon">🔥</span>
+      <div class="brand-text">Welcome Back</div>
+    </div>
+    
+    <h2>Log In</h2>
+    
+    <!-- Error Messages -->
+    {% if form.errors %}
+      <ul class="errorlist">
+        {% for field, errors in form.errors.items %}
+          {% for error in errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+    
+    <!-- Non-field errors (like invalid login) -->
+    {% if form.non_field_errors %}
+      <ul class="errorlist">
+        {% for error in form.non_field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    
+    <!-- Username Field -->
+    <div class="form-group">
+      <label for="id_username">Username</label>
+      <div class="input-group">
+        {{ form.username }}
+        <span class="input-icon">👤</span>
+      </div>
+    </div>
+    
+    <!-- Password Field -->
+    <div class="form-group">
+      <label for="id_password">Password</label>
+      <div class="input-group">
+        {{ form.password }}
+        <span class="input-icon">🔒</span>
+      </div>
+    </div>
+    
+    <button type="submit">Log In</button>
+    
+    
+    <!-- Footer -->
+    <div class="auth-footer">
+      <p>New to our community?</p>
+      <a href="{% url 'posts:register' %}">Create Account</a>
+    </div>
+  </form>
+</div>
+
+<script>
+// Add form validation and enhancement
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('.auth-form');
+  const inputs = form.querySelectorAll('input[type="text"], input[type="password"]');
+  const submitButton = form.querySelector('button[type="submit"]');
+  
+  // Add placeholder text
+  inputs.forEach(input => {
+    if (input.name === 'username') {
+      input.placeholder = 'Enter your username';
+    } else if (input.name === 'password') {
+      input.placeholder = 'Enter your password';
+    }
+  });
+  
+  // Real-time validation
+  inputs.forEach(input => {
+    input.addEventListener('input', function() {
+      validateField(this);
+    });
+    
+    input.addEventListener('blur', function() {
+      validateField(this);
+    });
+  });
+  
+  function validateField(field) {
+    const value = field.value.trim();
+    
+    if (value.length > 0) {
+      field.classList.add('valid');
+      field.classList.remove('invalid');
+    } else {
+      field.classList.remove('valid');
+      field.classList.remove('invalid');
+    }
+  }
+  
+  // Form submission handling
+  form.addEventListener('submit', function(e) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Logging In...';
+    
+    // Re-enable after 3 seconds if form doesn't redirect
+    setTimeout(() => {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Log In';
+    }, 3000);
+  });
+  
+  // Add enter key support
+  inputs.forEach((input, index) => {
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (index === inputs.length - 1) {
+          // Last input, submit form
+          form.submit();
+        } else {
+          // Focus next input
+          inputs[index + 1].focus();
+        }
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

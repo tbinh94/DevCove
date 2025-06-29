@@ -1,0 +1,94 @@
+{% extends 'posts/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'posts\css\dropdown.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-container fade-in-up">
+  <div class="profile-header">
+    <div class="profile-info">
+      <h2>{{ user_obj.username }}</h2>
+      <p>
+        {% if user_obj.first_name or user_obj.last_name %}
+          {{ user_obj.first_name }} {{ user_obj.last_name }}
+        {% endif %}
+      </p>
+      <div class="profile-stats">
+        <div class="stat-item">
+          <span class="stat-number">{{ user_obj.follower_set.count }}</span>
+          <span>followers</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ user_obj.following_set.count }}</span>
+          <span>following</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ user_posts|length }}</span>
+          <span>posts</span>
+        </div>
+      </div>
+      
+      {% if request.user != user_obj %}
+        <form method="post" action="{% url 'posts:follow_toggle' user_obj.username %}" class="follow-form">
+          {% csrf_token %}
+          <button type="submit" class="follow-btn {% if is_following %}unfollow{% endif %}">
+            {% if is_following %}
+              <span>✓ Following</span>
+            {% else %}
+              <span>+ Follow</span>
+            {% endif %}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="posts-section">
+    <h3>
+      <span>Posts by {{ user_obj.username }}</span>
+    </h3>
+  
+    
+    <div class="posts-list">
+      {% for post in user_posts %}
+        <div class="post-card fade-in-up">
+          <div class="post-vote">
+            <button class="vote-btn vote-up">▲</button>
+            <div class="vote-score">{{ post.score }}</div>
+            <button class="vote-btn vote-down">▼</button>
+          </div>
+          
+          <div class="post-content">
+            <h4>
+              <a href="{% url 'posts:post_detail' post.id %}">{{ post.title }}</a>
+            </h4>
+            <div class="post-meta">
+              <span class="post-meta-item">
+                  <span>📅</span>
+                  <span>{{ post.created_at|date:"M j, Y" }}</span>
+                </span>
+                <span class="post-meta-separator">•</span>
+                <span class="post-meta-item">
+                  <span>🕐</span>
+                  <span>{{ post.created_at|date:"H:i" }}</span>
+                </span>
+                <span class="post-meta-separator">•</span>
+                <span class="post-type">📝 Text</span>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <h3>No posts yet</h3>
+            <p>{{ user_obj.username }} chưa có bài viết nào.</p>
+            <small>Hãy quay lại sau để xem các bài viết mới!</small>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,787 @@
+{% extends 'posts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-container">
+  <!-- Left sidebar with tags -->
+  <div class="sidebar">
+    <!-- Search Box -->
+    <div class="search-section">
+      <form method="GET" class="search-form">
+        <input type="text" name="q" value="{{ search_query }}" 
+               placeholder="Search posts..." class="search-input">
+        <button type="submit" class="search-btn">🔍</button>
+      </form>
+    </div>
+
+    <!-- Popular Tags -->
+    <div class="tags-section">
+      <h3>Popular Tags</h3>
+      <div class="tags-list">
+        {% for tag in popular_tags %}
+          <a href="?tag={{ tag.slug }}" class="tag-badge {% if current_tag == tag.slug %}active{% endif %}"
+             style="background-color: {{ tag.color }};">
+            {{ tag.name }}
+            <span class="tag-count">{{ tag.post_count }}</span>
+          </a>
+        {% endfor %}
+        <a href="{% url 'posts:all_tags' %}" class="view-all-tags">View all tags →</a>
+      </div>
+    </div>
+
+    <!-- Filter Status -->
+    {% if current_tag or search_query %}
+    <div class="filter-status">
+      <h4>Active Filters:</h4>
+      {% if current_tag %}
+        <div class="filter-item">
+          Tag: <span class="filter-value">{{ current_tag }}</span>
+          <a href="{% url 'posts:post_list' %}" class="clear-filter">×</a>
+        </div>
+      {% endif %}
+      {% if search_query %}
+        <div class="filter-item">
+          Search: <span class="filter-value">{{ search_query }}</span>
+          <a href="{% url 'posts:post_list' %}" class="clear-filter">×</a>
+        </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <!-- Create Post Section -->
+    {% if user.is_authenticated %}
+    <div class="create-post-section">
+      <div class="create-post-card">
+        <div class="user-avatar">
+          <span class="avatar-icon">👤</span>
+        </div>
+        <div class="create-post-input">
+          <input type="text" placeholder="Create Post" readonly onclick="window.location.href='{% url 'posts:create_post' %}'">
+        </div>
+        <div class="create-post-actions">
+          <a href="{% url 'posts:create_post' %}" class="create-btn">
+            <span class="icon">📝</span>
+          </a>
+          <a href="{% url 'posts:create_post' %}" class="create-btn">
+            <span class="icon">📷</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="posts-list">
+      {% for post in posts %}
+        <div class="post-card">
+          <div class="vote-section">
+            <button class="vote-btn upvote" data-id="{{ post.id }}" data-dir="up">
+              <span class="vote-arrow">▲</span>
+            </button>
+            <div class="score" id="score-{{ post.id }}">{{ post.score }}</div>
+            <button class="vote-btn downvote" data-id="{{ post.id }}" data-dir="down">
+              <span class="vote-arrow">▼</span>
+            </button>
+          </div>
+
+          <div class="post-body">
+            <div class="post-meta">
+              {% if post.community %}
+                <a href="{% url 'posts:community' post.community.slug %}"
+                  class="community-badge">r/{{ post.community.slug }}</a>
+                <span class="separator">•</span>
+              {% endif %}
+              <span class="author">u/{{ post.author.username }}</span>
+              <span class="separator">•</span>
+              <span class="time">{{ post.created_at|timesince }} ago</span>
+            </div>
+            
+            <h3 class="post-title">
+              <a href="{% url 'posts:post_detail' post.id %}">{{ post.title }}</a>
+            </h3>
+            
+            <!-- Post Tags -->
+            {% if post.tags.exists %}
+              <div class="post-tags">
+                {% for tag in post.tags.all %}
+                  <a href="?tag={{ tag.slug }}" class="tag-badge small" 
+                     style="background-color: {{ tag.color }};">
+                    {{ tag.name }}
+                  </a>
+                {% endfor %}
+              </div>
+            {% endif %}
+            
+            {% if post.content %}
+              <div class="post-content">{{ post.content|truncatewords:20 }}</div>
+            {% endif %}
+            {% if post.image %}
+              <div class="post-image">
+                <img src="{{ post.image.url }}" alt="Post image">
+              </div>
+            {% endif %}
+            <div class="post-actions">
+              <a href="{% url 'posts:post_detail' post.id %}" class="action-btn">
+                <span class="icon">💬</span>
+                {{ post.comment_count }}
+              </a>
+              <button class="action-btn">
+                <span class="icon">🔗</span>
+                Share
+              </button>
+              <button class="action-btn">
+                <span class="icon">🔖</span>
+                Save
+              </button>
+              {% if post.author == user %}
+                <a href="{% url 'posts:edit_post' post.id %}" class="action-btn edit-btn">
+                  <span class="icon">✏️</span>
+                  Edit
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="empty-state">
+          <div class="empty-icon">📝</div>
+          <h3>No posts yet</h3>
+          <p>Be the first to create a post!</p>
+          {% if user.is_authenticated %}
+            <a href="{% url 'posts:create_post' %}" class="btn">Create Post</a>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if posts.has_other_pages %}
+    <div class="pagination">
+      {% if posts.has_previous %}
+        <a href="?page={{ posts.previous_page_number }}{% if current_tag %}&tag={{ current_tag }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="page-btn">← Previous</a>
+      {% endif %}
+      
+      <span class="page-info">
+        Page {{ posts.number }} of {{ posts.paginator.num_pages }}
+      </span>
+      
+      {% if posts.has_next %}
+        <a href="?page={{ posts.next_page_number }}{% if current_tag %}&tag={{ current_tag }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="page-btn">Next →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+<style>
+/* Container chính - cải thiện tỷ lệ như Reddit */
+.main-container {
+  display: flex;
+  gap: 24px;
+  max-width: 1248px; /* Tăng chiều rộng tối đa */
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #dae0e6;
+  min-height: 100vh;
+}
+
+/* Main content - chiếm phần lớn không gian */
+.main-content {
+  flex: 1;
+  max-width: 640px; /* Giới hạn để dễ đọc */
+  min-width: 0;
+}
+
+/* Sidebar - cố định chiều rộng như Reddit */
+.sidebar {
+  width: 312px; /* Chiều rộng chuẩn của Reddit */
+  flex-shrink: 0;
+  padding: 0;
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+/* Search Section */
+.search-section {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.search-form {
+  display: flex;
+  gap: 8px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #f6f7f8;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #0079d3;
+  background: white;
+}
+
+.search-btn {
+  padding: 8px 12px;
+  background: #0079d3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.search-btn:hover {
+  background: #005ba3;
+}
+
+/* Tags Section */
+.tags-section {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.tags-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1a1a1b;
+  font-weight: 600;
+}
+
+.tags-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background-color: #0079d3;
+  color: white;
+  text-decoration: none;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tag-badge:hover {
+  background-color: #005ba3;
+  text-decoration: none;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.tag-badge.active {
+  box-shadow: 0 0 0 2px #0079d3;
+  background-color: #005ba3;
+}
+
+.tag-badge.small {
+  padding: 3px 8px;
+  font-size: 11px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+}
+
+.tag-count {
+  background: rgba(255,255,255,0.3);
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  margin-left: 8px;
+}
+
+.post-tags {
+  margin: 8px 0;
+}
+
+.view-all-tags {
+  color: #0079d3;
+  font-size: 12px;
+  text-decoration: none;
+  margin-top: 8px;
+  display: block;
+  font-weight: 500;
+}
+
+.view-all-tags:hover {
+  text-decoration: underline;
+}
+
+/* Filter Status */
+.filter-status {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.filter-status h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #7c7c83;
+  font-weight: 600;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.filter-value {
+  background: #0079d3;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.clear-filter {
+  color: #dc3545;
+  text-decoration: none;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f8d7da;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.clear-filter:hover {
+  background: #dc3545;
+  color: white;
+}
+
+/* Create Post Section */
+.create-post-section {
+  margin-bottom: 16px;
+}
+
+.create-post-card {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f7f8;
+  border-radius: 50%;
+}
+
+.avatar-icon {
+  font-size: 18px;
+}
+
+.create-post-input {
+  flex: 1;
+}
+
+.create-post-input input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #edeff1;
+  border-radius: 4px;
+  background: #f6f7f8;
+  cursor: pointer;
+  font-size: 14px;
+  color: #787c7e;
+}
+
+.create-post-input input:hover {
+  border-color: #0079d3;
+  background: white;
+}
+
+.create-post-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.create-btn {
+  padding: 6px 10px;
+  background: none;
+  border: 1px solid #edeff1;
+  cursor: pointer;
+  border-radius: 4px;
+  text-decoration: none;
+  color: #787c7e;
+  transition: all 0.2s;
+}
+
+.create-btn:hover {
+  background: #f6f7f8;
+  color: #1a1a1b;
+  border-color: #ccc;
+}
+
+/* Posts List */
+.posts-list {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.post-card {
+  display: flex;
+  padding: 8px;
+  border-bottom: 1px solid #f6f7f8;
+  background: white;
+  transition: background-color 0.1s;
+}
+
+.post-card:hover {
+  background-color: #f8f9fa;
+}
+
+.post-card:last-child {
+  border-bottom: none;
+}
+
+.vote-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.vote-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #878a8c;
+  border-radius: 2px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.vote-btn:hover {
+  background-color: #f6f7f8;
+  color: #1a1a1b;
+}
+
+.vote-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.score {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1b;
+  margin: 4px 0;
+  text-align: center;
+}
+
+.post-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-meta {
+  font-size: 12px;
+  color: #787c7e;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.community-badge {
+  color: #1a1a1b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.community-badge:hover {
+  text-decoration: underline;
+}
+
+.separator {
+  margin: 0 4px;
+}
+
+.author, .time {
+  color: #787c7e;
+}
+
+.post-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.post-title a {
+  color: #1a1a1b;
+  text-decoration: none;
+}
+
+.post-title a:hover {
+  color: #0079d3;
+}
+
+.post-content {
+  font-size: 14px;
+  color: #1a1a1b;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.post-image {
+  margin: 8px 0;
+}
+
+.post-image img {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.post-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #878a8c;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 2px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #f6f7f8;
+  color: #1a1a1b;
+  text-decoration: none;
+}
+
+.action-btn .icon {
+  font-size: 11px;
+}
+
+.edit-btn:hover {
+  color: #46d160;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 20px 0;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  background: #0079d3;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.page-btn:hover {
+  background: #005ba3;
+  color: white;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.page-info {
+  color: #787c7e;
+  font-size: 14px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.7;
+}
+
+.empty-state h3 {
+  color: #1a1a1b;
+  margin-bottom: 8px;
+  font-size: 20px;
+}
+
+.empty-state p {
+  color: #787c7e;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.btn {
+  padding: 10px 20px;
+  background: #0079d3;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: #005ba3;
+  text-decoration: none;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .main-container {
+    max-width: 100%;
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+  }
+  
+  .sidebar {
+    width: 100%;
+    order: 2;
+    position: static;
+    max-height: none;
+  }
+  
+  .main-content {
+    order: 1;
+    max-width: none;
+  }
+  
+  .post-card {
+    padding: 8px;
+  }
+  
+  .vote-section {
+    width: 36px;
+    margin-right: 8px;
+  }
+  
+  .post-title {
+    font-size: 16px;
+  }
+  
+  .post-content {
+    font-size: 13px;
+  }
+}
+
+/* Scrollbar styling cho sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+</style>
+
+<!-- Load jQuery trước -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Khởi tạo voteConfig TRƯỚC khi load vote.js -->
+<script>
+  window.voteConfig = {
+    isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
+    loginUrl: "{% url 'login' %}?next={{ request.get_full_path|urlencode }}",
+    voteUrl: "{% url 'posts:vote' %}"
+  };
+  console.log('Vote config initialized:', window.voteConfig);
+</script>
+
+<!-- Load vote.js CUỐI CÙNG -->
+<script src="{% static 'posts/js/vote.js' %}"></script>
+{% endblock %}
