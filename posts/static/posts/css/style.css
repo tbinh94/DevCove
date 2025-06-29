@@ -388,18 +388,7 @@ body {
   background: linear-gradient(135deg, #ffeaea 0%, #ffdbdb 100%);
 }
 
-/* Main content */
-.main-content {
-  min-height: calc(100vh - 60px);
-  padding: 24px 0;
-  
-}
 
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
 
 /* Create Post Section */
 .create-post-section {
