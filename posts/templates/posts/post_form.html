@@ -502,7 +502,7 @@
     // Auto-preview functionality
     function updatePreview() {
         const titleInput = form.querySelector('input[name*="title"], input[id*="title"]');
-        const contentInput = document.getElementById('content');
+        const contentInput = form.querySelector('textarea[name="content"]');
         
         if (titleInput && titleInput.value.trim()) {
             previewTitle.textContent = titleInput.value;

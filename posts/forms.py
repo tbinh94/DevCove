@@ -23,6 +23,7 @@ class PostForm(forms.ModelForm):
                 'class': 'form-control'
             }),
             'content': forms.Textarea(attrs={
+                'id': 'content',
                 'placeholder': 'What are your thoughts?',
                 'class': 'form-control',
                 'rows': 5

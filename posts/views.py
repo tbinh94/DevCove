@@ -65,6 +65,8 @@ def create_post(request):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
+            form.instance = post
+            form.save()
             # Form đã tự động xử lý tags trong method save()
             return redirect('posts:post_detail', pk=post.pk)
     else:
