@@ -586,3 +586,25 @@ body {
   font-style: italic;
   background: rgba(0, 0, 0, 0.05);
 }
+
+
+
+/* --- avatar preview --- */
+.avatar-group {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.avatar-wrapper {
+  margin-bottom: 0.5rem;
+}
+.avatar-preview {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+}
+#id_avatar {
+  display: inline-block;
+  margin-top: 0.5rem;
+}

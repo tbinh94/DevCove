@@ -190,19 +190,31 @@ def profile_view(request, pk):
 @login_required
 def settings_view(request):
     """
-    Cho phép user chỉnh first_name, last_name và email.
+    Cho phép user chỉnh first_name, last_name, email và avatar cùng lúc.
     """
+    # Lấy hoặc tạo Profile liên kết với user
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+
     if request.method == 'POST':
-        form = SettingsForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
+        user_form    = SettingsForm(request.POST, instance=request.user)
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+            messages.success(request, "Your settings have been updated.")
             return redirect('posts:user_settings')
+        else:
+            messages.error(request, "Please fix the errors below.")
     else:
-        form = SettingsForm(instance=request.user)
+        user_form    = SettingsForm(instance=request.user)
+        profile_form = ProfileForm(instance=profile)
 
     return render(request, 'posts/settings.html', {
-        'form': form
+        'user_form':    user_form,
+        'profile_form': profile_form,
     })
+
 
 @login_required
 def profile_edit(request):

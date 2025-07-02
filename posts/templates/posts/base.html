@@ -28,7 +28,14 @@
           <div class="user-menu" id="userMenu">
             <div class="user-greeting">Hello, {{ user.username }}</div>
             <div class="dropdown">
-              <a href="{% url 'posts:user_profile' user.username %}">👤 Profile</a>
+              <a href="{% url 'posts:user_profile' username=request.user.username %}">
+                {% if request.user.profile.avatar %}
+                  <img src="{{ request.user.profile.avatar.url }}" class="avatar-sm" alt="avatar"/>
+                {% else %}
+                  <img src="{% static 'images/default-avatar.png' %}" class="avatar-sm" alt="default"/>
+                {% endif %}
+                {{ request.user.username }}
+              </a>
               <a href="{% url 'posts:user_settings' %}">⚙️ Settings</a>
               <a href="{% url 'posts:password_change' %}">🔑 Change Password</a>
               <hr style="margin: 0; border: none; border-top: 1px solid #f6f7f8;">
