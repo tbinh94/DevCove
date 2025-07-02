@@ -18,7 +18,7 @@
         Reddit Clone
       </a>
       <form class="search-form" method="get" action="{% url 'posts:user_search' %}">
-        <input type="text" name="q" placeholder="Search Reddit…" value="{{ request.GET.q|default:'' }}">
+        <input type="text" name="q" placeholder="Search User…" value="{{ request.GET.q|default:'' }}">
         <button type="submit">🔍</button>
       </form>
 

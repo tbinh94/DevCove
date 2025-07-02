@@ -70,10 +70,16 @@ class Vote(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='votes')
     is_upvote = models.BooleanField()  # True = upvote, False = downvote
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    value      = models.SmallIntegerField(editable=False)
+
     class Meta:
         unique_together = ('user', 'post')  # Một user chỉ vote 1 lần cho 1 post
     
+    def save(self, *args, **kwargs):
+        # tự động set value mỗi lần tạo hoặc update
+        self.value = 1 if self.is_upvote else -1
+        super().save(*args, **kwargs)
+
     def __str__(self):
         vote_type = "upvote" if self.is_upvote else "downvote"
         return f"{self.user.username} {vote_type} {self.post.title}"

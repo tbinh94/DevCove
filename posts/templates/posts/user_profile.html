@@ -9,6 +9,11 @@
 <div class="profile-container fade-in-up">
   <div class="profile-header">
     <div class="profile-info">
+      {% if profile.avatar %}
+        <img src="{{ profile.avatar.url }}" alt="{{ user_obj.username }}" class="avatar-large"/>
+      {% else %}
+        <img src="{% static 'images/default-avatar.png' %}" alt="default avatar" class="avatar-large"/>
+      {% endif %}
       <h2>{{ user_obj.username }}</h2>
       <p>
         {% if user_obj.first_name or user_obj.last_name %}
