@@ -35,11 +35,22 @@
     {{ profile_form.avatar.label_tag }}
     <div class="avatar-wrapper">
       {% if profile_form.instance.avatar %}
-        <img id="avatarPreview" src="{{ profile_form.instance.avatar.url }}" class="avatar-preview"/>
+        <img 
+          id="avatarPreview" 
+          src="{{ profile_form.instance.avatar.url }}" 
+          class="avatar-preview"
+          alt="User avatar"
+        />
       {% else %}
-        <img id="avatarPreview" src="{% static 'images/default-avatar.png' %}" class="avatar-preview"/>
+        <img 
+          id="avatarPreview" 
+          src="{% static 'imgs/avatar-default.png' %}" 
+          class="avatar-preview"
+          alt="Default avatar"
+        />
       {% endif %}
     </div>
+
     {{ profile_form.avatar }}
     {{ profile_form.avatar.errors }}
   </div>
@@ -187,6 +198,13 @@
   color: var(--primary-color);
   font-weight: bold;
 }
+.avatar-preview {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 </style>
 
 <script>

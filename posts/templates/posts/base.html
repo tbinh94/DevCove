@@ -32,7 +32,7 @@
                 {% if request.user.profile.avatar %}
                   <img src="{{ request.user.profile.avatar.url }}" class="avatar-sm" alt="avatar"/>
                 {% else %}
-                  <img src="{% static 'images/default-avatar.png' %}" class="avatar-sm" alt="default"/>
+                  <img src="{% static 'imgs/avatar-default.png' %}"  class="avatar-sm" alt="default"/>
                 {% endif %}
                 {{ request.user.username }}
               </a>
