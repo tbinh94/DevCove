@@ -42,6 +42,27 @@ def post_list(request):
     page = request.GET.get('page')
     posts = paginator.get_page(page)
     
+    upvoted_posts = set()
+    downvoted_posts = set()
+    if request.user.is_authenticated:
+        # FIX: Lấy vote dựa trên post objects trong paginated queryset
+        post_ids = [post.id for post in posts]
+        user_votes = Vote.objects.filter(
+            user=request.user,
+            post_id__in=post_ids
+        ).select_related('post')
+        
+        for vote in user_votes:
+            # FIX: So sánh với boolean thay vì string
+            if vote.is_upvote == True:  # hoặc if vote.is_upvote:
+                upvoted_posts.add(vote.post.id)
+            elif vote.is_upvote == False:  # hoặc if not vote.is_upvote:
+                downvoted_posts.add(vote.post.id)
+    
+    # Debug: In ra console để kiểm tra
+    print(f"Upvoted posts: {upvoted_posts}")
+    print(f"Downvoted posts: {downvoted_posts}")
+
     # Get popular tags for sidebar
     popular_tags = Tag.objects.annotate(
         post_count=Count('posts')
@@ -52,63 +73,11 @@ def post_list(request):
         'popular_tags': popular_tags,
         'current_tag': tag_slug,
         'search_query': search_query,
+        'upvoted_posts': upvoted_posts,
+        'downvoted_posts': downvoted_posts,
     }
     
     return render(request, 'posts/post_list.html', context)
-
-# Hàm chính để tạo post
-@login_required(login_url='/login/')
-def create_post(request):
-    if request.method == 'POST':
-        form = PostForm(request.POST, request.FILES)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.save()
-            form.instance = post
-            form.save()
-            # Form đã tự động xử lý tags trong method save()
-            return redirect('posts:post_detail', pk=post.pk)
-    else:
-        form = PostForm()
-    
-    return render(request, 'posts/create_post.html', {
-        'form': form,
-        'is_edit': False
-    })
-
-
-@login_required
-def logout_view(request):
-    logout(request)
-    return redirect('posts:post_list')
-
-def post_detail(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid() and request.user.is_authenticated:
-            comment = form.save(commit=False)
-            comment.post   = post
-            comment.author = request.user
-            comment.save()
-            return redirect('posts:post_detail', pk=pk)
-    else:
-        form = CommentForm()
-
-    # Get related posts by tags
-    related_posts = []
-    if post.tags.exists():
-        related_posts = Post.objects.filter(
-            tags__in=post.tags.all()
-        ).exclude(pk=post.pk).distinct()[:5]
-
-    return render(request, 'posts/post_detail.html', {
-        'post': post,
-        'form': form,
-        'related_posts': related_posts,
-    })
 
 @login_required
 def vote_post(request):
@@ -162,11 +131,74 @@ def vote_post(request):
         return JsonResponse({
             'success': True,
             'score': new_score,
-            'action': action
+            'action': action,
+            'vote_type': vote_type  # Thêm thông tin vote_type để frontend xử lý
         })
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+# Hàm chính để tạo post
+@login_required(login_url='/login/')
+def create_post(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            form.instance = post
+            form.save()
+            # Form đã tự động xử lý tags trong method save()
+            return redirect('posts:post_detail', pk=post.pk)
+    else:
+        form = PostForm()
+    
+    return render(request, 'posts/create_post.html', {
+        'form': form,
+        'is_edit': False
+    })
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect('posts:post_list')
+
+def post_detail(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid() and request.user.is_authenticated:
+            comment = form.save(commit=False)
+            comment.post   = post
+            comment.author = request.user
+            comment.save()
+            return redirect('posts:post_detail', pk=pk)
+    else:
+        form = CommentForm()
+
+    # Get related posts by tags
+    related_posts = []
+    if post.tags.exists():
+        related_posts = Post.objects.filter(
+            tags__in=post.tags.all()
+        ).exclude(pk=post.pk).distinct()[:5]
+    
+    # Get vote status for this post if user is authenticated
+    user_vote = None
+    if request.user.is_authenticated:
+        try:
+            user_vote = Vote.objects.get(user=request.user, post=post)
+        except Vote.DoesNotExist:
+            pass
+
+    return render(request, 'posts/post_detail.html', {
+        'post': post,
+        'form': form,
+        'related_posts': related_posts,
+        'user_vote': user_vote,
+    })
 
 def register(request):
     if request.method == 'POST':
@@ -216,7 +248,6 @@ def settings_view(request):
         'user_form': user_form,
         'profile_form': profile_form,
     })
-
 
 @login_required
 def profile_edit(request):
@@ -363,7 +394,6 @@ def edit_post(request, pk):
         'is_edit': True,
         'post': post
     })
-
 
 @login_required
 def delete_post(request, pk):

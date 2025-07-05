@@ -49,6 +49,9 @@ $(document).ready(function() {
         return;
     }
 
+    // Khởi tạo trạng thái vote khi trang load
+    initializeVoteStates();
+
     $('.vote-btn').click(function(e) {
         e.preventDefault();
         const btn = $(this);
@@ -89,9 +92,17 @@ $(document).ready(function() {
                 if (data.error) {
                     showAlert('Lỗi: ' + data.error, 'error', null, 3000);
                 } else if (data.success) {
-                    // Cập nhật điểm số và trạng thái nút với màu cam
+                    // Cập nhật điểm số và trạng thái nút
                     $(`#score-${postId}`).text(data.score);
                     updateButtonStates(postId, voteType, data.action, data.score);
+                    
+                    // Cập nhật data attribute cho vote section
+                    const voteSection = $(`.vote-section:has([data-id="${postId}"])`);
+                    if (data.action === 'removed') {
+                        voteSection.attr('data-user-vote', '');
+                    } else {
+                        voteSection.attr('data-user-vote', voteType);
+                    }
                 }
             },
             error: function(xhr, status, error) {
@@ -113,43 +124,56 @@ $(document).ready(function() {
         });
     });
 
+    // Hàm khởi tạo trạng thái vote từ server data
+    function initializeVoteStates() {
+        $('.vote-section').each(function() {
+            const voteSection = $(this);
+            const userVote = voteSection.data('user-vote');
+            const postId = voteSection.find('.vote-btn').first().data('id');
+            const score = parseInt(voteSection.find('.score').text(), 10) || 0;
+            
+            console.log(`Vote section data for post ${postId}:`, {
+                userVote: userVote,
+                dataAttr: voteSection.attr('data-user-vote'),
+                score: score
+            });
+            
+            if (userVote && userVote !== '') {
+                console.log(`Initializing vote state for post ${postId}: ${userVote}`);
+                updateButtonStates(postId, userVote, 'init', score);
+            }
+        });
+    }
+
     // Hàm cập nhật trạng thái nút vote và màu sắc
     function updateButtonStates(postId, voteType, action, score) {
         const upBtn = $(`.vote-btn.upvote[data-id="${postId}"]`);
         const downBtn = $(`.vote-btn.downvote[data-id="${postId}"]`);
         const scoreEl = $(`#score-${postId}`);
 
-        // Reset classes
+        // Reset tất cả classes
         upBtn.removeClass('active voted-up voted-down');
         downBtn.removeClass('active voted-up voted-down');
-        scoreEl.removeClass('positive negative');
+        scoreEl.removeClass('positive negative voted');
 
-        // Nếu không bỏ vote thì highlight
+        // Nếu không bỏ vote thì highlight với màu cam
         if (action !== 'removed') {
             if (voteType === 'up') {
                 upBtn.addClass('active voted-up');
+                scoreEl.addClass('voted');
             } else if (voteType === 'down') {
                 downBtn.addClass('active voted-down');
+                scoreEl.addClass('voted');
             }
         }
 
-        // Màu score
+        // Màu score dựa trên giá trị
         if (score > 0) {
             scoreEl.addClass('positive');
         } else if (score < 0) {
             scoreEl.addClass('negative');
         }
+        
+        console.log(`Updated button states for post ${postId}: ${voteType} (${action}), score: ${score}`);
     }
-
-    // Khởi tạo trạng thái ban đầu nếu có dữ liệu từ server
-    $('.post-card').each(function() {
-        const card = $(this);
-        const postId = card.find('.vote-btn').data('id');
-        const userVote = card.data('user-vote');
-        const score = parseInt(card.find('.score').text(), 10);
-        if (userVote) {
-            updateButtonStates(postId, userVote, 'init', score);
-        }
-    });
 });
-

@@ -71,6 +71,7 @@ class Vote(models.Model):
     is_upvote = models.BooleanField()  # True = upvote, False = downvote
     created_at = models.DateTimeField(auto_now_add=True)
     value      = models.SmallIntegerField(editable=False)
+    
 
     class Meta:
         unique_together = ('user', 'post')  # Một user chỉ vote 1 lần cho 1 post
