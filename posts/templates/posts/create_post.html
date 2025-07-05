@@ -1,0 +1,123 @@
+{% extends 'posts/base.html' %}
+
+{% block content %}
+{% load static %}
+
+<!-- CSS -->
+<link rel="stylesheet" href="{% static 'posts/css/create_post.css' %}">
+
+<!-- Main Container -->
+<div class="main-container">
+    <!-- New Post Form -->
+    <div class="post-container">
+        <div class="post-header">
+            <h2 class="post-title">Create a post</h2>
+            <div class="post-type-tabs">
+                <button class="post-type-tab active" data-type="text">📝 Post</button>
+                <button class="post-type-tab" data-type="image">🖼️ Images & Video</button>
+                <button class="post-type-tab" data-type="link">🔗 Link</button>
+                <button class="post-type-tab" data-type="poll">📊 Poll</button>
+            </div>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="post-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.title.id_for_label }}" class="form-label">Title *</label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <div class="text-danger">{{ form.title.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="mb-3">
+                <label for="{{ form.content.id_for_label }}" class="form-label">Content</label>
+                {{ form.content }}
+                {% if form.content.errors %}
+                    <div class="text-danger">{{ form.content.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="mb-3">
+                <label for="{{ form.image.id_for_label }}" class="form-label">Image</label>
+                {{ form.image }}
+                {% if form.image.errors %}
+                    <div class="text-danger">{{ form.image.errors }}</div>
+                {% endif %}
+            </div>
+            
+            {% if form.community %}
+            <div class="mb-3">
+                <label for="{{ form.community.id_for_label }}" class="form-label">Community</label>
+                {{ form.community }}
+                {% if form.community.errors %}
+                    <div class="text-danger">{{ form.community.errors }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if form.tags %}
+            <div class="mb-3">
+                <label class="form-label">Tags</label>
+                {{ form.tags }}
+                {% if form.tags.errors %}
+                    <div class="text-danger">{{ form.tags.errors }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    {% if is_edit %}Update Post{% else %}Create Post{% endif %}
+                </button>
+            </div>
+        </form>
+
+        <!-- Post Preview -->
+        <div class="post-preview" id="postPreview" style="display: none;">
+            <div class="preview-header">Preview</div>
+            <div class="preview-title" id="previewTitle"></div>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-card">
+            <div class="sidebar-header">📋 Posting to Reddit</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule"><strong>1. Remember the human</strong><br>Reddit is a place for creating community and belonging, not for attacking marginalized or vulnerable groups of people.</div>
+                <div class="sidebar-rule"><strong>2. Behave like you would in real life</strong><br>Don't be a jerk. Be authentic and accountable.</div>
+                <div class="sidebar-rule"><strong>3. Look for the original source</strong><br>Where possible, please provide a link to the original source.</div>
+                <div class="sidebar-rule"><strong>4. Search for duplicates before posting</strong><br>Check if your link or topic has already been submitted.</div>
+                <div class="sidebar-rule"><strong>5. Read the community's rules</strong><br>Each community has its own rules and guidelines.</div>
+            </div>
+        </div>
+
+        <div class="sidebar-card">
+            <div class="sidebar-header">💡 Tips for better posts</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule">• <strong>Write descriptive titles</strong><br>Clear, specific titles help readers understand your post</div>
+                <div class="sidebar-rule">• <strong>Add flair when posting</strong><br>Flair helps organize and filter content</div>
+                <div class="sidebar-rule">• <strong>Include sources for news/facts</strong><br>Credible sources build trust with readers</div>
+                <div class="sidebar-rule">• <strong>Engage with comments</strong><br>Respond to questions and feedback from users</div>
+                <div class="sidebar-rule">• <strong>Follow reddiquette</strong><br>Be respectful and contribute to healthy discussions</div>
+            </div>
+        </div>
+
+        <div class="sidebar-card">
+            <div class="sidebar-header">🎯 Content Policy</div>
+            <div class="sidebar-content">
+                <div class="sidebar-rule">• No harassment or bullying</div>
+                <div class="sidebar-rule">• No spam or self-promotion</div>
+                <div class="sidebar-rule">• Mark NSFW content appropriately</div>
+                <div class="sidebar-rule">• No illegal or harmful content</div>
+                <div class="sidebar-rule">• Respect copyright and intellectual property</div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<!-- JavaScript -->
+<script src="{% static 'posts/js/create_post.js' %}"></script>
+{% endblock %}

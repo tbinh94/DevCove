@@ -72,7 +72,7 @@ def create_post(request):
     else:
         form = PostForm()
     
-    return render(request, 'posts/post_form.html', {
+    return render(request, 'posts/create_post.html', {
         'form': form,
         'is_edit': False
     })
@@ -155,7 +155,8 @@ def vote_post(request):
             )
             action = 'created'
         
-        # Tính lại score
+        # Tính lại score từ database sau khi thay đổi vote
+        post.refresh_from_db()
         new_score = post.score
         
         return JsonResponse({
