@@ -155,8 +155,9 @@ body {
 }
 
 .nav-btn:hover {
-  background-color: #343536;
-  border-color: #4a4a4b;
+  background-color: #FF4500;
+  border-color: #fff;
+  color: #ffffff;
 }
 
 /* User Menu */

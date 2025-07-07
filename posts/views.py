@@ -394,10 +394,7 @@ def profile_edit(request):
         form = ProfileForm(instance=profile)
     return render(request, 'posts/profile_edit.html', {'form': form})
 
-@login_required
-def my_posts_view(request):
-    posts = Post.objects.filter(author=request.user).order_by('-created_at')
-    return render(request, 'posts/my_posts.html', {'posts': posts})
+
 
 @login_required
 def password_change_view(request):
@@ -425,22 +422,54 @@ def user_search(request):
     })
 
 # Profile with follow status
+# Profile with follow status
 @login_required
 def user_profile_view(request, username):
     user_obj = get_object_or_404(User, username=username)
     profile  = getattr(user_obj, 'profile', None)
+
     is_following = Follow.objects.filter(
         follower=request.user,
         following=user_obj
     ).exists()
-    # Lấy luôn các post của user này
-    user_posts = Post.objects.filter(author=user_obj).order_by('-created_at')
+    
+    # Lấy luôn các post của user này với vote annotations
+    user_posts = Post.objects.filter(author=user_obj).annotate(
+        num_comments=Count('comments'),
+        upvotes=Count('votes', filter=Q(votes__is_upvote=True)),
+        downvotes=Count('votes', filter=Q(votes__is_upvote=False)),
+        calculated_score=Sum(Case(
+            When(votes__is_upvote=True, then=1),
+            When(votes__is_upvote=False, then=-1),
+            default=0,
+            output_field=IntegerField()
+        ))
+    ).order_by('-created_at')
+
+    # Get user votes for these posts
+    upvoted_posts = set()
+    downvoted_posts = set()
+    if request.user.is_authenticated:
+        post_ids = [post.id for post in user_posts]
+        if post_ids:  # Only query if there are posts
+            user_votes = Vote.objects.filter(
+                user=request.user,
+                post_id__in=post_ids
+            ).select_related('post')
+            
+            for vote in user_votes:
+                if vote.is_upvote == True:
+                    upvoted_posts.add(vote.post.id)
+                elif vote.is_upvote == False:
+                    downvoted_posts.add(vote.post.id)
 
     return render(request, 'posts/user_profile.html', {
         'user_obj': user_obj,
         'profile': profile,
         'is_following': is_following,
-        'user_posts': user_posts,    # truyền vào template
+        'user_posts': user_posts,
+        'upvoted_posts': upvoted_posts,
+        'downvoted_posts': downvoted_posts,
     })
 
 # Toggle follow/unfollow

@@ -20,7 +20,7 @@ urlpatterns = [
         name='user_profile'    
     ),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
-    path('my-posts/', views.my_posts_view, name='user_posts'),
+    
     path(
         'password-change/',
         views.password_change_view,    # <-- dùng custom view

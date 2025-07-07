@@ -10,7 +10,7 @@
     <!-- Search -->
     <div class="search-section">
       <form method="GET" class="search-form">
-        <input type="text" name="q" value="{{ search_query }}" placeholder="Search posts..." class="search-input">
+        <input type="text" id="mySearchBar" name="q" value="{{ search_query }}" placeholder="Search posts..." class="search-input">
         <button type="submit" class="search-btn">🔍</button>
       </form>
     </div>
@@ -198,6 +198,25 @@ window.voteConfig = {
   loginUrl: "{% url 'login' %}?next={{ request.get_full_path|urlencode }}",
   voteUrl: "{% url 'posts:vote' %}"
 };
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchBar = document.getElementById('mySearchBar');
+
+        searchBar.addEventListener('focus', function() {
+            if (this.value === 'None') {
+                this.value = '';
+                this.style.color = 'black'; 
+            }
+        });
+
+        searchBar.addEventListener('blur', function() {
+            if (this.value === '') {
+                this.value = 'None';
+                this.style.color = '#1a1a1b'; 
+            }
+        });
+    });
 </script>
 <script src="{% static 'posts/js/vote.js' %}"></script>
 {% endblock %}
