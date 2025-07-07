@@ -154,3 +154,11 @@ class TagForm(forms.ModelForm):
         if len(name) > 30:
             raise forms.ValidationError('Tag name cannot exceed 30 characters.')
         return name
+    
+class CommunityForm(forms.ModelForm):
+    class Meta:
+        model = Community
+        fields = ['name', 'description']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows':3}),
+        }

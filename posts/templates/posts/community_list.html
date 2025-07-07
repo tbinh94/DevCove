@@ -1,0 +1,22 @@
+{% extends 'posts/base.html' %}
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'posts/css/community_style.css' %}">
+<div class="container mx-auto py-6">
+  <h1 class="text-2xl font-bold mb-4">All Communities</h1>
+  <a href="{% url 'posts:community_create' %}" class="btn btn-primary mb-4">Create New Community</a>
+
+  <ul class="list-disc pl-5">
+    {% for community in communities %}
+      <li class="mb-2">
+        <a href="{% url 'posts:community_detail' community.slug %}" class="text-blue-600 hover:underline">
+          r/{{ community.slug }}
+        </a>
+        &mdash; {{ community.description|truncatechars:80 }}
+      </li>
+    {% empty %}
+      <li>No communities yet. <a href="{% url 'posts:community_create' %}">Be the first!</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

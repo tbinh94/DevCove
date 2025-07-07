@@ -1,0 +1,14 @@
+{% extends 'posts/base.html' %}
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'posts/css/community_style.css' %}">
+<div class="container mx-auto py-6 max-w-md">
+  <h1 class="text-2xl font-bold mb-4">Delete Community</h1>
+  <p>Are you sure you want to delete <strong>r/{{ community.slug }}</strong>? This action cannot be undone.</p>
+  <form method="post" class="mt-4">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Yes, delete</button>
+    <a href="{% url 'posts:community_detail' community.slug %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

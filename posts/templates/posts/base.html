@@ -36,11 +36,14 @@
                 {% endif %}
                 {{ request.user.username }}
               </a>
+              <a href="{% url 'posts:community_list' %}" >👨‍👩‍👦‍👦 Communities</a>
+
               <a href="{% url 'posts:user_settings' %}">⚙️ Settings</a>
               <a href="{% url 'posts:password_change' %}">🔑 Change Password</a>
               <hr style="margin: 0; border: none; border-top: 1px solid #f6f7f8;">
               <a href="{% url 'logout' %}" class="logout-link">🚪 Logout</a>
             </div>
+
           </div>
         {% else %}
           <a href="{% url 'login' %}" class="nav-btn">Log In</a>

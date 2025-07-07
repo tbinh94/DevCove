@@ -1,0 +1,31 @@
+{% extends 'posts/base.html' %}
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'posts/css/community_style.css' %}">
+<div class="container mx-auto py-6 max-w-lg">
+  {% if community %}
+    <h1 class="text-2xl font-bold mb-4">Edit Community: r/{{ community.slug }}</h1>
+    <form method="post">
+  {% else %}
+    <h1 class="text-2xl font-bold mb-4">Create New Community</h1>
+    <form method="post">
+  {% endif %}
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="mb-4">
+      {{ form.name.label_tag }}
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    <div class="mb-4">
+      {{ form.description.label_tag }}
+      {{ form.description }}
+      {{ form.description.errors }}
+    </div>
+    <button type="submit" class="btn btn-success">
+      {% if community %}Update{% else %}Create{% endif %}
+    </button>
+    <a href="{% url 'posts:community_list' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

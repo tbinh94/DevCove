@@ -1,0 +1,35 @@
+{% extends 'posts/base.html' %}
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'posts/css/community_style.css' %}">
+<div class="container mx-auto py-6">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-3xl font-bold">r/{{ community.slug }}</h1>
+    {% if user == community.owner %}
+      <div>
+        <a href="{% url 'posts:community_update' community.slug %}" class="btn btn-outline-secondary mr-2">Edit</a>
+        <a href="{% url 'posts:community_delete' community.slug %}" class="btn btn-outline-danger">Delete</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <p class="mb-4">{{ community.description }}</p>
+  <p class="text-sm text-gray-500 mb-6">
+    Created by {{ community.owner.username }} on {{ community.created_at|date:"F j, Y" }}
+  </p>
+
+  <h2 class="text-2xl font-semibold mb-3">Posts in r/{{ community.slug }}</h2>
+  <ul class="list-inside list-decimal">
+    {% for post in posts %}
+      <li class="mb-2">
+        <a href="{% url 'posts:post_detail' post.pk %}" class="text-blue-600 hover:underline">
+          {{ post.title }}
+        </a>
+        <span class="text-sm text-gray-600">by {{ post.author.username }}</span>
+      </li>
+    {% empty %}
+      <li>No posts yet in this community.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

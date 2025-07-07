@@ -3,11 +3,17 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
 
 class Community(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=100, unique=True, blank=True)
+    description = models.TextField(blank=True)
+    owner       = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                    on_delete=models.CASCADE,
+                                    related_name='owned_communities')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -42,8 +48,10 @@ class Post(models.Model):
     content      = models.TextField(blank=True)
     image        = models.ImageField(upload_to='post_images/', blank=True, null=True)
     author       = models.ForeignKey(User, on_delete=models.CASCADE)
-    community    = models.ForeignKey(Community, on_delete=models.SET_NULL,
-                                     null=True, blank=True, related_name='posts')
+    community    = models.ForeignKey(Community, on_delete=models.CASCADE,
+                                     null=True, blank=True, 
+                                     #related_name='posts'
+                                     )
     tags         = models.ManyToManyField(Tag, blank=True, related_name='posts')
     created_at   = models.DateTimeField(auto_now_add=True)
 

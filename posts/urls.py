@@ -43,5 +43,10 @@ urlpatterns = [
         views.tag_detail,
         name='tag_detail'
     ),
+    path('communities/', views.community_list, name='community_list'),
+    path('communities/create/', views.community_create, name='community_create'),
+    path('c/<slug:slug>/', views.community_detail, name='community_detail'),
+    path('c/<slug:slug>/edit/', views.community_update, name='community_update'),
+    path('c/<slug:slug>/delete/', views.community_delete, name='community_delete'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
 from .models import Follow, Post, Comment, Profile, Vote, Tag
-from .forms import PostForm, CommentForm, ProfileForm, TagForm
+from .forms import PostForm, CommentForm, ProfileForm, TagForm, CommunityForm
 from django.db.models import Count
 from .forms import SettingsForm
 from django.contrib.auth.models import User
@@ -406,3 +406,45 @@ def delete_post(request, pk):
         return redirect('posts:post_list')
     
     return render(request, 'posts/confirm_delete.html', {'post': post})
+
+@login_required
+def community_create(request):
+    if request.method == 'POST':
+        form = CommunityForm(request.POST)
+        if form.is_valid():
+            comm = form.save(commit=False)
+            comm.owner = request.user
+            comm.save()
+            return redirect('posts:community_detail', slug=comm.slug)
+    else:
+        form = CommunityForm()
+    return render(request, 'posts/community_form.html', {'form': form})
+
+@login_required
+def community_update(request, slug):
+    comm = get_object_or_404(Community, slug=slug, owner=request.user)
+    if request.method == 'POST':
+        form = CommunityForm(request.POST, instance=comm)
+        if form.is_valid():
+            form.save()
+            return redirect('posts:community_detail', slug=comm.slug)
+    else:
+        form = CommunityForm(instance=comm)
+    return render(request, 'posts/community_form.html', {'form': form, 'community': comm})
+
+@login_required
+def community_delete(request, slug):
+    comm = get_object_or_404(Community, slug=slug, owner=request.user)
+    if request.method == 'POST':
+        comm.delete()
+        return redirect('posts:community_list')
+    return render(request, 'posts/community_confirm_delete.html', {'community': comm})
+
+def community_list(request):
+    communities = Community.objects.all().order_by('-created_at')
+    return render(request, 'posts/community_list.html', {'communities': communities})
+
+def community_detail(request, slug):
+    comm = get_object_or_404(Community, slug=slug)
+    posts = comm.post_set.all()  # giả sử trong Post có FK 'community'
+    return render(request, 'posts/community_detail.html', {'community': comm, 'posts': posts})
