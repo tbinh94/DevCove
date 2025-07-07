@@ -68,6 +68,37 @@
     </div>
     {% endif %}
 
+   
+    <!-- Sorting Controls -->
+    <div class="sort-section">
+      <div class="sort-controls">
+        <div class="sort-tabs">
+          {% for value, label in sort_options %}
+            <a href="?sort={{ value }}{% if current_tag %}&tag={{ current_tag }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if value == 'top' and time_filter != 'all' %}&time={{ time_filter }}{% endif %}" 
+               class="sort-tab {% if sort_by == value %}active{% endif %}">
+              {{ label }}
+            </a>
+          {% endfor %}
+        </div>
+        
+        {% if sort_by == 'top' %}
+        <div class="time-filter">
+          {% for value, label in time_options %}
+            <a href="?sort=top&time={{ value }}{% if current_tag %}&tag={{ current_tag }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" 
+               class="time-tab {% if time_filter == value %}active{% endif %}">
+              {{ label }}
+            </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="sort-info">
+          <span class="sort-count">{{ posts.paginator.count }}</span>
+          <span>posts</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Posts -->
     <div class="posts-container">
       {% for post in posts %}

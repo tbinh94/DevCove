@@ -1,4 +1,3 @@
-# posts/views.py
 from django.contrib.auth import logout
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
@@ -7,7 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
 from .models import Follow, Post, Comment, Profile, Vote, Tag
 from .forms import PostForm, CommentForm, ProfileForm, TagForm, CommunityForm
-from django.db.models import Count
+from django.db.models import Count, Sum, Case, When, IntegerField
 from .forms import SettingsForm
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
@@ -17,19 +16,50 @@ from django.db.models import Q
 from django.contrib import messages
 from .models import Community
 from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import (
+    Count,
+    Q,
+    Sum,
+    Case,
+    When,
+    IntegerField,
+    FloatField,
+    F,
+    Value,
+)
+from django.db.models.functions import (
+    Extract,
+    Coalesce,
+    Power,
+    Cast,
+)
 
 def post_list(request):
-    # Lấy tag filter nếu có
+    # Get filters
     tag_slug = request.GET.get('tag')
     search_query = request.GET.get('q')
+    sort_by = request.GET.get('sort', 'new')  # Default to 'new'
+    time_filter = request.GET.get('time', 'all')  # For 'top' sorting
     
-    posts = Post.objects.annotate(num_comments=Count('comments')).order_by('-id')
+    # Base queryset with annotations
+    posts = Post.objects.annotate(
+        num_comments=Count('comments'),
+        upvotes=Count('votes', filter=Q(votes__is_upvote=True)),
+        downvotes=Count('votes', filter=Q(votes__is_upvote=False)),
+        calculated_score=Sum(Case(
+            When(votes__is_upvote=True, then=1),
+            When(votes__is_upvote=False, then=-1),
+            default=0,
+            output_field=IntegerField()
+        ))
+    )
     
-    # Filter by tag
+    # Apply filters
     if tag_slug:
         posts = posts.filter(tags__slug=tag_slug)
     
-    # Filter by search query
     if search_query:
         posts = posts.filter(
             Q(title__icontains=search_query) |
@@ -37,47 +67,149 @@ def post_list(request):
             Q(tags__name__icontains=search_query)
         ).distinct()
     
-    # Pagination
-    paginator = Paginator(posts, 10)  # 10 posts per page
-    page = request.GET.get('page')
-    posts = paginator.get_page(page)
+    # Apply time filter for 'top' sorting
+    if sort_by == 'top' and time_filter != 'all':
+        now = timezone.now()
+        time_threshold = None
+        
+        if time_filter == 'hour':
+            time_threshold = now - timedelta(hours=1)
+        elif time_filter == 'day':
+            time_threshold = now - timedelta(days=1)
+        elif time_filter == 'week':
+            time_threshold = now - timedelta(weeks=1)
+        elif time_filter == 'month':
+            time_threshold = now - timedelta(days=30)
+        elif time_filter == 'year':
+            time_threshold = now - timedelta(days=365)
+            
+        if time_threshold:
+            posts = posts.filter(created_at__gte=time_threshold)
     
+    # Apply sorting
+    # Hot: Ưu tiên posts gần đây có điểm số tốt, posts cũ sẽ bị "chìm" xuống dù có điểm cao
+    if sort_by == 'hot':
+        # Hot algorithm - using time-based categories (fallback friendly)
+        now = timezone.now()
+        
+        # Define time thresholds
+        one_hour_ago = now - timedelta(hours=1)
+        six_hours_ago = now - timedelta(hours=6)
+        one_day_ago = now - timedelta(days=1)
+        one_week_ago = now - timedelta(weeks=1)
+        
+        posts = posts.annotate(
+            # Safe score to avoid null values
+            safe_score=Coalesce('calculated_score', 0),
+            
+            # Hot score based on time categories
+            hot_score=Case(
+                # Very recent posts (< 1 hour): full score + bonus
+                When(created_at__gte=one_hour_ago, then=F('safe_score') + 3),
+                # Recent posts (1-6 hours): slight decay
+                When(created_at__gte=six_hours_ago, then=F('safe_score') * 0.9),
+                # Posts 6-24 hours: moderate decay
+                When(created_at__gte=one_day_ago, then=F('safe_score') * 0.7),
+                # Posts 1-7 days: significant decay
+                When(created_at__gte=one_week_ago, then=F('safe_score') * 0.4),
+                # Older posts: heavy decay
+                default=F('safe_score') * 0.1,
+                output_field=FloatField()
+            )
+        ).order_by('-hot_score', '-created_at')
+
+    # Top: Chỉ sắp xếp theo post score  
+    elif sort_by == 'top':
+        posts = posts.order_by('-calculated_score', '-created_at')
+        
+    elif sort_by == 'new':
+        posts = posts.order_by('-created_at')
+        
+    elif sort_by == 'rising':
+        # Rising: posts with good score in recent time
+        recent_time = timezone.now() - timedelta(hours=24)
+        posts = posts.filter(created_at__gte=recent_time).order_by('-calculated_score', '-created_at')
+        
+    elif sort_by == 'controversial':
+        # Controversial: posts with similar upvotes and downvotes
+        # Formula: upvotes * downvotes / (upvotes + downvotes)
+        posts = posts.annotate(
+            total_votes=F('upvotes') + F('downvotes'),
+            controversy_score=Case(
+                When(total_votes=0, then=0),
+                default=F('upvotes') * F('downvotes') / F('total_votes'),
+                output_field=FloatField()
+            )
+        ).filter(total_votes__gt=0).order_by('-controversy_score', '-created_at')
+        
+    elif sort_by == 'old':
+        posts = posts.order_by('created_at')
+    else:
+        # Default fallback
+        posts = posts.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(posts, 10)
+    page = request.GET.get('page')
+    posts_page = paginator.get_page(page)
+    
+    # Get user votes for current page
     upvoted_posts = set()
     downvoted_posts = set()
     if request.user.is_authenticated:
-        # FIX: Lấy vote dựa trên post objects trong paginated queryset
-        post_ids = [post.id for post in posts]
-        user_votes = Vote.objects.filter(
-            user=request.user,
-            post_id__in=post_ids
-        ).select_related('post')
-        
-        for vote in user_votes:
-            # FIX: So sánh với boolean thay vì string
-            if vote.is_upvote == True:  # hoặc if vote.is_upvote:
-                upvoted_posts.add(vote.post.id)
-            elif vote.is_upvote == False:  # hoặc if not vote.is_upvote:
-                downvoted_posts.add(vote.post.id)
+        post_ids = [post.id for post in posts_page]
+        if post_ids:  # Only query if there are posts
+            user_votes = Vote.objects.filter(
+                user=request.user,
+                post_id__in=post_ids
+            ).select_related('post')
+            
+            for vote in user_votes:
+                if vote.is_upvote == True:
+                    upvoted_posts.add(vote.post.id)
+                elif vote.is_upvote == False:
+                    downvoted_posts.add(vote.post.id)
     
-    # Debug: In ra console để kiểm tra
-    print(f"Upvoted posts: {upvoted_posts}")
-    print(f"Downvoted posts: {downvoted_posts}")
-
     # Get popular tags for sidebar
     popular_tags = Tag.objects.annotate(
         post_count=Count('posts')
     ).filter(post_count__gt=0).order_by('-post_count')[:10]
     
+    # Sort options for template
+    sort_options = [
+        ('hot', 'Hot'),
+        ('new', 'New'),
+        ('top', 'Top'),
+        ('rising', 'Rising'),
+        ('controversial', 'Controversial'),
+        ('old', 'Old'),
+    ]
+    
+    # Time filter options (for 'top' sorting)
+    time_options = [
+        ('hour', 'Past Hour'),
+        ('day', 'Past 24 Hours'),
+        ('week', 'Past Week'),
+        ('month', 'Past Month'),
+        ('year', 'Past Year'),
+        ('all', 'All Time'),
+    ]
+    
     context = {
-        'posts': posts,
+        'posts': posts_page,  # Use paginated posts
         'popular_tags': popular_tags,
         'current_tag': tag_slug,
         'search_query': search_query,
         'upvoted_posts': upvoted_posts,
         'downvoted_posts': downvoted_posts,
+        'sort_by': sort_by,
+        'time_filter': time_filter,
+        'sort_options': sort_options,
+        'time_options': time_options,
     }
     
     return render(request, 'posts/post_list.html', context)
+
 
 @login_required
 def vote_post(request):
@@ -132,11 +264,12 @@ def vote_post(request):
             'success': True,
             'score': new_score,
             'action': action,
-            'vote_type': vote_type  # Thêm thông tin vote_type để frontend xử lý
+            'vote_type': vote_type
         })
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 # Hàm chính để tạo post
 @login_required(login_url='/login/')
@@ -166,7 +299,7 @@ def logout_view(request):
 
 def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
-
+    
     if request.method == 'POST':
         form = CommentForm(request.POST)
         if form.is_valid() and request.user.is_authenticated:

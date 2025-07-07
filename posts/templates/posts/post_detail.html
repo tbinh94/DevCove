@@ -7,8 +7,6 @@
 
 {% block title %}{{ post.title }} – Reddit Clone{% endblock %}
 
-
-
 {% block content %}
   <div class="post-detail-container">
     <div class="post-detail-card">
@@ -18,7 +16,6 @@
         <div class="post-detail-meta">
           by <a href="{% url 'posts:user_profile' post.author.username %}">{{ post.author.username }}</a>
           • {{ post.created_at|date:"M j, Y H:i" }}
-          • <span class="post-score">{{ post.score }} votes</span>
           {% if post.community %}
             • in <a href="{% url 'posts:community' post.community.slug %}" class="community-link">r/{{ post.community.name }}</a>
           {% endif %}
@@ -50,21 +47,37 @@
         </div>
       {% endif %}
 
-      <!-- Actions -->
-      <div class="post-detail-actions">
-        <button class="action-btn comment-btn" onclick="document.getElementById('comment-form').scrollIntoView();">
-          💬 Comments
-        </button>
-        <button class="action-btn share-btn">🔗 Share</button>
-        <button class="action-btn save-btn">🔖 Save</button>
-        {% if post.author == user %}
-          <a href="{% url 'posts:edit_post' post.id %}" class="action-btn edit-btn">
-            ✏️ Edit
-          </a>
-          <button class="action-btn delete-btn" onclick="confirmDelete()">
-            🗑️ Delete
+      <!-- Vote and Actions section -->
+      <div class="post-detail-footer">
+        <!-- Vote section -->
+        <div class="vote-section-detail" 
+            data-user-vote="{% if post.id in upvoted_posts %}up{% elif post.id in downvoted_posts %}down{% else %}{% endif %}"
+            data-post-id="{{ post.id }}">
+            <button class="vote-btn upvote" data-id="{{ post.id }}" data-dir="up" data-vote-type="up">
+                <span class="vote-arrow">▲</span>
+            </button>
+            <div class="score" id="score-{{ post.id }}">{{ post.score }}</div>
+            <button class="vote-btn downvote" data-id="{{ post.id }}" data-dir="down" data-vote-type="down">
+                <span class="vote-arrow">▼</span>
+            </button>
+        </div>
+
+        <!-- Actions -->
+        <div class="post-detail-actions">
+          <button class="action-btn comment-btn" onclick="document.getElementById('comment-form').scrollIntoView();">
+            💬 Comments
           </button>
-        {% endif %}
+          <button class="action-btn share-btn">🔗 Share</button>
+          <button class="action-btn save-btn">🔖 Save</button>
+          {% if post.author == user %}
+            <a href="{% url 'posts:edit_post' post.id %}" class="action-btn edit-btn">
+              ✏️ Edit
+            </a>
+            <button class="action-btn delete-btn" onclick="confirmDelete()">
+              🗑️ Delete
+            </button>
+          {% endif %}
+        </div>
       </div>
     </div>
 
@@ -145,7 +158,23 @@
   </div>
   {% endif %}
 
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const voteButtons = document.querySelectorAll('.vote-section-detail .vote-btn'); // Lấy tất cả các nút vote
+
+        voteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Tìm phần tử cha gần nhất có class 'vote-section-detail'
+                let voteSection = this.closest('.vote-section-detail');
+                if (voteSection) {
+                    // Sử dụng .classList.toggle('active') để thêm hoặc xóa class 'active'
+                    voteSection.classList.toggle('active');
+                }
+            });
+        });
+    });
+    
     function confirmDelete() {
       document.getElementById('deleteModal').style.display = 'block';
     }
@@ -161,5 +190,13 @@
         modal.style.display = 'none';
       }
     }
+
+    // Vote configuration
+    window.voteConfig = {
+      isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
+      loginUrl: "{% url 'login' %}?next={{ request.get_full_path|urlencode }}",
+      voteUrl: "{% url 'posts:vote' %}"
+    };
   </script>
+  <script src="{% static 'posts/js/vote.js' %}"></script>
 {% endblock %}

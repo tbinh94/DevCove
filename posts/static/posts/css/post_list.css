@@ -173,3 +173,115 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,san
 /* Focus */
 .search-input:focus,.create-post-input input:focus{outline:2px solid #0079d3;outline-offset:2px}
 .vote-btn:focus,.action-btn:focus,.tag-badge:focus,.page-btn:focus,.btn:focus{outline:2px solid #0079d3;outline-offset:2px}
+
+.sort-section {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.sort-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.sort-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.sort-tab {
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.sort-tab:hover {
+    background: #e5e7eb;
+    color: #374151;
+    text-decoration: none;
+}
+
+.sort-tab.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.time-filter {
+    display: flex;
+    gap: 4px;
+    margin-left: 16px;
+    padding-left: 16px;
+    border-left: 1px solid #e5e7eb;
+}
+
+.time-tab {
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    text-decoration: none;
+    color: #6b7280;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.time-tab:hover {
+    background: #e5e7eb;
+    color: #374151;
+    text-decoration: none;
+}
+
+.time-tab.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.sort-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.sort-count {
+    font-weight: 500;
+    color: #374151;
+}
+
+@media (max-width: 768px) {
+    .sort-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .sort-info {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    
+    .time-filter {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 8px;
+        margin-top: 8px;
+    }
+}
