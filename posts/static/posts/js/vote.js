@@ -96,13 +96,21 @@ $(document).ready(function() {
                     $(`#score-${postId}`).text(data.score);
                     updateButtonStates(postId, voteType, data.action, data.score);
                     
-                    // Cập nhật data attribute cho vote section
-                    const voteSection = $(`.vote-section:has([data-id="${postId}"])`);
+                    // Cập nhật data attribute cho tất cả vote sections của post này
+                    const voteSections = $(`.vote-section[data-post-id="${postId}"], .vote-section-detail[data-post-id="${postId}"]`);
+                    
                     if (data.action === 'removed') {
-                        voteSection.attr('data-user-vote', '');
+                        voteSections.attr('data-user-vote', '');
+                        // Xóa class active khi bỏ vote
+                        voteSections.filter('.vote-section-detail').removeClass('active');
                     } else {
-                        voteSection.attr('data-user-vote', voteType);
+                        voteSections.attr('data-user-vote', voteType);
+                        // Thêm class active khi vote (chỉ cho detail view)
+                        voteSections.filter('.vote-section-detail').addClass('active');
                     }
+                    
+                    // Lưu trạng thái vote vào sessionStorage để đồng bộ giữa các trang
+                    updateVoteStateInStorage(postId, data.action === 'removed' ? null : voteType, data.score);
                 }
             },
             error: function(xhr, status, error) {
@@ -124,23 +132,100 @@ $(document).ready(function() {
         });
     });
 
-    // Hàm khởi tạo trạng thái vote từ server data
+    // Hàm lưu trạng thái vote vào localStorage (persistent hơn sessionStorage)
+    function updateVoteStateInStorage(postId, voteType, score) {
+        try {
+            let voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+            voteStates[postId] = {
+                vote: voteType,
+                score: score,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('voteStates', JSON.stringify(voteStates));
+            console.log('Vote state saved to storage:', { postId, voteType, score });
+        } catch (e) {
+            console.warn('Could not save vote state to storage:', e);
+        }
+    }
+
+    // Hàm lấy trạng thái vote từ localStorage
+    function getVoteStateFromStorage(postId) {
+        try {
+            const voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+            const state = voteStates[postId];
+            
+            // Kiểm tra xem state có quá cũ không (hơn 24 giờ)
+            if (state && (Date.now() - state.timestamp) > 86400000) {
+                delete voteStates[postId];
+                localStorage.setItem('voteStates', JSON.stringify(voteStates));
+                return null;
+            }
+            
+            return state;
+        } catch (e) {
+            console.warn('Could not read vote state from storage:', e);
+            return null;
+        }
+    }
+
+    // Hàm khởi tạo trạng thái vote từ server data và storage
     function initializeVoteStates() {
-        $('.vote-section').each(function() {
+        console.log('Initializing vote states...');
+        
+        // Handle both vote-section and vote-section-detail
+        $('.vote-section, .vote-section-detail').each(function() {
             const voteSection = $(this);
-            const userVote = voteSection.data('user-vote');
+            let userVote = voteSection.data('user-vote');
             const postId = voteSection.find('.vote-btn').first().data('id');
-            const score = parseInt(voteSection.find('.score').text(), 10) || 0;
+            let score = parseInt(voteSection.find('.score').text(), 10) || 0;
+            const originalScore = score; // Lưu score gốc
+            
+            // Kiểm tra xem có state mới hơn trong storage không
+            const storageState = getVoteStateFromStorage(postId);
+            if (storageState) {
+                userVote = storageState.vote;
+                score = storageState.score;
+                
+                // Cập nhật UI với dữ liệu từ storage
+                $(`#score-${postId}`).text(score);
+                voteSection.attr('data-user-vote', userVote || '');
+                
+                console.log(`Using vote state from storage for post ${postId}:`, storageState);
+            }
             
             console.log(`Vote section data for post ${postId}:`, {
                 userVote: userVote,
-                dataAttr: voteSection.attr('data-user-vote'),
-                score: score
+                score: score,
+                originalScore: originalScore,
+                hasStorageState: !!storageState,
+                sectionClass: voteSection.attr('class')
             });
+            
+            // Reset button states trước khi apply
+            const upBtn = $(`.vote-btn.upvote[data-id="${postId}"]`);
+            const downBtn = $(`.vote-btn.downvote[data-id="${postId}"]`);
+            const scoreEl = $(`#score-${postId}`);
+            
+            upBtn.removeClass('active voted-up voted-down');
+            downBtn.removeClass('active voted-up voted-down');
+            scoreEl.removeClass('positive negative voted');
+            voteSection.removeClass('active');
             
             if (userVote && userVote !== '') {
                 console.log(`Initializing vote state for post ${postId}: ${userVote}`);
                 updateButtonStates(postId, userVote, 'init', score);
+                
+                // Thêm class active nếu user đã vote (chỉ cho detail view)
+                if (voteSection.hasClass('vote-section-detail')) {
+                    voteSection.addClass('active');
+                }
+            } else {
+                // Nếu không có vote, vẫn cần set màu score
+                if (score > 0) {
+                    scoreEl.addClass('positive');
+                } else if (score < 0) {
+                    scoreEl.addClass('negative');
+                }
             }
         });
     }
@@ -176,4 +261,62 @@ $(document).ready(function() {
         
         console.log(`Updated button states for post ${postId}: ${voteType} (${action}), score: ${score}`);
     }
+
+    // Cleanup old vote states khi trang load
+    function cleanupOldVoteStates() {
+        try {
+            const voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+            const now = Date.now();
+            let hasChanges = false;
+            
+            for (const postId in voteStates) {
+                if (now - voteStates[postId].timestamp > 86400000) { // 24 hours
+                    delete voteStates[postId];
+                    hasChanges = true;
+                }
+            }
+            
+            if (hasChanges) {
+                localStorage.setItem('voteStates', JSON.stringify(voteStates));
+            }
+        } catch (e) {
+            console.warn('Could not cleanup old vote states:', e);
+        }
+    }
+
+    // Cleanup khi trang load
+    cleanupOldVoteStates();
+    
+    // Handle browser back/forward button và page cache
+    handleBrowserNavigation();
 });
+
+// Hàm xử lý navigation events
+function handleBrowserNavigation() {
+    // Xử lý khi trang được restore từ cache (back button)
+    window.addEventListener('pageshow', function(event) {
+        console.log('Page show event:', event.persisted);
+        if (event.persisted) {
+            // Trang được restore từ cache
+            setTimeout(function() {
+                initializeVoteStates();
+            }, 100);
+        }
+    });
+    
+    // Xử lý popstate (back/forward button)
+    window.addEventListener('popstate', function(event) {
+        console.log('Pop state event');
+        setTimeout(function() {
+            initializeVoteStates();
+        }, 100);
+    });
+    
+    // Xử lý focus event (khi quay lại tab)
+    window.addEventListener('focus', function() {
+        console.log('Window focus event');
+        setTimeout(function() {
+            initializeVoteStates();
+        }, 100);
+    });
+}

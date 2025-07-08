@@ -50,17 +50,28 @@
       <!-- Vote and Actions section -->
       <div class="post-detail-footer">
         <!-- Vote section -->
-        <div class="vote-section-detail" 
-            data-user-vote="{% if post.id in upvoted_posts %}up{% elif post.id in downvoted_posts %}down{% else %}{% endif %}"
-            data-post-id="{{ post.id }}">
-            <button class="vote-btn upvote" data-id="{{ post.id }}" data-dir="up" data-vote-type="up">
-                <span class="vote-arrow">▲</span>
-            </button>
-            <div class="score" id="score-{{ post.id }}">{{ post.score }}</div>
-            <button class="vote-btn downvote" data-id="{{ post.id }}" data-dir="down" data-vote-type="down">
-                <span class="vote-arrow">▼</span>
-            </button>
-        </div>
+         <!-- post.id in upvoted_posts sẽ giữ trạng thái vote (đã truyền user_vote trong detail view) -->
+          <!-- Vote section - Fixed version -->
+          <div class="vote-section-detail"
+              data-user-vote="{% if user_vote %}{% if user_vote.is_upvote %}up{% else %}down{% endif %}{% else %}{% endif %}"
+              data-post-id="{{ post.id }}">
+              <button class="vote-btn upvote
+                            {% if user_vote and user_vote.is_upvote %}active voted-up{% endif %}"
+                      data-id="{{ post.id }}" data-dir="up">
+                  <span class="vote-arrow">▲</span>
+              </button>
+              <div class="score
+                          {% if user_vote %}voted{% endif %}
+                          {% if post.score > 0 %}positive{% elif post.score < 0 %}negative{% endif %}"
+                  id="score-{{ post.id }}">{{ post.score }}</div>
+              <button class="vote-btn downvote
+                            {% if user_vote and not user_vote.is_upvote %}active voted-down{% endif %}"
+                      data-id="{{ post.id }}" data-dir="down">
+                  <span class="vote-arrow">▼</span>
+              </button>
+          </div>
+
+
 
         <!-- Actions -->
         <div class="post-detail-actions">
@@ -160,21 +171,6 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const voteButtons = document.querySelectorAll('.vote-section-detail .vote-btn'); // Lấy tất cả các nút vote
-
-        voteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // Tìm phần tử cha gần nhất có class 'vote-section-detail'
-                let voteSection = this.closest('.vote-section-detail');
-                if (voteSection) {
-                    // Sử dụng .classList.toggle('active') để thêm hoặc xóa class 'active'
-                    voteSection.classList.toggle('active');
-                }
-            });
-        });
-    });
-    
     function confirmDelete() {
       document.getElementById('deleteModal').style.display = 'block';
     }
@@ -199,4 +195,24 @@
     };
   </script>
   <script src="{% static 'posts/js/vote.js' %}"></script>
+  <script>
+// Force check vote states khi DOM ready
+$(document).ready(function() {
+    // Delay một chút để đảm bảo vote.js đã load xong
+    setTimeout(function() {
+        // Trigger một event để force re-check vote states
+        $(window).trigger('focus');
+    }, 200);
+});
+
+// Prevent form resubmission khi back button
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+}
+
+// Additional fallback cho iOS Safari
+window.addEventListener('beforeunload', function() {
+    // Không làm gì, chỉ để trigger page cache behavior
+});
+</script>
 {% endblock %}

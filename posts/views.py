@@ -318,6 +318,7 @@ def post_detail(request, pk):
             tags__in=post.tags.all()
         ).exclude(pk=post.pk).distinct()[:5]
     
+
     # Get vote status for this post if user is authenticated
     user_vote = None
     if request.user.is_authenticated:
@@ -331,6 +332,7 @@ def post_detail(request, pk):
         'form': form,
         'related_posts': related_posts,
         'user_vote': user_vote,
+        
     })
 
 def register(request):
