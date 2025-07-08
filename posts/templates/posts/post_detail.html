@@ -169,7 +169,7 @@
   </div>
   {% endif %}
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
     function confirmDelete() {
       document.getElementById('deleteModal').style.display = 'block';
@@ -194,25 +194,5 @@
       voteUrl: "{% url 'posts:vote' %}"
     };
   </script>
-  <script src="{% static 'posts/js/vote.js' %}"></script>
-  <script>
-// Force check vote states khi DOM ready
-$(document).ready(function() {
-    // Delay một chút để đảm bảo vote.js đã load xong
-    setTimeout(function() {
-        // Trigger một event để force re-check vote states
-        $(window).trigger('focus');
-    }, 200);
-});
-
-// Prevent form resubmission khi back button
-if (window.history.replaceState) {
-    window.history.replaceState(null, null, window.location.href);
-}
-
-// Additional fallback cho iOS Safari
-window.addEventListener('beforeunload', function() {
-    // Không làm gì, chỉ để trigger page cache behavior
-});
-</script>
+<script src="{% static 'posts/js/vote.js' %}"></script>
 {% endblock %}
