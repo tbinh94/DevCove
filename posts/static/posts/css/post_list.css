@@ -285,3 +285,129 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,san
         margin-top: 8px;
     }
 }
+
+/* Additional styles for multiple tag selection */
+.selected-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.filter-value {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #0079d3;
+    color: white;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.tag-remove {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    border: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.tag-remove:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.clear-all-filters {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 8px;
+    background: #dc3545;
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.clear-all-filters:hover {
+    background: #c82333;
+    text-decoration: none;
+    color: white;
+}
+
+.tag-toggle {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.tag-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.tag-toggle.active {
+    background: #0066cc !important;
+    box-shadow: 0 0 0 2px #0079d3;
+    border: 2px solid #fff;
+}
+
+.tag-toggle.active::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.filter-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-item > span:first-child {
+    font-weight: 600;
+    color: #1a1a1b;
+    min-width: 40px;
+}
+
+@media (max-width: 768px) {
+    .selected-tags {
+        gap: 2px;
+    }
+    
+    .filter-value {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .tag-remove {
+        width: 14px;
+        height: 14px;
+        font-size: 10px;
+    }
+}

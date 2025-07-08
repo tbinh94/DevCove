@@ -48,5 +48,7 @@ urlpatterns = [
     path('c/<slug:slug>/', views.community_detail, name='community_detail'),
     path('c/<slug:slug>/edit/', views.community_update, name='community_update'),
     path('c/<slug:slug>/delete/', views.community_delete, name='community_delete'),
+    path('toggle-tag-filter/', views.toggle_tag_filter, name='toggle_tag_filter'),  # NEW
+
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

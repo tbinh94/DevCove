@@ -128,9 +128,7 @@
     min-width: auto;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-.vote-section-detail.active{
-  background-color: #cac6bf;
-}
+
 .vote-section-detail .vote-btn {
     background: none;
     border: none;

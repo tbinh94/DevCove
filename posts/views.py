@@ -37,11 +37,11 @@ from django.db.models.functions import (
 )
 
 def post_list(request):
-    # Get filters
-    tag_slug = request.GET.get('tag')
+    # Get filters - MODIFIED: Support multiple tags
+    tag_slugs = request.GET.getlist('tag')  # Changed from get() to getlist()
     search_query = request.GET.get('q')
-    sort_by = request.GET.get('sort', 'new')  # Default to 'new'
-    time_filter = request.GET.get('time', 'all')  # For 'top' sorting
+    sort_by = request.GET.get('sort', 'new')
+    time_filter = request.GET.get('time', 'all')
     
     # Base queryset with annotations
     posts = Post.objects.annotate(
@@ -56,9 +56,13 @@ def post_list(request):
         ))
     )
     
-    # Apply filters
-    if tag_slug:
-        posts = posts.filter(tags__slug=tag_slug)
+    # Apply filters - MODIFIED: Support multiple tags
+    if tag_slugs:
+        # Filter posts that have ALL selected tags
+        for tag_slug in tag_slugs:
+            posts = posts.filter(tags__slug=tag_slug)
+        # Remove duplicates
+        posts = posts.distinct()
     
     if search_query:
         posts = posts.filter(
@@ -87,38 +91,26 @@ def post_list(request):
             posts = posts.filter(created_at__gte=time_threshold)
     
     # Apply sorting
-    # Hot: Ưu tiên posts gần đây có điểm số tốt, posts cũ sẽ bị "chìm" xuống dù có điểm cao
     if sort_by == 'hot':
-        # Hot algorithm - using time-based categories (fallback friendly)
         now = timezone.now()
         
-        # Define time thresholds
         one_hour_ago = now - timedelta(hours=1)
         six_hours_ago = now - timedelta(hours=6)
         one_day_ago = now - timedelta(days=1)
         one_week_ago = now - timedelta(weeks=1)
         
         posts = posts.annotate(
-            # Safe score to avoid null values
             safe_score=Coalesce('calculated_score', 0),
-            
-            # Hot score based on time categories
             hot_score=Case(
-                # Very recent posts (< 1 hour): full score + bonus
                 When(created_at__gte=one_hour_ago, then=F('safe_score') + 3),
-                # Recent posts (1-6 hours): slight decay
                 When(created_at__gte=six_hours_ago, then=F('safe_score') * 0.9),
-                # Posts 6-24 hours: moderate decay
                 When(created_at__gte=one_day_ago, then=F('safe_score') * 0.7),
-                # Posts 1-7 days: significant decay
                 When(created_at__gte=one_week_ago, then=F('safe_score') * 0.4),
-                # Older posts: heavy decay
                 default=F('safe_score') * 0.1,
                 output_field=FloatField()
             )
         ).order_by('-hot_score', '-created_at')
 
-    # Top: Chỉ sắp xếp theo post score  
     elif sort_by == 'top':
         posts = posts.order_by('-calculated_score', '-created_at')
         
@@ -126,13 +118,10 @@ def post_list(request):
         posts = posts.order_by('-created_at')
         
     elif sort_by == 'rising':
-        # Rising: posts with good score in recent time
         recent_time = timezone.now() - timedelta(hours=24)
         posts = posts.filter(created_at__gte=recent_time).order_by('-calculated_score', '-created_at')
         
     elif sort_by == 'controversial':
-        # Controversial: posts with similar upvotes and downvotes
-        # Formula: upvotes * downvotes / (upvotes + downvotes)
         posts = posts.annotate(
             total_votes=F('upvotes') + F('downvotes'),
             controversy_score=Case(
@@ -145,7 +134,6 @@ def post_list(request):
     elif sort_by == 'old':
         posts = posts.order_by('created_at')
     else:
-        # Default fallback
         posts = posts.order_by('-created_at')
     
     # Pagination
@@ -158,7 +146,7 @@ def post_list(request):
     downvoted_posts = set()
     if request.user.is_authenticated:
         post_ids = [post.id for post in posts_page]
-        if post_ids:  # Only query if there are posts
+        if post_ids:
             user_votes = Vote.objects.filter(
                 user=request.user,
                 post_id__in=post_ids
@@ -185,7 +173,7 @@ def post_list(request):
         ('old', 'Old'),
     ]
     
-    # Time filter options (for 'top' sorting)
+    # Time filter options
     time_options = [
         ('hour', 'Past Hour'),
         ('day', 'Past 24 Hours'),
@@ -195,10 +183,16 @@ def post_list(request):
         ('all', 'All Time'),
     ]
     
+    # ADDED: Get selected tag objects for display
+    selected_tags = []
+    if tag_slugs:
+        selected_tags = Tag.objects.filter(slug__in=tag_slugs)
+    
     context = {
-        'posts': posts_page,  # Use paginated posts
+        'posts': posts_page,
         'popular_tags': popular_tags,
-        'current_tag': tag_slug,
+        'selected_tags': selected_tags,  # ADDED: For template display
+        'current_tag': tag_slugs[0] if tag_slugs else None,  # For backward compatibility
         'search_query': search_query,
         'upvoted_posts': upvoted_posts,
         'downvoted_posts': downvoted_posts,
@@ -210,6 +204,33 @@ def post_list(request):
     
     return render(request, 'posts/post_list.html', context)
 
+# Add a new view for toggling tags via AJAX
+@login_required
+def toggle_tag_filter(request):
+    """Toggle a tag in the current filter set"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    tag_slug = request.POST.get('tag_slug')
+    current_tags = request.POST.getlist('current_tags')
+    
+    if not tag_slug:
+        return JsonResponse({'error': 'Tag slug required'}, status=400)
+    
+    # Toggle tag in current selection
+    if tag_slug in current_tags:
+        current_tags.remove(tag_slug)
+        action = 'removed'
+    else:
+        current_tags.append(tag_slug)
+        action = 'added'
+    
+    return JsonResponse({
+        'success': True,
+        'action': action,
+        'current_tags': current_tags,
+        'tag_slug': tag_slug
+    })
 
 @login_required
 def vote_post(request):
@@ -226,29 +247,23 @@ def vote_post(request):
             
         post = get_object_or_404(Post, id=post_id)
         
-        # Kiểm tra vote_type hợp lệ
         if vote_type not in ['up', 'down']:
             return JsonResponse({'error': 'Invalid vote type'}, status=400)
         
-        # Chuyển đổi vote_type thành boolean
         is_upvote = vote_type == 'up'
         
-        # Tìm vote hiện tại của user cho post này
         try:
             existing_vote = Vote.objects.get(user=request.user, post=post)
             
-            # Nếu vote giống nhau, xóa vote (toggle)
             if existing_vote.is_upvote == is_upvote:
                 existing_vote.delete()
                 action = 'removed'
             else:
-                # Nếu khác, cập nhật vote
                 existing_vote.is_upvote = is_upvote
                 existing_vote.save()
                 action = 'updated'
                 
         except Vote.DoesNotExist:
-            # Tạo vote mới
             Vote.objects.create(
                 user=request.user,
                 post=post,
@@ -256,7 +271,6 @@ def vote_post(request):
             )
             action = 'created'
         
-        # Tính lại score từ database sau khi thay đổi vote
         post.refresh_from_db()
         new_score = post.score
         
