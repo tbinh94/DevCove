@@ -49,6 +49,14 @@ urlpatterns = [
     path('c/<slug:slug>/edit/', views.community_update, name='community_update'),
     path('c/<slug:slug>/delete/', views.community_delete, name='community_delete'),
     path('toggle-tag-filter/', views.toggle_tag_filter, name='toggle_tag_filter'),  # NEW
+    # URL cho trang xem tất cả notifications
+    path('notifications/', views.notifications_view, name='notifications'),
+
+    # API endpoints cho JavaScript
+    path('notifications/count/', views.get_unread_notifications_count, name='get_unread_notifications_count'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+   
 
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

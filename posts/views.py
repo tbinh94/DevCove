@@ -4,37 +4,20 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
-from .models import Follow, Post, Comment, Profile, Vote, Tag
-from .forms import PostForm, CommentForm, ProfileForm, TagForm, CommunityForm
-from django.db.models import Count, Sum, Case, When, IntegerField
-from .forms import SettingsForm
+from .models import Follow, Post, Comment, Profile, Vote, Tag, Community, Notification
+from .forms import PostForm, CommentForm, ProfileForm, TagForm, CommunityForm, SettingsForm
+from django.db.models import Count, Sum, Case, When, IntegerField, Q, F, FloatField, Value
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-from .forms import SettingsForm
-from django.db.models import Q
 from django.contrib import messages
-from .models import Community
 from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import (
-    Count,
-    Q,
-    Sum,
-    Case,
-    When,
-    IntegerField,
-    FloatField,
-    F,
-    Value,
-)
-from django.db.models.functions import (
-    Extract,
-    Coalesce,
-    Power,
-    Cast,
-)
+from django.db.models.functions import Coalesce
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
 
 def post_list(request):
     # Get filters - MODIFIED: Support multiple tags
@@ -232,59 +215,6 @@ def toggle_tag_filter(request):
         'tag_slug': tag_slug
     })
 
-@login_required
-def vote_post(request):
-    """Xử lý vote cho post"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-    
-    try:
-        post_id = request.POST.get('post_id')
-        vote_type = request.POST.get('vote_type')
-        
-        if not post_id or not vote_type:
-            return JsonResponse({'error': 'Missing parameters'}, status=400)
-            
-        post = get_object_or_404(Post, id=post_id)
-        
-        if vote_type not in ['up', 'down']:
-            return JsonResponse({'error': 'Invalid vote type'}, status=400)
-        
-        is_upvote = vote_type == 'up'
-        
-        try:
-            existing_vote = Vote.objects.get(user=request.user, post=post)
-            
-            if existing_vote.is_upvote == is_upvote:
-                existing_vote.delete()
-                action = 'removed'
-            else:
-                existing_vote.is_upvote = is_upvote
-                existing_vote.save()
-                action = 'updated'
-                
-        except Vote.DoesNotExist:
-            Vote.objects.create(
-                user=request.user,
-                post=post,
-                is_upvote=is_upvote
-            )
-            action = 'created'
-        
-        post.refresh_from_db()
-        new_score = post.score
-        
-        return JsonResponse({
-            'success': True,
-            'score': new_score,
-            'action': action,
-            'vote_type': vote_type
-        })
-        
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
 # Hàm chính để tạo post
 @login_required(login_url='/login/')
 def create_post(request):
@@ -317,37 +247,33 @@ def post_detail(request, pk):
     if request.method == 'POST':
         form = CommentForm(request.POST)
         if form.is_valid() and request.user.is_authenticated:
-            comment = form.save(commit=False)
-            comment.post   = post
-            comment.author = request.user
-            comment.save()
-            return redirect('posts:post_detail', pk=pk)
+            # Ngăn user bình luận bài của chính mình (để test notification)
+            # if post.author != request.user: # Bỏ comment dòng này nếu bạn muốn tự comment bài mình
+                comment = form.save(commit=False)
+                comment.post   = post
+                comment.author = request.user
+                comment.save() # Signal `create_comment_notification` sẽ được kích hoạt ở đây
+                return redirect('posts:post_detail', pk=pk)
     else:
         form = CommentForm()
 
-    # Get related posts by tags
     related_posts = []
     if post.tags.exists():
         related_posts = Post.objects.filter(
             tags__in=post.tags.all()
         ).exclude(pk=post.pk).distinct()[:5]
     
-
-    # Get vote status for this post if user is authenticated
     user_vote = None
     if request.user.is_authenticated:
-        try:
-            user_vote = Vote.objects.get(user=request.user, post=post)
-        except Vote.DoesNotExist:
-            pass
+        user_vote = post.get_user_vote(request.user)
 
     return render(request, 'posts/post_detail.html', {
         'post': post,
         'form': form,
         'related_posts': related_posts,
         'user_vote': user_vote,
-        
     })
+
 
 def register(request):
     if request.method == 'POST':
@@ -626,3 +552,213 @@ def community_detail(request, slug):
     comm = get_object_or_404(Community, slug=slug)
     posts = comm.post_set.all()  # giả sử trong Post có FK 'community'
     return render(request, 'posts/community_detail.html', {'community': comm, 'posts': posts})
+
+
+# Notification system
+# Add these imports at the top of your views.py
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.contrib.contenttypes.models import ContentType
+
+# Enhanced notification signals
+@receiver(post_save, sender=Comment)
+def create_comment_notification(sender, instance, created, **kwargs):
+    """Tạo thông báo khi có người bình luận vào bài viết"""
+    if created and instance.author != instance.post.author:
+        Notification.objects.create(
+            recipient=instance.post.author,
+            sender=instance.author,
+            notification_type='comment',
+            post=instance.post,
+            comment=instance,
+            message=f"{instance.author.username} commented on your post: {instance.post.title[:50]}..."
+        )
+
+
+@receiver(post_save, sender=Follow)
+def create_follow_notification(sender, instance, created, **kwargs):
+    """Tạo thông báo khi có người theo dõi bạn"""
+    if created:
+        Notification.objects.create(
+            recipient=instance.following,
+            sender=instance.follower,
+            notification_type='follow',
+            message=f"{instance.follower.username} started following you"
+        )
+
+@receiver(post_save, sender=Vote)
+def create_vote_notification(sender, instance, created, **kwargs):
+    """Tạo thông báo khi có người vote cho bài viết của bạn"""
+    # Chỉ tạo thông báo cho upvote và khi người vote không phải là tác giả
+    if instance.is_upvote and instance.user != instance.post.author:
+        # Kiểm tra xem đã có thông báo vote gần đây từ user này cho post này chưa để tránh spam
+        five_minutes_ago = timezone.now() - timedelta(minutes=5)
+        existing_notification = Notification.objects.filter(
+            recipient=instance.post.author,
+            sender=instance.user,
+            notification_type='vote',
+            post=instance.post,
+            created_at__gte=five_minutes_ago
+        ).exists()
+        
+        if not existing_notification:
+            Notification.objects.create(
+                recipient=instance.post.author,
+                sender=instance.user,
+                notification_type='vote',
+                post=instance.post,
+                message=f"{instance.user.username} upvoted your post: {instance.post.title[:50]}..."
+            )
+
+@receiver(post_delete, sender=Vote)
+def handle_vote_deletion(sender, instance, **kwargs):
+    """Xóa notification tương ứng khi một upvote bị xóa"""
+    if instance.is_upvote:
+        Notification.objects.filter(
+            recipient=instance.post.author,
+            sender=instance.user,
+            notification_type='vote',
+            post=instance.post
+        ).delete()
+
+# Enhanced vote_post view with better error handling
+@login_required
+def vote_post(request):
+    """Xử lý vote cho post và kích hoạt signals"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        post_id = request.POST.get('post_id')
+        vote_type = request.POST.get('vote_type')
+        
+        if not post_id or not vote_type:
+            return JsonResponse({'error': 'Missing parameters'}, status=400)
+            
+        post = get_object_or_404(Post, id=post_id)
+        
+        if vote_type not in ['up', 'down']:
+            return JsonResponse({'error': 'Invalid vote type'}, status=400)
+        
+        # Ngăn user vote bài của chính mình (quan trọng để test notification)
+        if post.author == request.user:
+            return JsonResponse({'error': 'You cannot vote on your own post'}, status=403)
+        
+        is_upvote = vote_type == 'up'
+        
+        existing_vote = Vote.objects.filter(user=request.user, post=post).first()
+        action = ''
+        
+        if existing_vote:
+            if existing_vote.is_upvote == is_upvote:
+                existing_vote.delete()
+                action = 'removed'
+            else:
+                existing_vote.is_upvote = is_upvote
+                existing_vote.save()
+                action = 'updated'
+        else:
+            Vote.objects.create(user=request.user, post=post, is_upvote=is_upvote)
+            action = 'created'
+            
+        # Tính toán lại điểm số
+        upvotes = post.votes.filter(is_upvote=True).count()
+        downvotes = post.votes.filter(is_upvote=False).count()
+        new_score = upvotes - downvotes
+        
+        return JsonResponse({
+            'success': True,
+            'score': new_score,
+            'action': action,
+            'vote_type': vote_type
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# Enhanced notification views
+@login_required
+def notifications_view(request):
+    """Trang xem tất cả notifications"""
+    notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
+    
+    # Đánh dấu tất cả là đã đọc khi vào trang này
+    notifications.update(is_read=True)
+    
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'posts/notifications.html', {'notifications': page_obj})
+
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Đánh dấu một notification là đã đọc và redirect"""
+    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification.mark_as_read()
+    return redirect(notification.get_action_url())
+
+@login_required
+def mark_all_notifications_read(request):
+    """API để đánh dấu tất cả notifications là đã đọc"""
+    if request.method == 'POST':
+        count = Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({'success': True, 'updated_count': count})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def get_unread_notifications_count(request):
+    """API endpoint để lấy số lượng và danh sách notification chưa đọc"""
+    notifications = Notification.objects.filter(
+        recipient=request.user
+    ).select_related('sender', 'post').order_by('-created_at')
+    
+    count = notifications.filter(is_read=False).count()
+    recent_notifications = notifications[:5]
+    
+    notifications_data = []
+    for notif in recent_notifications:
+        data = {
+            'id': notif.id,
+            'sender': notif.sender.username,
+            'message': notif.message,
+            'type': notif.notification_type,
+            'is_read': notif.is_read,
+            'created_at': notif.created_at.isoformat(), # Dùng ISO format cho JS
+            'action_url': notif.get_action_url() # Thêm action URL
+        }
+        notifications_data.append(data)
+    
+    return JsonResponse({
+        'count': count,
+        'notifications': notifications_data
+    })
+
+
+@login_required
+def delete_notification(request, notification_id):
+    """Delete a specific notification"""
+    if request.method == 'POST':
+        notification = get_object_or_404(
+            Notification, 
+            id=notification_id, 
+            recipient=request.user
+        )
+        notification.delete()
+        messages.success(request, "Notification deleted.")
+    
+    return redirect('posts/notifications.html')
+
+@login_required
+def clear_all_notifications(request):
+    """Clear all notifications for the user"""
+    if request.method == 'POST':
+        deleted_count = Notification.objects.filter(recipient=request.user).count()
+        Notification.objects.filter(recipient=request.user).delete()
+        messages.success(request, f"Cleared {deleted_count} notifications.")
+    
+    return redirect('posts/notifications.html')

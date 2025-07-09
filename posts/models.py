@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db import models
@@ -72,6 +73,16 @@ class Post(models.Model):
     def comment_count(self):
         """Đếm số comment"""
         return self.comments.count()
+    
+    def get_user_vote(self, user):
+        """Get user's vote on this post"""
+        if not user.is_authenticated:
+            return None
+        try:
+            return self.votes.get(user=user)
+        except Vote.DoesNotExist:
+            return None
+
 
 class Vote(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -123,3 +134,74 @@ class Follow(models.Model):
     
     def __str__(self):
         return f"{self.follower.username}→{self.following.username}"
+    
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('comment', 'Comment'),
+        ('vote', 'Vote'),
+        ('follow', 'Follow'),
+        ('mention', 'Mention'),
+    ]
+    
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    message = models.TextField()
+    post = models.ForeignKey('Post', on_delete=models.CASCADE, null=True, blank=True)
+    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.sender.username} -> {self.recipient.username}: {self.get_notification_type_display()}"
+    
+    def mark_as_read(self):
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])
+    
+    
+    def get_notification_icon(self):
+        """Get icon class for notification type"""
+        icons = {
+            'comment': 'fas fa-comment',
+            'vote': 'fas fa-arrow-up',
+            'follow': 'fas fa-user-plus',
+            'mention': 'fas fa-at',
+        }
+        return icons.get(self.notification_type, 'fas fa-bell')
+    
+    def get_notification_color(self):
+        """Get color class for notification type"""
+        colors = {
+            'comment': 'primary',
+            'vote': 'success',
+            'follow': 'info',
+            'mention': 'warning',
+        }
+        return colors.get(self.notification_type, 'secondary')
+    
+    def get_action_url(self):
+        """
+        Tạo URL động bằng hàm reverse() để đảm bảo luôn chính xác.
+        """
+        if self.notification_type in ['comment', 'vote'] and self.post:
+            # Sửa lỗi chính ở đây: dùng reverse để tạo URL đúng là 'post/<pk>/'
+            return reverse('posts:post_detail', kwargs={'pk': self.post.pk})
+        
+        elif self.notification_type == 'follow':
+            # Cũng nên dùng reverse cho các URL khác để đảm bảo tính nhất quán
+            return reverse('posts:user_profile', kwargs={'username': self.sender.username})
+        
+        # URL mặc định nếu không có hành động cụ thể
+        return reverse('posts:notifications')
