@@ -205,25 +205,31 @@ window.voteConfig = {
 
 };
 </script>
+
 <script>
-    // Multiple tag filtering functionality
+// Multiple tag filtering functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // === SỬA ĐỔI ===
+    // Lỗi TypeError xảy ra ở đây vì không tìm thấy 'mySearchBar'.
     const searchBar = document.getElementById('mySearchBar');
     
-    // Search bar functionality
-    searchBar.addEventListener('focus', function() {
-        if (this.value === 'None') {
-            this.value = '';
-            this.style.color = 'black'; 
-        }
-    });
+    // Thêm câu lệnh 'if' để kiểm tra xem searchBar có tồn tại không
+    // trước khi thêm các event listener.
+    if (searchBar) {
+        searchBar.addEventListener('focus', function() {
+            if (this.value === 'None') {
+                this.value = '';
+                this.style.color = 'black'; 
+            }
+        });
 
-    searchBar.addEventListener('blur', function() {
-        if (this.value === '') {
-            this.value = 'None';
-            this.style.color = '#1a1a1b'; 
-        }
-    });
+        searchBar.addEventListener('blur', function() {
+            if (this.value === '') {
+                this.value = 'None';
+                this.style.color = '#1a1a1b'; 
+            }
+        });
+    }
 
     // Tag toggle functionality
     const tagToggleButtons = document.querySelectorAll('.tag-toggle');
@@ -251,19 +257,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentTags = currentUrl.searchParams.getAll('tag');
         
         if (currentTags.includes(tagSlug)) {
-            // Remove tag
             currentUrl.searchParams.delete('tag');
             currentTags.filter(tag => tag !== tagSlug).forEach(tag => {
                 currentUrl.searchParams.append('tag', tag);
             });
         } else {
-            // Add tag
             currentUrl.searchParams.append('tag', tagSlug);
         }
         
-        // Reset page number when changing filters
         currentUrl.searchParams.delete('page');
-        
         window.location.href = currentUrl.toString();
     }
     
@@ -271,25 +273,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentUrl = new URL(window.location.href);
         const currentTags = currentUrl.searchParams.getAll('tag');
         
-        // Remove the specific tag
         currentUrl.searchParams.delete('tag');
         currentTags.filter(tag => tag !== tagSlug).forEach(tag => {
             currentUrl.searchParams.append('tag', tag);
         });
         
-        // Reset page number when changing filters
         currentUrl.searchParams.delete('page');
-        
         window.location.href = currentUrl.toString();
     }
     
-    // Function to get selected tag slugs for checking active state
     function getSelectedTagSlugs() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.getAll('tag');
     }
     
-    // Update active state on page load
     function updateTagActiveStates() {
         const selectedTagSlugs = getSelectedTagSlugs();
         const tagButtons = document.querySelectorAll('.tag-toggle');
@@ -304,10 +301,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Call on page load
     updateTagActiveStates();
 });
 </script>
+
+
 <script src="{% static 'posts/js/vote.js' %}"></script>
 
 {% endblock %}
