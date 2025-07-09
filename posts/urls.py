@@ -57,6 +57,7 @@ urlpatterns = [
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
    
+    path('api/search/', views.unified_search_api, name='unified_search_api'),
 
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

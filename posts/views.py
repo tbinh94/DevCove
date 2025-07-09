@@ -1,9 +1,12 @@
+import re
 from django.contrib.auth import logout
+from django.db import connection
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
+from django.urls import reverse
 from .models import Follow, Post, Comment, Profile, Vote, Tag, Community, Notification
 from .forms import PostForm, CommentForm, ProfileForm, TagForm, CommunityForm, SettingsForm
 from django.db.models import Count, Sum, Case, When, IntegerField, Q, F, FloatField, Value
@@ -17,6 +20,7 @@ from datetime import timedelta
 from django.db.models.functions import Coalesce
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 
 
 def post_list(request):
@@ -797,3 +801,167 @@ def get_user_vote_data_for_posts(user, posts):
             downvoted_posts.add(vote['post_id'])
             
     return upvoted_posts, downvoted_posts
+
+
+def unified_search_api(request):
+    query = request.GET.get('q', '').strip()
+    search_type = request.GET.get('type', 'all')
+    
+    if len(query) < 2:
+        return JsonResponse({'posts': [], 'users': []})
+    
+    results = {'posts': [], 'users': []}
+    
+    if search_type in ['posts', 'all']:
+        # Enhanced post search with ranking
+        posts = search_posts_enhanced(query)
+        results['posts'] = format_post_results(posts)
+    
+    if search_type in ['users', 'all']:
+        # Enhanced user search
+        users = search_users_enhanced(query)
+        results['users'] = format_user_results(users)
+    
+    return JsonResponse(results)
+
+def search_posts_enhanced(query):
+    """Enhanced post search with ranking and relevance"""
+    
+    # If PostgreSQL with full-text search is available
+    if connection.vendor == 'postgresql':
+        try:
+            # Full-text search with ranking
+            search_vector = SearchVector('title', weight='A') + SearchVector('content', weight='B')
+            search_query = SearchQuery(query)
+            
+            posts = Post.objects.annotate(
+                search=search_vector,
+                rank=SearchRank(search_vector, search_query)
+            ).filter(
+                search=search_query
+            ).select_related('author', 'community').order_by('-rank')[:10]
+            
+            if posts.exists():
+                return posts[:5]
+        except:
+            pass
+    
+    # Fallback to enhanced icontains search with ranking
+    posts = Post.objects.filter(
+        Q(title__icontains=query) | Q(content__icontains=query)
+    ).annotate(
+        # Ranking: exact title match > title contains > content contains
+        relevance_score=Case(
+            When(title__iexact=query, then=100),
+            When(title__icontains=query, then=50),
+            When(content__icontains=query, then=10),
+            default=0,
+            output_field=IntegerField()
+        )
+    ).select_related('author', 'community').order_by('-relevance_score', '-created_at')[:5]
+    
+    return posts
+
+def search_users_enhanced(query):
+    """Enhanced user search"""
+    users = User.objects.filter(
+        username__icontains=query
+    ).annotate(
+        # Exact match gets higher priority
+        relevance_score=Case(
+            When(username__iexact=query, then=100),
+            When(username__istartswith=query, then=50),
+            When(username__icontains=query, then=10),
+            default=0,
+            output_field=IntegerField()
+        )
+    ).select_related('profile').order_by('-relevance_score', '-date_joined')[:5]
+    
+    return users
+
+def format_post_results(posts):
+    """Format post results with highlighted text"""
+    results = []
+    
+    for post in posts:
+        # Get snippet from content (first 100 chars)
+        content_snippet = post.content[:100] + '...' if len(post.content) > 100 else post.content
+        
+        results.append({
+            'id': post.id,
+            'title': post.title,
+            'content_snippet': content_snippet,
+            'author': post.author.username,
+            'community': post.community.name if post.community else None,
+            'created_at': post.created_at.strftime('%Y-%m-%d %H:%M'),
+            # FIX: Use Django's reverse to generate the correct URL
+            'url': reverse('posts:post_detail', kwargs={'pk': post.id}),
+            'vote_score': getattr(post, 'vote_score', 0),
+            'comment_count': post.comments.count() if hasattr(post, 'comments') else 0
+        })
+    
+    return results
+
+def format_user_results(users):
+    """Format user results"""
+    results = []
+    
+    for user in users:
+        results.append({
+            'id': user.id,
+            'username': user.username,
+            'karma': getattr(user.profile, 'karma', 0) if hasattr(user, 'profile') else 0,
+            'joined': user.date_joined.strftime('%Y-%m-%d'),
+            'url': f'/users/{user.username}/',
+            'avatar': user.profile.avatar.url if hasattr(user, 'profile') and user.profile.avatar else None,
+            'post_count': user.posts.count() if hasattr(user, 'posts') else 0
+        })
+    
+    return results
+
+def highlight_text(text, query):
+    """Highlight search terms in text"""
+    if not query or not text:
+        return text
+    
+    # Escape special regex characters
+    escaped_query = re.escape(query)
+    
+    # Case-insensitive replacement
+    highlighted = re.sub(
+        f'({escaped_query})',
+        r'<mark>\1</mark>',
+        text,
+        flags=re.IGNORECASE
+    )
+    
+    return highlighted
+
+# Alternative search view for full page search results
+def search_posts_view(request):
+    """Full page search results for posts"""
+    query = request.GET.get('q', '').strip()
+    page = int(request.GET.get('page', 1))
+    per_page = 20
+    
+    if not query:
+        return render(request, 'posts/search_results.html', {
+            'posts': [],
+            'query': query,
+            'total_results': 0
+        })
+    
+    # Get paginated results
+    posts = search_posts_enhanced(query)
+    
+    # For pagination (if using Django's Paginator)
+    from django.core.paginator import Paginator
+    paginator = Paginator(posts, per_page)
+    page_obj = paginator.get_page(page)
+    
+    return render(request, 'posts/search_results.html', {
+        'posts': page_obj,
+        'query': query,
+        'total_results': paginator.count,
+        'page_obj': page_obj
+    })

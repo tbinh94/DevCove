@@ -7,6 +7,7 @@
   <title>{% block title %}Reddit Clone{% endblock %}</title>
   <link rel="icon" href="{% static 'posts/favicon.png' %}" type="image/png">
   <link rel="stylesheet" href="{% static 'posts/css/style.css' %}">
+
   {% block extra_css %}{% endblock %}
 
 </head>
@@ -17,10 +18,26 @@
         <span class="logo-icon">📱</span>
         Reddit Clone
       </a>
-      <form class="search-form" method="get" action="{% url 'posts:user_search' %}">
-        <input type="text" name="q" placeholder="Search User…" value="{{ request.GET.q|default:'' }}">
-        <button type="submit">🔍</button>
-      </form>
+      
+      <div class="unified-search">
+        <div class="search-container">
+          <form class="search-form" id="searchForm" method="get">
+            <button type="button" class="search-type-selector" id="searchTypeSelector">
+              <span id="searchTypeText">Posts</span>
+              <span style="margin-left: 4px;"></span>
+            </button>
+            <input type="text" class="search-input" id="searchInput" 
+                  placeholder="Search posts..." 
+                  value="{{ request.GET.q|default:'' }}" 
+                  name="q">
+            <button type="submit" class="search-btn">🔍</button>
+          </form>
+          
+          <div class="search-dropdown" id="searchDropdown">
+            <!-- Results will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
 
       <nav class="nav-right">
         {% if user.is_authenticated %}
@@ -91,7 +108,7 @@
   <!-- JavaScript files -->
   <script src="{% static 'posts/js/dropdown.js' %}"></script> 
   <script src="{% static 'posts/js/notification.js' %}"></script> 
-
+  <script src="{% static 'posts/js/unified_search.js' %}"></script>
 
   {% block extra_js %}
   {% endblock %}
