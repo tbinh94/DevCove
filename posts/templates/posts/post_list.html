@@ -206,7 +206,9 @@
 window.voteConfig = {
   isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
   loginUrl: "{% url 'login' %}?next={{ request.get_full_path|urlencode }}",
-  voteUrl: "{% url 'posts:vote' %}"
+  voteUrl: "{% url 'posts:vote' %}",
+  username: "{{ request.user.username|default:'null' }}"
+
 };
 </script>
 <script>

@@ -119,14 +119,15 @@ def post_list(request):
     else:
         posts = posts.order_by('-created_at')
     
-    # Pagination
+     # Pagination
     paginator = Paginator(posts, 10)
     page = request.GET.get('page')
     posts_page = paginator.get_page(page)
     
-    # Get user votes for current page
-    upvoted_posts = set()
-    downvoted_posts = set()
+    # MODIFIED: Replace the old block of code for getting votes
+    # with a single call to our new helper function.
+    upvoted_posts, downvoted_posts = get_user_vote_data_for_posts(request.user, posts_page)
+
     if request.user.is_authenticated:
         post_ids = [post.id for post in posts_page]
         if post_ids:
@@ -389,8 +390,8 @@ def user_profile_view(request, username):
     ).order_by('-created_at')
 
     # Get user votes for these posts
-    upvoted_posts = set()
-    downvoted_posts = set()
+    upvoted_posts, downvoted_posts = get_user_vote_data_for_posts(request.user, user_posts)
+
     if request.user.is_authenticated:
         post_ids = [post.id for post in user_posts]
         if post_ids:  # Only query if there are posts
@@ -410,8 +411,8 @@ def user_profile_view(request, username):
         'profile': profile,
         'is_following': is_following,
         'user_posts': user_posts,
-        'upvoted_posts': upvoted_posts,
-        'downvoted_posts': downvoted_posts,
+        'upvoted_posts': upvoted_posts,      # Populated by the helper
+        'downvoted_posts': downvoted_posts,  # Populated by the helper
     })
 
 # Toggle follow/unfollow
@@ -762,3 +763,37 @@ def clear_all_notifications(request):
         messages.success(request, f"Cleared {deleted_count} notifications.")
     
     return redirect('posts/notifications.html')
+
+
+# Chức năng lấy dữ liệu vote của user cho một danh sách post
+def get_user_vote_data_for_posts(user, posts):
+    """
+    Given a user and a list of posts, returns two sets:
+    one for upvoted post IDs and one for downvoted post IDs.
+    """
+    upvoted_posts = set()
+    downvoted_posts = set()
+    
+    # Return empty sets if the user isn't logged in
+    if not user.is_authenticated:
+        return upvoted_posts, downvoted_posts
+
+    # Get a list of post IDs from the provided post objects
+    post_ids = [post.id for post in posts]
+    if not post_ids:
+        return upvoted_posts, downvoted_posts
+
+    # Fetch all relevant votes in a single, efficient database query
+    user_votes = Vote.objects.filter(
+        user=user,
+        post_id__in=post_ids
+    ).values('post_id', 'is_upvote')
+
+    # Populate the sets based on the query results
+    for vote in user_votes:
+        if vote['is_upvote']:
+            upvoted_posts.add(vote['post_id'])
+        else:
+            downvoted_posts.add(vote['post_id'])
+            
+    return upvoted_posts, downvoted_posts

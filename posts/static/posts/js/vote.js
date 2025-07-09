@@ -1,3 +1,9 @@
+function getStorageKey() {
+    if (window.voteConfig && window.voteConfig.isAuthenticated && window.voteConfig.username !== 'null') {
+        return `voteStates_${window.voteConfig.username}`;
+    }
+    return null; // No storage for logged-out users
+}
 function showAlert(message, type = 'info', callback = null, duration = 2000) {
     const $container = $('#custom-alert-container');
     const $alert     = $('#custom-alert');
@@ -38,28 +44,35 @@ function getCookie(name) {
 
 // Hàm lưu trạng thái vote vào localStorage
 function updateVoteStateInStorage(postId, voteType, score) {
+    const storageKey = getStorageKey();
+    if (!storageKey) return; // Do nothing if the user is not logged in.
+
     try {
-        let voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+        let voteStates = JSON.parse(localStorage.getItem(storageKey) || '{}');
         voteStates[postId] = {
             vote: voteType,
             score: score,
             timestamp: Date.now()
         };
-        localStorage.setItem('voteStates', JSON.stringify(voteStates));
+        localStorage.setItem(storageKey, JSON.stringify(voteStates));
     } catch (e) {
         console.warn('Could not save vote state to storage:', e);
     }
 }
 
+
 // Hàm lấy trạng thái vote từ localStorage
 function getVoteStateFromStorage(postId) {
+    const storageKey = getStorageKey();
+    if (!storageKey) return null; // No stored state if the user is not logged in.
+
     try {
-        const voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+        const voteStates = JSON.parse(localStorage.getItem(storageKey) || '{}');
         const state = voteStates[postId];
         
-        if (state && (Date.now() - state.timestamp) > 86400000) { // Hết hạn sau 24 giờ
+        if (state && (Date.now() - state.timestamp) > 86400000) { // Expire after 24 hours
             delete voteStates[postId];
-            localStorage.setItem('voteStates', JSON.stringify(voteStates));
+            localStorage.setItem(storageKey, JSON.stringify(voteStates));
             return null;
         }
         
@@ -121,8 +134,11 @@ function initializeVoteStates() {
 
 // Hàm dọn dẹp các trạng thái vote cũ trong localStorage
 function cleanupOldVoteStates() {
+    const storageKey = getStorageKey();
+    if (!storageKey) return; // Do nothing if user is not logged in.
+
     try {
-        const voteStates = JSON.parse(localStorage.getItem('voteStates') || '{}');
+        const voteStates = JSON.parse(localStorage.getItem(storageKey) || '{}');
         const now = Date.now();
         let hasChanges = false;
         
@@ -134,7 +150,7 @@ function cleanupOldVoteStates() {
         }
         
         if (hasChanges) {
-            localStorage.setItem('voteStates', JSON.stringify(voteStates));
+            localStorage.setItem(storageKey, JSON.stringify(voteStates));
         }
     } catch (e) {
         console.warn('Could not cleanup old vote states:', e);
@@ -159,6 +175,12 @@ $(document).ready(function() {
     if (!window.voteConfig) {
         console.error('voteConfig not found');
         return;
+    }
+    
+    // One-time cleanup of the old, non-user-specific storage key to prevent conflicts.
+    if (localStorage.getItem('voteStates')) {
+        localStorage.removeItem('voteStates');
+        console.log("Removed legacy 'voteStates' from localStorage.");
     }
 
     // Khởi tạo trạng thái lần đầu
