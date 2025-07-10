@@ -104,20 +104,27 @@ function initializeVoteStates() {
         const voteSection = $(this);
         const postId = voteSection.data('post-id');
         
-        // Luôn ưu tiên dữ liệu từ localStorage vì nó là mới nhất
-        const storageState = getVoteStateFromStorage(postId);
+        let storageState = null;
+        
+        // *** THAY ĐỔI CHÍNH: Chỉ kiểm tra localStorage nếu người dùng đã đăng nhập ***
+        if (window.voteConfig && window.voteConfig.isAuthenticated) {
+            storageState = getVoteStateFromStorage(postId);
+        }
+
+        // Nếu có trạng thái trong storage (và người dùng đã đăng nhập), sử dụng nó
         if (storageState) {
             $(`#score-${postId}`).text(storageState.score);
             voteSection.attr('data-user-vote', storageState.vote || '');
             updateButtonStates(postId, storageState.vote, storageState.vote ? 'updated' : 'removed', storageState.score);
         } else {
-            // Nếu không có trong storage, dùng dữ liệu từ server-rendered HTML
+            // Ngược lại (người dùng chưa đăng nhập hoặc không có state), dùng dữ liệu từ server
             const userVote = voteSection.data('user-vote');
             const score = parseInt(voteSection.find('.score').text(), 10) || 0;
             updateButtonStates(postId, userVote, 'init', score);
         }
     });
 }
+
 
 // Hàm dọn dẹp các trạng thái vote cũ trong localStorage
 function cleanupOldVoteStates() {
