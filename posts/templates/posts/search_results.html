@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'posts/css/search_users.css' %}">
+  <link rel="stylesheet" href="{% static 'posts/css/search_results.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -46,7 +46,7 @@
         <ul class="search-results-list">
           {% for post in posts %}
           <li class="search-result-item">
-            <a href="{{ post.url }}" class="search-result-link">
+            <a href="{% url 'posts:post_detail' post.pk %}" class="search-result-link">
               <div class="post-info" style="flex: 1;">
                 <div class="username post-title">{{ post.title }}</div>
                 <div class="user-meta">
@@ -76,7 +76,7 @@
         <ul class="search-results-list">
           {% for u in users %}
           <li class="search-result-item">
-            <a href="{{ u.url }}" class="search-result-link">
+            <a href="{% url 'posts:user_profile' u.username %}" class="search-result-link">
               <div class="user-avatar-placeholder">{{ u.username|first|upper }}</div>
               <div class="user-info">
                 <div class="username">{{ u.username }}</div>
