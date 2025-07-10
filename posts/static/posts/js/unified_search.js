@@ -47,7 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (query) {
             if (currentSearchType === 'posts') {
-                window.location.href = `/posts/?q=${encodeURIComponent(query)}`;
+                // Sửa lại để trỏ về URL gốc của post_list
+                window.location.href = `/?q=${encodeURIComponent(query)}`;
             } else {
                 window.location.href = `/users/search/?q=${encodeURIComponent(query)}`;
             }
