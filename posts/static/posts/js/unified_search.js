@@ -46,12 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = searchInput.value.trim();
         
         if (query) {
-            if (currentSearchType === 'posts') {
-                // Sửa lại để trỏ về URL gốc của post_list
-                window.location.href = `/?q=${encodeURIComponent(query)}`;
-            } else {
-                window.location.href = `/users/search/?q=${encodeURIComponent(query)}`;
-            }
+            // LUÔN ĐIỀU HƯỚNG ĐẾN TRANG TÌM KIẾM HỢP NHẤT
+            window.location.href = `/search/?q=${encodeURIComponent(query)}`;
         }
     });
     

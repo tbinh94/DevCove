@@ -276,6 +276,7 @@ def password_change_view(request):
     return render(request, 'posts/password_change.html', {'form': form})
 
 # Search users by username
+"""
 def user_search(request):
     q = request.GET.get('q', '').strip()
     results = []
@@ -285,8 +286,29 @@ def user_search(request):
         'results': results,
         'query': q,
     })
+"""
 
-# Profile with follow status
+def unified_search_view(request):
+    """
+    Trang tìm kiếm hợp nhất, hiển thị kết quả cho cả posts và users.
+    """
+    query = request.GET.get('q', '').strip()
+    posts_results = []
+    users_results = []
+
+    if query:
+        # Sử dụng các hàm helper đã có để tìm kiếm
+        posts_results = search_posts_enhanced(query)
+        users_results = search_users_enhanced(query)
+
+    context = {
+        'query': query,
+        'posts': posts_results,
+        'users': users_results,
+    }
+    return render(request, 'posts/search_results.html', context)
+
+
 # Profile with follow status
 @login_required
 def user_profile_view(request, username):

@@ -27,7 +27,8 @@ urlpatterns = [
         name='password_change'
     ),
     # Tìm kiếm user
-    path('users/search/', views.user_search, name='user_search'),
+    #path('users/search/', views.user_search, name='user_search'),
+    path('search/', views.unified_search_view, name='unified_search'),
     # Xem profile (có follow/unfollow)
     path('users/<str:username>/', views.user_profile_view, name='user_profile'),
     # Follow / Unfollow
