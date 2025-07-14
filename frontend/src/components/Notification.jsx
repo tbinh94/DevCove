@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import styles from './Notification.module.css';
 
 const NotificationManager = () => {
   const [notifications, setNotifications] = useState([]);
@@ -124,24 +125,24 @@ const NotificationManager = () => {
   }, []);
 
   return (
-    <div ref={dropdownRef} className="notification-container">
+    <div ref={dropdownRef} className={styles.notificationContainer}>
       <button 
-        className="notification-toggle"
+        className={styles.notificationToggle}
         onClick={toggleDropdown}
       >
         🔔
         {unreadCount > 0 && (
-          <span className="notification-badge">{unreadCount}</span>
+          <span className={styles.notificationBadge}>{unreadCount}</span>
         )}
       </button>
       
       {isDropdownOpen && (
-        <div className="notification-dropdown show">
-          <div className="notification-header">
+        <div className={`${styles.notificationDropdown} ${styles.show}`}>
+          <div className={styles.notificationHeader}>
             <h6>Notifications</h6>
             {unreadCount > 0 && (
               <button 
-                className="mark-all-read"
+                className={styles.markAllRead}
                 onClick={markAllAsRead}
               >
                 Mark all as read
@@ -149,39 +150,39 @@ const NotificationManager = () => {
             )}
           </div>
           
-          <ul className="notifications-list">
+          <ul className={styles.notificationsList}>
             {isLoading ? (
-              <li className="dropdown-item text-center">Loading...</li>
+              <li className={`${styles.dropdownItem} ${styles.textCenter}`}>Loading...</li>
             ) : notifications.length === 0 ? (
-              <li className="dropdown-item text-center text-muted p-3">
+              <li className={`${styles.dropdownItem} ${styles.textCenter} ${styles.textMuted} ${styles.p3}`}>
                 No new notifications
               </li>
             ) : (
               notifications.map((notification, index) => (
                 <li key={index}>
                   <a 
-                    className={`dropdown-item notification-item ${
-                      !notification.is_read ? 'notification-unread' : ''
+                    className={`${styles.dropdownItem} ${styles.notificationItem} ${
+                      !notification.is_read ? styles.notificationUnread : ''
                     }`}
                     href={notification.action_url}
                   >
-                    <div className="d-flex align-items-center">
-                      <div className="flex-shrink-0 me-3">
-                        <div className="notification-icon">
+                    <div className={`${styles.dFlex} ${styles.alignItemsCenter}`}>
+                      <div className={`${styles.flexShrink0} ${styles.me3}`}>
+                        <div className={styles.notificationIcon}>
                           {getNotificationIcon(notification.type)}
                         </div>
                       </div>
-                      <div className="flex-grow-1">
-                        <p className="mb-0 small">
+                      <div className={styles.flexGrow1}>
+                        <p className={`${styles.mb0} ${styles.small}`}>
                           <strong>{notification.sender}</strong>{' '}
                           {getNotificationText(notification.type)}
                         </p>
-                        <small className="text-muted">
+                        <small className={styles.textMuted}>
                           {formatTime(notification.created_at)}
                         </small>
                       </div>
                       {!notification.is_read && (
-                        <span className="notification-dot ms-auto"></span>
+                        <span className={`${styles.notificationDot} ${styles.msAuto}`}></span>
                       )}
                     </div>
                   </a>
@@ -194,4 +195,5 @@ const NotificationManager = () => {
     </div>
   );
 };
+
 export default NotificationManager;

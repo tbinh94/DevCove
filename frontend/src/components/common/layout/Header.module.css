@@ -23,18 +23,24 @@
   height: 100%;
 }
 
-.logo {
+.logoWrapper { /* New wrapper for better alignment with flex */
+  display: flex;
+  align-items: center;
+  /* flex-shrink: 0; */ /* Prevent logo from shrinking */
+}
+
+.logoLink { /* Apply styles to the Link itself */
   display: flex;
   align-items: center;
   cursor: pointer;
   text-decoration: none; /* Remove underline from Link */
   color: #1a202c; /* Default text color */
+  gap: 0.5rem; /* Space between icon and text */
 }
 
 .logoIcon {
-  height: 1.5rem; /* h-6 */
-  width: 1.5rem; /* w-6 */
-  margin-right: 0.5rem; /* Space between icon and text */
+  height: 24px; /* h-6, fixed pixels for better control */
+  width: 24px; /* w-6, fixed pixels */
 }
 
 .logoText {
@@ -44,15 +50,20 @@
 }
 
 .searchBar {
-  flex: 1;
+  flex: 1; /* Allow search bar to grow */
   max-width: 640px; /* max-w-2xl */
-  margin-left: 2rem; /* mx-8 */
-  margin-right: 2rem; /* mx-8 */
+  margin: 0 2rem; /* mx-8 - combined margin */
   position: relative;
+  min-width: 200px; /* Ensure search bar has a minimum width */
 }
 
-.searchInputWrapper {
+.searchForm { /* Added a form class */
+  width: 100%;
+}
+
+.searchInputContainer { /* Wrapper for input and icon */
   position: relative;
+  width: 100%;
 }
 
 .searchIcon {
@@ -60,20 +71,20 @@
   left: 0.75rem; /* left-3 */
   top: 50%;
   transform: translateY(-50%);
-  height: 1rem; /* h-4 */
-  width: 1rem; /* w-4 */
+  height: 16px; /* h-4 */
+  width: 16px; /* w-4 */
   color: #a0aec0; /* text-gray-400 */
+  pointer-events: none; /* Make icon unclickable so input receives click */
 }
 
 .searchInput {
   width: 100%;
-  padding-left: 2.5rem; /* pl-10 */
-  padding-right: 1rem; /* pr-4 */
-  padding-top: 0.5rem; /* py-2 */
-  padding-bottom: 0.5rem; /* py-2 */
+  padding: 0.5rem 1rem 0.5rem 2.5rem; /* py-2 pl-10 pr-4 */
   border: 1px solid #cbd5e0; /* border-gray-300 */
   border-radius: 9999px; /* rounded-full */
   outline: none;
+  font-size: 0.875rem; /* text-sm, ensure text size matches */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
 .searchInput:focus {
@@ -83,17 +94,17 @@
 
 .searchResultsDropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 0.25rem); /* Adjust top to be exactly below input + mt-1 */
   left: 0;
   right: 0;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem; /* rounded-lg */
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-  margin-top: 0.25rem; /* mt-1 */
   max-height: 24rem; /* max-h-96 */
   overflow-y: auto;
   z-index: 50;
+  padding: 0.5rem 0; /* Add vertical padding for content */
 }
 
 .searchLoading {
@@ -102,11 +113,22 @@
   color: #718096; /* text-gray-500 */
 }
 
+.searchSection { /* New class for sections within search results */
+  padding: 0 1rem; /* Horizontal padding for sections */
+}
+
+.searchSectionBorderTop { /* Class for sections needing a top border */
+  border-top: 1px solid #edf2f7; /* border-gray-100 */
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .searchSectionTitle {
   font-size: 0.875rem; /* text-sm */
   font-weight: 500; /* font-medium */
   color: #718096; /* text-gray-500 */
   margin-bottom: 0.5rem;
+  padding: 0 0.5rem; /* Small internal padding */
 }
 
 .searchItem {
@@ -114,6 +136,8 @@
   font-size: 0.875rem; /* text-sm */
   border-radius: 0.25rem; /* rounded */
   cursor: pointer;
+  display: flex; /* Ensure flex for item alignment */
+  flex-direction: column; /* Stack title and meta */
 }
 
 .searchItem:hover {
@@ -153,43 +177,88 @@
   color: #ffffff;
   padding: 0.5rem 1rem; /* px-4 py-2 */
   border-radius: 9999px; /* rounded-full */
-  transition-property: background-color;
-  transition-duration: 150ms; /* transition-colors */
+  transition: background-color 150ms ease-in-out; /* transition-colors */
+  border: none; /* Remove default button border */
+  cursor: pointer;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .createPostButton:hover {
   background-color: #ea580c; /* hover:bg-orange-600 */
 }
 
-.notificationButton {
+
+.buttonIcon { /* General style for Lucide icons in buttons */
+  height: 20px; /* Adjusted from 16px to 20px for better visibility */
+  width: 20px;
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+.notificationWrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notificationButton {
+  position: relative; /* For badge positioning */
   padding: 0.5rem;
   color: #a0aec0; /* text-gray-400 */
-  transition-property: color;
-  transition-duration: 150ms;
+  transition: color 150ms ease-in-out;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex; /* Ensure bell icon is centered if it's the only content */
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px; /* Make it circular on hover */
 }
 
 .notificationButton:hover {
   color: #718096; /* hover:text-gray-600 */
+  background-color: #f7fafc; /* Subtle hover background */
 }
 
 .notificationBadge {
   position: absolute;
-  top: -0.25rem; /* -top-1 */
-  right: -0.25rem; /* -right-1 */
+  top: 0px; /* Adjusted to sit on top-right */
+  right: 0px; /* Adjusted */
   background-color: #ef4444; /* bg-red-500 */
   color: #ffffff;
-  font-size: 0.75rem; /* text-xs */
+  font-size: 0.625rem; /* Smaller text-xs to fit */
+  font-weight: 600; /* make it bolder */
   border-radius: 9999px; /* rounded-full */
-  height: 1rem; /* h-4 */
-  width: 1rem; /* w-4 */
+  height: 16px; /* h-4 */
+  width: 16px; /* w-4 */
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translate(25%, -25%); /* Shift badge slightly out */
+  box-sizing: border-box;
 }
+
+.notificationDropdown { /* Styles for the dropdown itself */
+  position: absolute;
+  top: calc(100% + 0.5rem); /* Below the button, adjust as needed */
+  right: 0;
+  width: 300px; /* Or a fixed width */
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem 0; /* Vertical padding for dropdown content */
+  z-index: 60; /* Higher z-index than other dropdowns if needed */
+  max-height: 400px; /* Limit height */
+  overflow-y: auto; /* Allow scrolling */
+  box-sizing: border-box;
+}
+
+
 
 .userMenu {
   position: relative;
+  display: flex; /* Ensure consistent alignment */
+  align-items: center;
 }
 
 .userMenuButton {
@@ -197,50 +266,64 @@
   align-items: center;
   gap: 0.5rem; /* space-x-2 */
   color: #4a5568; /* text-gray-700 */
-  transition-property: color;
-  transition-duration: 150ms;
+  transition: color 150ms ease-in-out;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 0.5rem 0.75rem; /* Add padding to make clickable area larger */
+  border-radius: 9999px; /* Rounded corners for the button area */
+  white-space: nowrap; /* Prevent text from wrapping */
 }
 
 .userMenuButton:hover {
   color: #1a202c; /* hover:text-gray-900 */
+  background-color: #f7fafc; /* Subtle hover background */
+}
+
+.userMenuButtonText {
+  font-weight: 700; /* font-bold */
+  color: #4a5568; /* text-gray-700 */
+  /* Adjust based on design, e.g., hidden on mobile */
+  display: block; /* Ensure it respects flex */
 }
 
 .avatarSm {
-  height: 1.75rem; /* h-7 */
-  width: 1.75rem; /* w-7 */
+  height: 28px; /* h-7 */
+  width: 28px; /* w-7 */
   border-radius: 9999px; /* rounded-full */
-}
-
-.username {
-  font-weight: 500; /* font-medium */
+  object-fit: cover; /* Ensure image covers the area */
+  flex-shrink: 0; /* Prevent avatar from shrinking */
 }
 
 .userDropdownMenu {
   position: absolute;
+  top: calc(100% + 0.5rem); /* Below the button, adjust as needed */
   right: 0;
-  margin-top: 0.5rem; /* mt-2 */
   width: 12rem; /* w-48 */
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem; /* rounded-lg */
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-  padding-top: 0.25rem; /* py-1 */
-  padding-bottom: 0.25rem; /* py-1 */
+  padding: 0.25rem 0; /* Vertical padding */
   z-index: 50;
+  transform-origin: top right; /* For potential animations */
+  box-sizing: border-box;
+  /* Transition can be added here if needed */
 }
 
 .userDropdownHeader {
   padding: 0.5rem 1rem; /* px-4 py-2 */
   border-bottom: 1px solid #edf2f7; /* border-gray-100 */
+  margin-bottom: 0.25rem; /* Add some space below header */
 }
 
 .userDropdownUsername {
   font-weight: 500;
   color: #1a202c;
+  display: flex; /* For icon alignment */
+  align-items: center;
+  gap: 0.5rem; /* space-x-2 for icon */
+  margin-bottom: 0.25rem;
 }
 
 .userDropdownKarma {
@@ -260,6 +343,7 @@
   background: none;
   border: none;
   cursor: pointer;
+  transition: background-color 150ms ease-in-out;
 }
 
 .userDropdownItem:hover {
@@ -280,8 +364,7 @@
 }
 
 .separator {
-  margin-top: 0.25rem; /* my-1 */
-  margin-bottom: 0.25rem; /* my-1 */
+  margin: 0.25rem 0; /* my-1 - combined margin */
   border-top: 1px solid #edf2f7; /* hr class */
 }
 
@@ -294,18 +377,19 @@
 
 .loginButton {
   color: #4a5568;
-  transition-property: color;
-  transition-duration: 150ms;
+  transition: color 150ms ease-in-out;
   font-weight: 500;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.5rem 0.75rem; /* Add some padding */
-  border-radius: 9999px;
+  padding: 0.5rem 0.75rem; /* Added padding for better click area */
+  border-radius: 9999px; /* Make it look like a subtle button */
+  white-space: nowrap;
 }
 
 .loginButton:hover {
   color: #1a202c;
+  background-color: #f7fafc; /* Subtle hover background */
 }
 
 .signUpButton {
@@ -313,19 +397,81 @@
   color: #ffffff;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
-  transition-property: background-color;
-  transition-duration: 150ms;
+  transition: background-color 150ms ease-in-out;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .signUpButton:hover {
   background-color: #ea580c;
 }
 
-/* Responsive adjustments if needed, e.g., for hidden sm:inline */
-@media (max-width: 640px) { /* sm breakpoint */
-  .username, .createPostButton span {
-    display: none;
+/* Icons within dropdowns and buttons */
+.dropdownIcon { /* General icon style for dropdown items */
+  height: 16px; /* h-4 w-4 */
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.communityIcon { /* Specific styling for community emoji */
+  font-size: 1rem; /* Adjust emoji size if needed */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) { /* Adjust for medium screens or smaller if needed */
+  .searchBar {
+    margin: 0 1rem; /* Reduce horizontal margin */
+    max-width: 400px; /* Adjust max-width for smaller screens */
   }
+
+  .createPostButtonText {
+    display: none; /* Hide "Create Post" text on small screens */
+  }
+
+  .userMenuButtonText {
+    display: none; /* Hide "Hello, username" on small screens */
+  }
+}
+
+@media (max-width: 640px) { /* sm breakpoint */
+  .header {
+    padding: 0 0.5rem; /* Smaller padding on very small screens */
+  }
+  .logoText {
+    display: none; /* Hide logo text on very small screens, keep icon */
+  }
+  .searchBar {
+    margin: 0 0.5rem;
+    max-width: unset; /* Allow search bar to take more width */
+  }
+  .rightSide {
+    gap: 0.5rem; /* Reduce gap */
+  }
+  .createPostButton {
+    padding: 0.5rem; /* Smaller button */
+    border-radius: 50%; /* Make it circular */
+  }
+  .createPostButton .buttonIcon {
+    margin-right: 0;
+  }
+  .notificationButton {
+    padding: 0.5rem;
+  }
+  .userMenuButton {
+    padding: 0.25rem; /* Smaller user menu button */
+  }
+  .userMenuButton span.ml-1 {
+    display: none; /* Hide arrow on very small screens */
+  }
+  .authButtons .loginButton, .authButtons .signUpButton {
+    padding: 0.5rem;
+  }
+}
+.rightSide .notificationWrapper {
+  margin: 0; /* Reset any margins that might interfere */
 }

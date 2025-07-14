@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, User, LogOut, Settings, Key } from 'lucide-react'; // Import Key for Change Password
+import { Search, Bell, Plus, User, LogOut, Settings, Key } from 'lucide-react';
 import defaultAvatar from '../../../assets/imgs/avatar-default.png';
-import apiService from '../../../services/api'; // Assume this path is correct
-import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg'; // Điều chỉnh đường dẫn tương đối cho đúng
+import apiService from '../../../services/api';
+import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 
-// Import CSS Module
-import styles from './Header.module.css'; //
+import styles from './Header.module.css'; // Import CSS Module
+
+import NotificationManager from '../../Notification';
+
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {
@@ -18,9 +20,9 @@ const getCSRFToken = () => {
 const useAuth = () => ({
   isAuthenticated: true,
   user: {
-    username: 'betta', // Updated username to match image 2
+    username: 'betta',
     profile: {
-      avatar: null // or '/path/to/real/avatar.png'
+      avatar: null
     },
     karma: 1234,
     post_count: 56
@@ -121,6 +123,7 @@ const Header = () => {
     }
   };
 
+  // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -137,51 +140,50 @@ const Header = () => {
   }, []);
 
   return (
-    <header className={styles.header}> {/* Apply header style */}
-      <div className={styles.container}> {/* Apply container style */}
+    <header className={styles.header}>
+      <div className={styles.container}>
         {/* Logo */}
-        <div className={styles.logo}> {/* Apply logo style */}
+        <div className={styles.logoWrapper}>
           <Link
-            className={styles.logo} // Re-apply logo style to Link for cursor and flex
+            className={styles.logoLink}
             to="/"
           >
-            {/* Added Reddit icon placeholder */}
-            <img src={RedditLogo} alt="Reddit Logo" className={styles.logoIcon} /> {/* Sử dụng biến RedditLogo */}
+            <img src={RedditLogo} alt="Reddit Logo" className={styles.logoIcon} />
             <span className={styles.logoText}>Reddit Clone</span>
           </Link>
         </div>
 
         {/* Search Bar */}
-        <div className={styles.searchBar} ref={searchRef}> {/* Apply search bar style */}
-          <form onSubmit={handleSearchSubmit} className={styles.searchInputWrapper}> {/* Apply wrapper style */}
-            <div className={styles.searchInputWrapper}> {/* Apply wrapper style */}
-              <Search className={styles.searchIcon} /> {/* Apply search icon style */}
+        <div className={styles.searchBar} ref={searchRef}>
+          <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
+            <div className={styles.searchInputContainer}>
+              <Search className={styles.searchIcon} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onFocus={() => setIsSearchFocused(true)}
                 placeholder="Search posts, users..."
-                className={styles.searchInput} // Apply search input style
+                className={styles.searchInput}
               />
             </div>
           </form>
 
           {/* Search Results Dropdown */}
           {isSearchFocused && (searchResults.posts.length > 0 || searchResults.users.length > 0 || isLoading) && (
-            <div className={styles.searchResultsDropdown}> {/* Apply dropdown style */}
+            <div className={styles.searchResultsDropdown}>
               {isLoading ? (
-                <div className={styles.searchLoading}>Searching...</div> /* Corrected: Removed extra > after ? */
+                <div className={styles.searchLoading}>Searching...</div> 
               ) : (
                 <>
                   {/* Posts Results */}
                   {searchResults.posts.length > 0 && (
-                    <div className="p-2"> {/* Keep padding for inner section */}
-                      <h3 className={styles.searchSectionTitle}>Posts</h3> {/* Apply section title style */}
+                    <div className={styles.searchSection}>
+                      <h3 className={styles.searchSectionTitle}>Posts</h3>
                       {searchResults.posts.map((post) => (
                         <div
                           key={`post-${post.id}`}
-                          className={styles.searchItem} // Apply search item style
+                          className={styles.searchItem}
                           onClick={() => handleSearchResultClick('post', post.id)}
                         >
                           <div className={styles.searchItemTitle}>
@@ -197,12 +199,12 @@ const Header = () => {
 
                   {/* Users Results */}
                   {searchResults.users.length > 0 && (
-                    <div className="p-2 border-t border-gray-100"> {/* Keep padding and border */}
-                      <h3 className={styles.searchSectionTitle}>Users</h3> {/* Apply section title style */}
+                    <div className={`${styles.searchSection} ${styles.searchSectionBorderTop}`}>
+                      <h3 className={styles.searchSectionTitle}>Users</h3>
                       {searchResults.users.map((resultUser) => (
                         <div
                           key={`user-${resultUser.id}`}
-                          className={styles.searchItem} // Apply search item style
+                          className={styles.searchItem}
                           onClick={() => handleSearchResultClick('user', resultUser.username)}
                         >
                           <div className={styles.searchItemTitle}>
@@ -216,7 +218,7 @@ const Header = () => {
                     </div>
                   )}
                   {searchResults.posts.length === 0 && searchResults.users.length === 0 && searchQuery.length >= 2 && (
-                     <div className={styles.noResults}>No results found.</div>
+                       <div className={styles.noResults}>No results found.</div>
                   )}
                 </>
               )}
@@ -225,49 +227,45 @@ const Header = () => {
         </div>
 
         {/* Right Side - User Actions */}
-        <div className={styles.rightSide}> {/* Apply right side style */}
+        <div className={styles.rightSide}>
           {isAuthenticated ? (
             <>
               {/* Create Post Button */}
               <button
                 onClick={() => navigate('/create-post')}
-                className={styles.createPostButton} // Apply button style
+                className={styles.createPostButton}
               >
-                <Plus className="h-4 w-4" />
-                <span className={styles.createPostButtonText}>Create Post</span> {/* Apply text style if needed */}
+                <Plus className={styles.buttonIcon} />
+                <span className={styles.createPostButtonText}>Create Post</span>
               </button>
 
-              {/* Notifications */}
-              <button className={styles.notificationButton}> {/* Apply button style */}
-                <Bell className="h-5 w-5" />
-                <span className={styles.notificationBadge}>3</span> {/* Apply badge style */}
-              </button>
+              {/* Notifications - Use NotificationManager directly */}
+              <NotificationManager />
 
               {/* User Menu */}
-              <div className={styles.userMenu} ref={userMenuRef}> {/* Apply user menu style */}
+              <div className={styles.userMenu} ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={styles.userMenuButton} // Apply button style
+                  className={styles.userMenuButton}
                 >
-                  {/* Changed to "Hello, betta" text with arrow icon as in image 2 */}
-                  <span className="font-bold text-gray-700">Hello, {user.username}</span>
+                  <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
                   <img 
                     src={user.profile.avatar || defaultAvatar} 
-                    className={styles.avatarSm} // Apply avatar style
+                    className={styles.avatarSm}
                     alt="avatar"
                     onError={(e) => {
                       e.target.src = defaultAvatar;
                     }}
                   />
-                  {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>} {/* Up/down arrow */}
+                  {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
                 </button>
 
                 {/* User Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className={styles.userDropdownMenu}> {/* Apply dropdown menu style */}
-                    <div className={styles.userDropdownHeader}> {/* Apply header style */}
+                  <div className={styles.userDropdownMenu}>
+                    <div className={styles.userDropdownHeader}>
                       <div className={styles.userDropdownUsername}>
-                        <User className="inline-block h-4 w-4 mr-2" /> {/* Icon before username */}
+                        <User className={styles.dropdownIcon} />
                         {user.username}
                       </div>
                       <div className={styles.userDropdownKarma}>Karma: {user.karma || 0}</div>
@@ -278,13 +276,12 @@ const Header = () => {
                         navigate(`/profile/${user.username}`);
                         setIsUserMenuOpen(false);
                       }}
-                      className={styles.userDropdownItem} // Apply item style
+                      className={styles.userDropdownItem}
                     >
-                      <User className="h-4 w-4" />
+                      <User className={styles.dropdownIcon} />
                       <span>Profile</span>
                     </button>
                     
-                    {/* Communities Link - Adjusted to button for consistent styling with other items */}
                     <button 
                       onClick={() => {
                         navigate('/communities');
@@ -292,7 +289,7 @@ const Header = () => {
                       }}
                       className={styles.userDropdownItem}
                     >
-                      <span className="h-4 w-4">👨‍👩‍👦‍👦</span>
+                      <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>👨‍👩‍👦‍👦</span>
                       <span>Communities</span>
                     </button>
                     
@@ -301,31 +298,31 @@ const Header = () => {
                         navigate('/settings');
                         setIsUserMenuOpen(false);
                       }}
-                      className={styles.userDropdownItem} // Apply item style
+                      className={styles.userDropdownItem}
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className={styles.dropdownIcon} />
                       <span>Settings</span>
                     </button>
 
                     <button
                       onClick={() => {
-                        navigate('/change-password'); // Assuming this route exists
+                        navigate('/change-password');
                         setIsUserMenuOpen(false);
                       }}
                       className={styles.userDropdownItem}
                     >
-                      <Key className="h-4 w-4" /> {/* Use Key icon for Change Password */}
+                      <Key className={styles.dropdownIcon} />
                       <span>Change Password</span>
                     </button>
                     
-                    <hr className={styles.separator} /> {/* Apply separator style */}
+                    <hr className={styles.separator} />
                     
                     <button
                       onClick={handleLogout}
                       disabled={isLoading}
-                      className={`${styles.userDropdownItem} ${styles.userDropdownItemRed} ${isLoading ? styles.userDropdownItemDisabled : ''}`} // Apply multiple styles
+                      className={`${styles.userDropdownItem} ${styles.userDropdownItemRed} ${isLoading ? styles.userDropdownItemDisabled : ''}`}
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className={styles.dropdownIcon} />
                       <span>{isLoading ? 'Logging out...' : 'Logout'}</span>
                     </button>
                   </div>
@@ -334,16 +331,16 @@ const Header = () => {
             </>
           ) : (
             /* Login/Register buttons for non-authenticated users */
-            <div className={styles.authButtons}> {/* Apply auth buttons style */}
+            <div className={styles.authButtons}>
               <button
                 onClick={() => navigate('/login')}
-                className={styles.loginButton} // Apply login button style
+                className={styles.loginButton}
               >
                 Login
               </button>
               <button
                 onClick={() => navigate('/register')}
-                className={styles.signUpButton} // Apply sign up button style
+                className={styles.signUpButton}
               >
                 Sign Up
               </button>
