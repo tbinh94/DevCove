@@ -64,8 +64,9 @@ class PostViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
+        # Cập nhật hàm này
         queryset = Post.objects.annotate(
-            num_comments=Count('comments'),
+            num_comments=Count('comments'),  # <-- THÊM DÒNG NÀY
             calculated_score=Coalesce(Sum(Case(
                 When(votes__is_upvote=True, then=1),
                 When(votes__is_upvote=False, then=-1),

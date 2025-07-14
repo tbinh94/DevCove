@@ -4,7 +4,7 @@ import { Search, Bell, Plus, User, LogOut, Settings, Key } from 'lucide-react';
 import defaultAvatar from '../../../assets/imgs/avatar-default.png';
 import apiService from '../../../services/api';
 import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
-
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css'; // Import CSS Module
 
 import NotificationManager from '../../Notification';
@@ -12,11 +12,23 @@ import NotificationManager from '../../Notification';
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {
-  const token = document.querySelector('meta[name="csrf-token"]');
-  return token ? token.getAttribute('content') : '';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      // Does this cookie string begin with the name we want?
+      if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken' + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
 };
 
 // Mock authentication hook - In a real app, you'd get this from Context or Redux
+{/*
 const useAuth = () => ({
   isAuthenticated: true,
   user: {
@@ -28,9 +40,10 @@ const useAuth = () => ({
     post_count: 56
   }
 });
+*/}
 
 const Header = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth(); // <-- Dùng hook thật
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,19 +76,23 @@ const Header = () => {
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/logout', {
+      // 2. THÊM DẤU / VÀO CUỐI ENDPOINT
+      const response = await fetch('/api/auth/logout/', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(),
+          'X-CSRFToken': getCSRFToken(), // Hàm mới sẽ được gọi ở đây
         },
       });
 
       if (response.ok) {
-        localStorage.removeItem('user');
-        navigate('/login'); 
+        // Xóa thông tin user khỏi local storage nếu bạn có lưu
+        localStorage.removeItem('user'); 
+        // Điều hướng về trang login hoặc trang chủ
+        window.location.href = '/login'; // Dùng window.location.href để refresh toàn bộ trang
       } else {
-        console.error('Logout failed:', response.statusText);
+        const errorData = await response.json();
+        console.error('Logout failed:', errorData);
         alert('Logout failed. Please try again.');
       }
     } catch (error) {

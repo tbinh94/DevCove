@@ -1,5 +1,4 @@
-// AuthContext.js - Authentication Context Provider
-
+// src/contexts/AuthContext.js
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import ApiService from '../services/apiService';
 
@@ -66,11 +65,22 @@ const authReducer = (state, action) => {
 };
 
 // Create context
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 // Helper function to get CSRF token
 const getCSRFToken = () => {
-  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken' + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 };
 
 // Provider component
@@ -79,74 +89,93 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is authenticated on mount
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkUserSession = async () => {
       dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
       
       try {
-        const result = await ApiService.getCurrentUser();
-        
-        if (result.success) {
-          dispatch({ type: AuthActionTypes.SET_USER, payload: result.data });
+        // Try using ApiService first (if available)
+        let result;
+        if (typeof ApiService !== 'undefined' && ApiService.getCurrentUser) {
+          result = await ApiService.getCurrentUser();
+          if (result.success) {
+            dispatch({ type: AuthActionTypes.SET_USER, payload: result.data });
+          } else {
+            dispatch({ type: AuthActionTypes.SET_USER, payload: null });
+          }
         } else {
-          dispatch({ type: AuthActionTypes.SET_USER, payload: null });
+          // Fallback to direct fetch
+          const response = await fetch('/api/auth/current_user/');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.isAuthenticated) {
+              dispatch({ type: AuthActionTypes.SET_USER, payload: data.user });
+            } else {
+              dispatch({ type: AuthActionTypes.SET_USER, payload: null });
+            }
+          } else {
+            dispatch({ type: AuthActionTypes.SET_USER, payload: null });
+          }
         }
       } catch (error) {
+        console.error("Session check failed:", error);
         dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
       }
     };
 
-    checkAuth();
+    checkUserSession();
   }, []);
 
-  // Login function - FIXED
-  const login = async (credentials) => {
+  // Login function - supports both username/password and credentials object
+  const login = async (usernameOrCredentials, password) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
     
     try {
-      // Option 1: Use ApiService (recommended for consistency)
-      const result = await ApiService.login(credentials);
-      
-      if (result.success) {
-        dispatch({ type: AuthActionTypes.SET_USER, payload: result.data.user });
-        return { success: true, data: result.data };
+      // Handle different parameter formats
+      let credentials;
+      if (typeof usernameOrCredentials === 'string') {
+        credentials = { username: usernameOrCredentials, password };
       } else {
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: result.error });
-        return { success: false, error: result.error };
+        credentials = usernameOrCredentials;
       }
-      
-      // Option 2: Direct fetch (if you prefer)
-      /*
-      const authResponse = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(),
-        },
-        body: JSON.stringify(credentials)
-      });
-      
-      const authData = await authResponse.json();
-      
-      if (authData.success) {
-        // Store token if using token auth
-        if (authData.token) {
-          localStorage.setItem('authToken', authData.token);
+
+      // Try using ApiService first (if available)
+      if (typeof ApiService !== 'undefined' && ApiService.login) {
+        const result = await ApiService.login(credentials);
+        
+        if (result.success) {
+          dispatch({ type: AuthActionTypes.SET_USER, payload: result.data.user });
+          return { success: true, data: result.data };
+        } else {
+          dispatch({ type: AuthActionTypes.SET_ERROR, payload: result.error });
+          return { success: false, error: result.error };
         }
-        
-        // Update context state with user data
-        dispatch({ type: AuthActionTypes.SET_USER, payload: authData.user });
-        
-        return { success: true, data: authData };
       } else {
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: authData.error || 'Login failed' });
-        return { success: false, error: authData.error || 'Login failed' };
+        // Fallback to direct fetch
+        const response = await fetch('/api/auth/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+          },
+          body: JSON.stringify(credentials),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          dispatch({ type: AuthActionTypes.SET_USER, payload: data.user });
+          return { success: true, data };
+        } else {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Login failed.";
+          dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+          return { success: false, error: errorMessage };
+        }
       }
-      */
-      
     } catch (error) {
-      dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
-      return { success: false, error: error.message };
+      const errorMessage = error.message || "An error occurred.";
+      dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -156,18 +185,43 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
     
     try {
-      const result = await ApiService.register(userData);
-      
-      if (result.success) {
-        dispatch({ type: AuthActionTypes.SET_USER, payload: result.data.user });
-        return { success: true, data: result.data };
+      // Try using ApiService first (if available)
+      if (typeof ApiService !== 'undefined' && ApiService.register) {
+        const result = await ApiService.register(userData);
+        
+        if (result.success) {
+          dispatch({ type: AuthActionTypes.SET_USER, payload: result.data.user });
+          return { success: true, data: result.data };
+        } else {
+          dispatch({ type: AuthActionTypes.SET_ERROR, payload: result.error });
+          return { success: false, error: result.error };
+        }
       } else {
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: result.error });
-        return { success: false, error: result.error };
+        // Fallback to direct fetch
+        const response = await fetch('/api/auth/register/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+          },
+          body: JSON.stringify(userData),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          dispatch({ type: AuthActionTypes.SET_USER, payload: data.user });
+          return { success: true, data };
+        } else {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Registration failed.";
+          dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+          return { success: false, error: errorMessage };
+        }
       }
     } catch (error) {
-      dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
-      return { success: false, error: error.message };
+      const errorMessage = error.message || "An error occurred.";
+      dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -176,14 +230,33 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     
     try {
-      await ApiService.logout();
+      // Try using ApiService first (if available)
+      if (typeof ApiService !== 'undefined' && ApiService.logout) {
+        await ApiService.logout();
+      } else {
+        // Fallback to direct fetch
+        const response = await fetch('/api/auth/logout/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Logout failed');
+        }
+      }
       
       // Clear any stored tokens
-      localStorage.removeItem('authToken');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('authToken');
+      }
       
       dispatch({ type: AuthActionTypes.LOGOUT });
       return { success: true };
     } catch (error) {
+      console.error("Logout error", error);
       dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
       return { success: false, error: error.message };
     }
@@ -208,28 +281,32 @@ export const AuthProvider = ({ children }) => {
     clearError,
   };
 
+  // Only render children after session check is complete
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!state.loading && children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use auth context
-export const useAuthContext = () => {
+// Custom hook to use auth context (supports both useAuth and useAuthContext)
+export const useAuth = () => {
   const context = useContext(AuthContext);
   
   if (!context) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   
   return context;
 };
 
+// Alternative hook name for compatibility
+export const useAuthContext = useAuth;
+
 // HOC for protected routes
 export const withAuth = (Component) => {
   return function AuthenticatedComponent(props) {
-    const { isAuthenticated, loading } = useAuthContext();
+    const { isAuthenticated, loading } = useAuth();
     
     if (loading) {
       return <div>Loading...</div>; // You can replace with your loading component
@@ -247,7 +324,7 @@ export const withAuth = (Component) => {
 
 // Component for protected routes
 export const ProtectedRoute = ({ children, fallback = null }) => {
-  const { isAuthenticated, loading } = useAuthContext();
+  const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
     return <div>Loading...</div>; // You can replace with your loading component

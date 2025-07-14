@@ -78,28 +78,56 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    """Serializer cho Post model"""
+    """
+    Serializer cho Post model (ĐÃ SỬA LỖI)
+    - Sửa lỗi không hiển thị ảnh bằng cách tạo image_url đầy đủ.
+    - Tối ưu user_vote để trả về dữ liệu đơn giản hơn.
+    """
     author = UserBasicSerializer(read_only=True)
     community = CommunityBasicSerializer(read_only=True)
     tags = TagBasicSerializer(many=True, read_only=True)
-    score = serializers.ReadOnlyField()
-    comment_count = serializers.ReadOnlyField()
+    
+    # Sửa: Sử dụng ReadOnlyField để lấy giá trị từ model property/annotation
+    calculated_score = serializers.IntegerField(source='score', read_only=True)
+    comment_count = serializers.IntegerField(read_only=True) # Giả sử bạn đã annotate ở view
+    
+    # 1. Thay thế 'image' bằng 'image_url'
+    image_url = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     
     class Meta:
         model = Post
         fields = [
-            'id', 'title', 'content', 'image', 'author', 'community', 
-            'tags', 'created_at', 'score', 'comment_count', 'user_vote'
+            'id', 'title', 'content', 
+            'image_url',  # Đã thay 'image' bằng 'image_url'
+            'author', 'community', 'tags', 'created_at', 
+            'calculated_score', # Đã sửa 'score' thành 'calculated_score' để khớp với view
+            'comment_count', 'user_vote'
         ]
         read_only_fields = ['id', 'created_at']
     
-    def get_user_vote(self, obj):
-        """Lấy vote của user hiện tại cho post này"""
+    # 2. Thêm phương thức để tạo URL tuyệt đối cho ảnh
+    def get_image_url(self, post):
+        """
+        Tạo URL đầy đủ cho ảnh nếu nó tồn tại.
+        """
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            vote = obj.get_user_vote(request.user)
-            return VoteSerializer(vote).data if vote else None
+        if post.image and hasattr(post.image, 'url'):
+            # build_absolute_uri sẽ tạo ra http://localhost:8000/media/post_images/...
+            return request.build_absolute_uri(post.image.url)
+        return None # Trả về null nếu không có ảnh
+
+    def get_user_vote(self, post):
+        """
+        Tối ưu: Lấy vote của user và trả về 'up', 'down', hoặc null.
+        Dữ liệu trả về đơn giản, nhẹ và dễ xử lý ở frontend.
+        """
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            # Dùng filter().first() để tránh lỗi khi không tìm thấy
+            vote = post.votes.filter(user=user).first()
+            if vote:
+                return 'up' if vote.is_upvote else 'down'
         return None
 
 

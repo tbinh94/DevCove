@@ -52,7 +52,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",  # Backup port
 ]
-
+# CSRF settings cho API
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # Các headers được phép
@@ -68,11 +73,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF settings cho API
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-]
+
 
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
