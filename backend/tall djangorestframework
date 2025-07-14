@@ -1,0 +1,162 @@
+[33mcommit a651dc4d33cfc14a8a3d9c8ad57c5c6f0ae63e04[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Fri Jul 11 19:09:35 2025 +0700
+
+    backup
+
+[33mcommit 8309a178a2768c9e9ba1652e9f52d6e0d874009f[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Thu Jul 10 21:48:12 2025 +0700
+
+    Sửa lỗi không xoá vote khi logout ở hàm initializeVoteStates trong vote.js
+
+[33mcommit bd39ba54f3a3b92e1854ae326a92f6a4656f45ef[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Thu Jul 10 21:42:13 2025 +0700
+
+    Sửa click trong search_result
+
+[33mcommit 6053c0c42e351c88f7d929f603872d709765d46a[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Thu Jul 10 21:13:40 2025 +0700
+
+    Update search thống nhất cho post và user
+
+[33mcommit 51c3dd7c5682f3bae49ce1cf2dd8effccccf2493[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Thu Jul 10 20:58:06 2025 +0700
+
+    update
+
+[33mcommit 03cd049b05a54f0019c591afd9525709a9f44e8d[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 9 21:03:38 2025 +0700
+
+    Fix vote
+
+[33mcommit 38c007e252bab588fad85612f4a36e4ff3a0a5fa[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 9 17:08:25 2025 +0700
+
+    Thêm tính năng search post/user nhưng còn lỗi vote
+
+[33mcommit 683d2b05f701b1618eb969f8ec6b5e02744a4b40[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 9 11:16:00 2025 +0700
+
+    Fix vote không xoá sau khi logout và chuyển user
+
+[33mcommit 46ed86a72b5a8146f25cb98f8d34fd90824a016b[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 9 10:54:40 2025 +0700
+
+    Notification added
+
+[33mcommit e911d18eafa09171eaf09ff598c8340375536288[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Tue Jul 8 13:49:32 2025 +0700
+
+    Update tags filter to select many as once
+
+[33mcommit df7b1a0c2a049c41ac86e775f1ecb5ad2d330f63[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Tue Jul 8 11:51:26 2025 +0700
+
+    Fix khi vote ở post_detail xong phải refresh mới áp dụng ở post_list
+
+[33mcommit 978c70d56c81a7228730e5b6e5968cf182d5431e[m
+Author: Binh <thanhbinh2k4@gmail.com>
+Date:   Tue Jul 8 11:33:22 2025 +0700
+
+    fix vote giữa post_detail và post_list
+
+[33mcommit b3de8a53d203f399d8a4c07dd1852792750af7ae[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jul 7 20:54:52 2025 +0700
+
+    Update user profile
+
+[33mcommit cfa40a20afee0afc764f06c4bf25690be20e4266[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jul 7 13:51:19 2025 +0700
+
+    add vote in post detail and sorting
+
+[33mcommit 19a9af2deca2a2d3ab628d5e49b4c7cfcd86e408[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jul 7 09:48:56 2025 +0700
+
+    update
+
+[33mcommit 44b2a6941ca58f175e7e78ab7b2922ba2d9eb7b9[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Sat Jul 5 16:43:38 2025 +0700
+
+    Save voting state after refresh
+
+[33mcommit 2a12ac39d0987f2f7b26b23e4eb0568413801094[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Sat Jul 5 15:19:09 2025 +0700
+
+    Css
+
+[33mcommit 3a4dee92cdea91ef970252b419965c0daff2768d[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Thu Jul 3 22:39:54 2025 +0700
+
+    Fix default avatar
+
+[33mcommit 489809f144ca00b709f6cfaf853edbb3924aa0f8[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 2 23:09:21 2025 +0700
+
+    can upload ava
+
+[33mcommit 2fb1abdf7994dd0e9ef3b10cf529da788ab05310[m
+Merge: 17dddb9 239968a
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 2 22:29:57 2025 +0700
+
+    Merge branch 'main' of https://github.com/tbinh94/Reddit-Clone
+
+[33mcommit 17dddb995575e90eaea361754d3934820f85606d[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Wed Jul 2 22:26:38 2025 +0700
+
+    Tool vote
+
+[33mcommit 239968a4969028ed7e027b294082aa299dedd4dc[m
+Author: vegeta <111498299+tbinh94@users.noreply.github.com>
+Date:   Mon Jun 30 19:02:24 2025 +0700
+
+    Create README.md
+
+[33mcommit 3ccee8fb5bf15e6ea2db7555047fabaebdc70d1c[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jun 30 18:58:28 2025 +0700
+
+    Update create post and add more communities
+
+[33mcommit 50aee5b284673424f32dddffd08869ccd6df6dd4[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jun 30 17:30:18 2025 +0700
+
+    update
+
+[33mcommit 2beb8d54228df564bcd2bef5eca7a53f707e2c68[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Mon Jun 30 12:25:44 2025 +0700
+
+    fix tag post
+
+[33mcommit a611cfafef57d7e3e90bf5c8a7a4ddd81ad6b4e0[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Sun Jun 29 22:47:13 2025 +0700
+
+    update interface
+
+[33mcommit 7fbbfc11a999bbab44430fa00ee97eefbe9bcd1b[m
+Author: tbinh94 <thanhbinh2k4@gmail.com>
+Date:   Sun Jun 29 21:24:04 2025 +0700
+
+    Initial commit

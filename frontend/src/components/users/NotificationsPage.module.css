@@ -1,0 +1,281 @@
+.notificationPage {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.notificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.notificationHeader h1 {
+  margin: 0;
+  color: #333;
+}
+
+.notificationActions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  font-family: inherit;
+}
+
+.btnPrimary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: #0056b3;
+}
+
+.btnDanger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btnDanger:hover {
+  background-color: #c82333;
+}
+
+.notificationFilters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.filterTab {
+  padding: 10px 15px;
+  text-decoration: none;
+  color: #666;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.filterTab:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.filterTab.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: bold;
+}
+
+.notificationsContainer {
+  margin-bottom: 20px;
+}
+
+.notificationItem {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background-color: #fff;
+  transition: all 0.3s;
+}
+
+.notificationItem:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.notificationItem.unread {
+  background-color: #f0f8ff;
+  border-left: 4px solid #007bff;
+}
+
+.notificationContent {
+  display: flex;
+  align-items: flex-start;
+  padding: 15px;
+  gap: 12px;
+}
+
+.notificationAvatar .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  width: 40px;
+  height: 40px;
+  background-color: #6c757d;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.notificationBody {
+  flex: 1;
+}
+
+.notificationHeaderInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.notificationType {
+  color: #666;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.notificationTime {
+  color: #999;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.notificationMessage {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.notificationPost {
+  margin-top: 5px;
+}
+
+.postLink {
+  color: #007bff;
+  text-decoration: none;
+  font-style: italic;
+}
+
+.postLink:hover {
+  text-decoration: underline;
+}
+
+.notificationActions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.btnSm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.btnOutlinePrimary {
+  background-color: transparent;
+  color: #007bff;
+  border: 1px solid #007bff;
+}
+
+.btnOutlinePrimary:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.btnOutlineDanger {
+  background-color: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btnOutlineDanger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+.noNotifications {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.noNotifications svg {
+  margin-bottom: 15px;
+  color: #ccc;
+}
+
+.paginationContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.paginationBtn {
+  padding: 8px 12px;
+  text-decoration: none;
+  color: #007bff;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  transition: all 0.3s;
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.paginationBtn:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.pageInfo {
+  color: #666;
+  font-size: 14px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .notificationHeader {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .notificationContent {
+    flex-direction: column;
+  }
+  
+  .notificationActions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  .filterTab {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .notificationPage {
+    padding: 10px;
+  }
+}
