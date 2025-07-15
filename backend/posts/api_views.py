@@ -220,6 +220,21 @@ class PostViewSet(viewsets.ModelViewSet):
         
         serializer = PostSerializer(related_posts, many=True, context={'request': request})
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def comments(self, request, pk=None):
+        """
+        Get all comments for a specific post.
+        """
+        post = self.get_object()
+        comments = post.comments.all().order_by('-created') # Assuming 'comments' is the related_name for Comment model's ForeignKey to Post, and 'created' is the field for creation timestamp
+        
+        # Paginate comments if needed, similar to other list views
+        paginator = StandardResultsSetPagination() # Use your existing pagination class
+        page = paginator.paginate_queryset(comments, request)
+        
+        serializer = CommentSerializer(page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
 
 
 class CommentViewSet(viewsets.ModelViewSet):

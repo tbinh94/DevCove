@@ -5,6 +5,7 @@ import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
 import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api'; // Assuming you have an apiService for API calls
+
 const PostList = ({ filter = 'hot', showAllTags = false }) => {
   const { user, isAuthenticated } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -14,65 +15,21 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
   const [postsPerPage] = useState(10); // Set posts per page to 10, as requested
   const [totalPosts, setTotalPosts] = useState(0); // To store total number of posts for pagination
 
-  // Improved CSRF token handling
-  const getCookie = (name) => {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        cookie = cookie.trim();
-        if (cookie.startsWith(name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
-  };
-
-  const getCSRFToken = async () => {
-    // Try to get from cookie first
-    let token = getCookie('csrftoken');
-
-    // If no token, fetch from Django
-    if (!token) {
-      try {
-        const response = await fetch('/api/csrf/', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          token = getCookie('csrftoken');
-        }
-      } catch (err) {
-        console.error('Error fetching CSRF token:', err);
-      }
-    }
-
-    return token;
-  };
-
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        // Add pagination parameters to the API call
-        const response = await fetch(`/api/posts/?page=${currentPage}&page_size=${postsPerPage}`, { //
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
+        // Use apiService.getPosts for a consistent API-calling approach.
+        const params = {
+          page: currentPage,
+          page_size: postsPerPage,
+          // You can add other filters here if needed, e.g., filter: filter
+        };
+        const data = await apiService.getPosts(params);
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         // Assuming your API returns an object with 'results' (the posts) and 'count' (total posts)
         const postData = Array.isArray(data) ? data : data.results || [];
-        setPosts(postData); //
+        setPosts(postData);
         setTotalPosts(data.count || postData.length); // Update total posts based on API response
 
       } catch (err) {
@@ -84,31 +41,42 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
     };
 
     fetchPosts();
-  }, [isAuthenticated, currentPage, postsPerPage]); // Re-fetch when currentPage or postsPerPage changes
+  }, [isAuthenticated, currentPage, postsPerPage, filter]); // Re-fetch when dependencies change
 
   async function handleVote(postId, type) {
+    // Ensure the user is authenticated before allowing a vote
+    if (!isAuthenticated) {
+      // You can redirect to login or show a message
+      console.log("User must be logged in to vote.");
+      // Optionally, trigger a login modal or redirect
+      return;
+    }
+
     try {
-      const data = await apiService.vote(postId, type);
-      console.log('new score', data.score);
-      // update local state…
+      const updatedPost = await apiService.vote(postId, type);
+      // Update the specific post in the list with the new score and vote status
+      setPosts(posts.map(post =>
+        post.id === postId
+          ? { ...post, calculated_score: updatedPost.score, user_vote: updatedPost.user_vote }
+          : post
+      ));
     } catch (err) {
       console.error('Error voting:', err);
+      // Handle error, e.g., show a notification to the user
     }
   }
 
-
-  const totalPages = Math.ceil(totalPosts / postsPerPage); // Calculate total pages
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber < 1 || pageNumber > totalPages) return;
-    setCurrentPage(pageNumber); // Update current page
-    window.scrollTo(0, 0); // Scroll to top when page changes
+    setCurrentPage(pageNumber);
+    window.scrollTo(0, 0);
   };
 
-  const renderPaginationButtons = () => { //
+  const renderPaginationButtons = () => {
     const pageNumbers = [];
-    // Show a range of pages around the current page
-    const maxPagesToShow = 5; // Adjust as needed
+    const maxPagesToShow = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
@@ -188,7 +156,7 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
           </div>
 
           <div className={styles.postContentArea}>
-            <Link to={`/posts/${post.id}`} className={styles.postLink}>
+            <Link to={`/post/${post.id}`} className={styles.postLink}>
                 <div className={styles.postMeta}>
                     <span>Posted by u/{post.author?.username || 'Unknown'}</span>
                 </div>
@@ -202,7 +170,7 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
             </Link>
 
             <div className={styles.postFooter}>
-                <Link to={`/posts/${post.id}`} className={styles.actionButton}>
+                <Link to={`/post/${post.id}`} className={styles.actionButton}>
                     <MessageCircle size={16} />
                     <span>{post.comment_count || 0} Comments</span>
                 </Link>
@@ -210,7 +178,7 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
           </div>
         </div>
       ))}
-      {totalPosts > postsPerPage && renderPaginationButtons()} {/* Render pagination only if there's more than one page */}
+      {totalPosts > postsPerPage && renderPaginationButtons()}
     </div>
   );
 };

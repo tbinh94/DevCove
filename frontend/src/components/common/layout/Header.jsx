@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, User, LogOut, Settings, Key } from 'lucide-react';
+import { Search, Bell, Plus, User, LogOut, Settings, Key, X } from 'lucide-react';
 import defaultAvatar from '../../../assets/imgs/avatar-default.png';
 import apiService from '../../../services/api';
 import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 import { useAuth } from '../../../contexts/AuthContext';
-import styles from './Header.module.css'; // Import CSS Module
+import styles from './Header.module.css';
 import DefaultAvatar from '../../../assets/imgs/avatar-default.png';
 import NotificationManager from '../../Notification';
-import CreatePost  from '../../CreatePost';
+import CreatePost from '../../CreatePost'; // Import CreatePost component
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {
@@ -17,7 +17,6 @@ const getCSRFToken = () => {
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
-      // Does this cookie string begin with the name we want?
       if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken' + '=')) {
         cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
         break;
@@ -27,23 +26,8 @@ const getCSRFToken = () => {
   return cookieValue;
 };
 
-// Mock authentication hook - In a real app, you'd get this from Context or Redux
-{/*
-const useAuth = () => ({
-  isAuthenticated: true,
-  user: {
-    username: 'betta',
-    profile: {
-      avatar: null
-    },
-    karma: 1234,
-    post_count: 56
-  }
-});
-*/}
-
 const Header = () => {
-  const { isAuthenticated, user, logout } = useAuth(); // <-- Dùng hook thật
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +35,7 @@ const Header = () => {
   const [searchResults, setSearchResults] = useState({ posts: [], users: [] });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false); // State for CreatePost modal
   
   const searchRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -76,7 +61,6 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      // Có thể redirect về trang login hoặc home
       window.location.href = '/';
     } catch (error) {
       console.error('Logout failed:', error);
@@ -119,6 +103,16 @@ const Header = () => {
     }
   };
 
+  // Handle Create Post button click
+  const handleCreatePostClick = () => {
+    setIsCreatePostOpen(true);
+  };
+
+  // Handle Create Post modal close
+  const handleCreatePostClose = () => {
+    setIsCreatePostOpen(false);
+  };
+
   // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -135,212 +129,249 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isCreatePostOpen) {
+        setIsCreatePostOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [isCreatePostOpen]);
+
   return (
-    <header className={styles.header}>
-      <div className={styles.container}>
-        {/* Logo */}
-        <div className={styles.logoWrapper}>
-          <Link
-            className={styles.logoLink}
-            to="/"
-          >
-            <img src={RedditLogo} alt="Reddit Logo" className={styles.logoIcon} />
-            <span className={styles.logoText}>Reddit Clone</span>
-          </Link>
-        </div>
+    <>
+      <header className={styles.header}>
+        <div className={styles.container}>
+          {/* Logo */}
+          <div className={styles.logoWrapper}>
+            <Link
+              className={styles.logoLink}
+              to="/"
+            >
+              <img src={RedditLogo} alt="Reddit Logo" className={styles.logoIcon} />
+              <span className={styles.logoText}>DevCove</span>
+            </Link>
+          </div>
 
-        {/* Search Bar */}
-        <div className={styles.searchBar} ref={searchRef}>
-          <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
-            <div className={styles.searchInputContainer}>
-              <Search className={styles.searchIcon} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onFocus={() => setIsSearchFocused(true)}
-                placeholder="Search posts, users..."
-                className={styles.searchInput}
-              />
-            </div>
-          </form>
+          {/* Search Bar */}
+          <div className={styles.searchBar} ref={searchRef}>
+            <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
+              <div className={styles.searchInputContainer}>
+                <Search className={styles.searchIcon} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onFocus={() => setIsSearchFocused(true)}
+                  placeholder="Search posts, users..."
+                  className={styles.searchInput}
+                />
+              </div>
+            </form>
 
-          {/* Search Results Dropdown */}
-          {isSearchFocused && (searchResults.posts.length > 0 || searchResults.users.length > 0 || isLoading) && (
-            <div className={styles.searchResultsDropdown}>
-              {isLoading ? (
-                <div className={styles.searchLoading}>Searching...</div> 
-              ) : (
-                <>
-                  {/* Posts Results */}
-                  {searchResults.posts.length > 0 && (
-                    <div className={styles.searchSection}>
-                      <h3 className={styles.searchSectionTitle}>Posts</h3>
-                      {searchResults.posts.map((post) => (
-                        <div
-                          key={`post-${post.id}`}
-                          className={styles.searchItem}
-                          onClick={() => handleSearchResultClick('post', post.id)}
-                        >
-                          <div className={styles.searchItemTitle}>
-                            {post.title}
+            {/* Search Results Dropdown */}
+            {isSearchFocused && (searchResults.posts.length > 0 || searchResults.users.length > 0 || isLoading) && (
+              <div className={styles.searchResultsDropdown}>
+                {isLoading ? (
+                  <div className={styles.searchLoading}>Searching...</div> 
+                ) : (
+                  <>
+                    {/* Posts Results */}
+                    {searchResults.posts.length > 0 && (
+                      <div className={styles.searchSection}>
+                        <h3 className={styles.searchSectionTitle}>Posts</h3>
+                        {searchResults.posts.map((post) => (
+                          <div
+                            key={`post-${post.id}`}
+                            className={styles.searchItem}
+                            onClick={() => handleSearchResultClick('post', post.id)}
+                          >
+                            <div className={styles.searchItemTitle}>
+                              {post.title}
+                            </div>
+                            <div className={styles.searchItemMeta}>
+                              by {post.author} • {post.vote_score} points
+                            </div>
                           </div>
-                          <div className={styles.searchItemMeta}>
-                            by {post.author} • {post.vote_score} points
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Users Results */}
-                  {searchResults.users.length > 0 && (
-                    <div className={`${styles.searchSection} ${styles.searchSectionBorderTop}`}>
-                      <h3 className={styles.searchSectionTitle}>Users</h3>
-                      {searchResults.users.map((resultUser) => (
-                        <div
-                          key={`user-${resultUser.id}`}
-                          className={styles.searchItem}
-                          onClick={() => handleSearchResultClick('user', resultUser.username)}
-                        >
-                          <div className={styles.searchItemTitle}>
-                            u/{resultUser.username}
-                          </div>
-                          <div className={styles.searchItemMeta}>
-                            {resultUser.karma} karma • {resultUser.post_count} posts
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {searchResults.posts.length === 0 && searchResults.users.length === 0 && searchQuery.length >= 2 && (
-                       <div className={styles.noResults}>No results found.</div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right Side - User Actions */}
-        <div className={styles.rightSide}>
-          {isAuthenticated ? (
-            <>
-              {/* Create Post Button */}
-              <button
-                onClick={() => navigate('/create-post')}
-                className={styles.createPostButton}
-              >
-                <Plus className={styles.buttonIcon} />
-                <span className={styles.createPostButtonText}>Create Post</span>
-              </button>
-
-              {/* Notifications - Use NotificationManager directly */}
-              <NotificationManager />
-
-              {/* User Menu */}
-              <div className={styles.userMenu} ref={userMenuRef}>
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={styles.userMenuButton}
-                >
-                  <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
-                  <img 
-                    src={DefaultAvatar} className={styles.logoIcon}
-                    alt={user.username || 'User'} 
-                  />
-                  {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
-                </button>
-
-                {/* User Dropdown Menu */}
-                {isUserMenuOpen && (
-                  <div className={styles.userDropdownMenu}>
-                    <div className={styles.userDropdownHeader}>
-                      <div className={styles.userDropdownUsername}>
-                        <User className={styles.dropdownIcon} />
-                        {user.username}
+                        ))}
                       </div>
-                      <div className={styles.userDropdownKarma}>Karma: {user.karma || 0}</div>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        navigate(`/profile/${user.username}`);
-                        setIsUserMenuOpen(false);
-                      }}
-                      className={styles.userDropdownItem}
-                    >
-                      <User className={styles.dropdownIcon} />
-                      <span>Profile</span>
-                    </button>
-                    
-                    <button 
-                      onClick={() => {
-                        navigate('/communities');
-                        setIsUserMenuOpen(false);
-                      }}
-                      className={styles.userDropdownItem}
-                    >
-                      <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>👨‍👩‍👦‍👦</span>
-                      <span>Communities</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        navigate('/settings');
-                        setIsUserMenuOpen(false);
-                      }}
-                      className={styles.userDropdownItem}
-                    >
-                      <Settings className={styles.dropdownIcon} />
-                      <span>Settings</span>
-                    </button>
+                    )}
 
-                    <button
-                      onClick={() => {
-                        navigate('/change-password');
-                        setIsUserMenuOpen(false);
-                      }}
-                      className={styles.userDropdownItem}
-                    >
-                      <Key className={styles.dropdownIcon} />
-                      <span>Change Password</span>
-                    </button>
-                    
-                    <hr className={styles.separator} />
-                    
-                    <button
-                      onClick={handleLogout}
-                      disabled={isLoading}
-                      className={`${styles.userDropdownItem} ${styles.userDropdownItemRed} ${isLoading ? styles.userDropdownItemDisabled : ''}`}
-                    >
-                      <LogOut className={styles.dropdownIcon} />
-                      <span>{isLoading ? 'Logging out...' : 'Logout'}</span>
-                    </button>
-                  </div>
+                    {/* Users Results */}
+                    {searchResults.users.length > 0 && (
+                      <div className={`${styles.searchSection} ${styles.searchSectionBorderTop}`}>
+                        <h3 className={styles.searchSectionTitle}>Users</h3>
+                        {searchResults.users.map((resultUser) => (
+                          <div
+                            key={`user-${resultUser.id}`}
+                            className={styles.searchItem}
+                            onClick={() => handleSearchResultClick('user', resultUser.username)}
+                          >
+                            <div className={styles.searchItemTitle}>
+                              u/{resultUser.username}
+                            </div>
+                            <div className={styles.searchItemMeta}>
+                              {resultUser.karma} karma • {resultUser.post_count} posts
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.posts.length === 0 && searchResults.users.length === 0 && searchQuery.length >= 2 && (
+                         <div className={styles.noResults}>No results found.</div>
+                    )}
+                  </>
                 )}
               </div>
-            </>
-          ) : (
-            /* Login/Register buttons for non-authenticated users */
-            <div className={styles.authButtons}>
-              <button
-                onClick={() => navigate('/login')}
-                className={styles.loginButton}
+            )}
+          </div>
+
+          {/* Right Side - User Actions */}
+          <div className={styles.rightSide}>
+            {isAuthenticated ? (
+              <>
+                {/* Create Post Button - Updated to use modal */}
+                <button
+                  onClick={handleCreatePostClick}
+                  className={styles.createPostButton}
+                >
+                  <Plus className={styles.buttonIcon} />
+                  <span className={styles.createPostButtonText}>Create Post</span>
+                </button>
+
+                {/* Notifications */}
+                <NotificationManager />
+
+                {/* User Menu */}
+                <div className={styles.userMenu} ref={userMenuRef}>
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className={styles.userMenuButton}
+                  >
+                    <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
+                    <img 
+                      src={DefaultAvatar} className={styles.logoIcon}
+                      alt={user.username || 'User'} 
+                    />
+                    {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div className={styles.userDropdownMenu}>
+                      <div className={styles.userDropdownHeader}>
+                        <div className={styles.userDropdownUsername}>
+                          <User className={styles.dropdownIcon} />
+                          {user.username}
+                        </div>
+                        <div className={styles.userDropdownKarma}>Karma: {user.karma || 0}</div>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          navigate(`/profile/${user.username}`);
+                          setIsUserMenuOpen(false);
+                        }}
+                        className={styles.userDropdownItem}
+                      >
+                        <User className={styles.dropdownIcon} />
+                        <span>Profile</span>
+                      </button>
+                      
+                      <button 
+                        onClick={() => {
+                          navigate('/communities');
+                          setIsUserMenuOpen(false);
+                        }}
+                        className={styles.userDropdownItem}
+                      >
+                        <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>👨‍👩‍👦‍👦</span>
+                        <span>Communities</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          navigate('/settings');
+                          setIsUserMenuOpen(false);
+                        }}
+                        className={styles.userDropdownItem}
+                      >
+                        <Settings className={styles.dropdownIcon} />
+                        <span>Settings</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          navigate('/change-password');
+                          setIsUserMenuOpen(false);
+                        }}
+                        className={styles.userDropdownItem}
+                      >
+                        <Key className={styles.dropdownIcon} />
+                        <span>Change Password</span>
+                      </button>
+                      
+                      <hr className={styles.separator} />
+                      
+                      <button
+                        onClick={handleLogout}
+                        disabled={isLoading}
+                        className={`${styles.userDropdownItem} ${styles.userDropdownItemRed} ${isLoading ? styles.userDropdownItemDisabled : ''}`}
+                      >
+                        <LogOut className={styles.dropdownIcon} />
+                        <span>{isLoading ? 'Logging out...' : 'Logout'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* Login/Register buttons for non-authenticated users */
+              <div className={styles.authButtons}>
+                <button
+                  onClick={() => navigate('/login')}
+                  className={styles.loginButton}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className={styles.signUpButton}
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Create Post Modal */}
+      {isCreatePostOpen && (
+        <div className={styles.modalOverlay} onClick={handleCreatePostClose}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Create a Post</h2>
+              <button 
+                onClick={handleCreatePostClose}
+                className={styles.modalCloseButton}
               >
-                Login
-              </button>
-              <button
-                onClick={() => navigate('/register')}
-                className={styles.signUpButton}
-              >
-                Sign Up
+                <X size={24} />
               </button>
             </div>
-          )}
+            <div className={styles.modalBody}>
+              <CreatePost 
+                isAuthenticated={isAuthenticated} 
+                onPostCreated={handleCreatePostClose} // Close modal after successful post creation
+              />
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 };
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiService from '../services/api'; // Assuming you have an apiService similar to Header.jsx
-import styles from './CreatePost.module.css'; // Assuming you'll create a CSS Module for styling
+import apiService from '../services/api';
+import styles from './CreatePost.module.css';
 
-const CreatePost = ({ isAuthenticated = true }) => { // isAuthenticated prop, similar to VoteSystem
+const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPostCreated prop
   const navigate = useNavigate();
 
   const [postType, setPostType] = useState('text'); // 'text', 'image', 'link', 'poll'
@@ -168,75 +168,83 @@ const CreatePost = ({ isAuthenticated = true }) => { // isAuthenticated prop, si
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setError('');
-    setSuccess('');
+    setError(''); // Clear any previous errors
+    setSuccess(''); // Clear any previous success messages
 
-    // 2. Xây FormData
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('post_type', postType);
-
-    if (postType === 'text') {
-      formData.append('content', content);
-    } else if (postType === 'image') {
-      formData.append('image', image);
-    } else if (postType === 'link') {
-      formData.append('link_url', imageUrl);
-    } else if (postType === 'poll') {
-      const validPollOptions = pollOptions.filter(o => o.trim() !== '');
-      formData.append('poll_options', JSON.stringify(validPollOptions));
-    }
-
-    // 3. Gọi API trực tiếp (không qua apiService.createPost vì nó ép JSON)
     try {
-      const csrfToken = getCookie('csrftoken');
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('post_type', postType);
 
-      const res = await apiService.createPost(formData);
-
-      const data = await res.json();
-      if (res.ok) {
-        // 4. Khi tạo thành công, điều hướng về list để PostList re-fetch và hiển thị bài mới
-        navigate('/');
-      } else {
-        setError(data.error || data.detail || 'Tạo bài thất bại');
+      if (postType === 'text') {
+        formData.append('content', content);
+      } else if (postType === 'image') {
+        formData.append('image', image);
+      } else if (postType === 'link') {
+        formData.append('link_url', imageUrl);
+      } else if (postType === 'poll') {
+        const validPollOptions = pollOptions.filter(o => o.trim() !== '');
+        formData.append('poll_options', JSON.stringify(validPollOptions));
       }
+
+      await apiService.createPost(formData); //
+      
+      setSuccess('Post created successfully!'); //
+      if (onPostCreated) {
+        onPostCreated(); // Call callback to close modal
+      }
+      
+      // Navigate to the home page and force a refresh
+      setTimeout(() => {
+        navigate('/'); // Navigate to home page
+        window.location.reload(); // Force a full page reload
+      }, 1500);
+
     } catch (err) {
-      console.error('Post creation error:', err);
-      setError('Lỗi không xác định. Vui lòng thử lại sau.');
+      console.error('Post creation error:', err); //
+      // Handle network errors or errors from the server (e.g., 403, 400)
+      setSuccess(''); // Ensure success message is cleared if there's an error
+      if (err.message && err.message.includes('403')) {
+        setError('Authentication failed. Please log in again.'); //
+      } else if (err.message && err.message.includes('400')) {
+        setError('Invalid data provided. Please check your inputs.'); //
+      } else {
+        setError(err.message || 'An unexpected error occurred. Please try again.'); //
+      }
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); //
     }
   };
 
   // Auto-hide error/success messages
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(''), 5000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => setError(''), 5000); //
+      return () => clearTimeout(timer); //
     }
   }, [error]);
 
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(() => setSuccess(''), 5000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => setSuccess(''), 5000); //
+      return () => clearTimeout(timer); //
     }
   }, [success]);
 
   // Handle keyboard shortcut for submission (Ctrl/Cmd + Enter)
   const handleKeyDown = useCallback(debounce((e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
+      e.preventDefault(); //
       // Trigger form submission programmatically
       if (formRef.current) {
-        formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); //
       }
     }
   }, 100), []); // Debounce for keyboard events
 
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown); //
+    return () => document.removeEventListener('keydown', handleKeyDown); //
   }, [handleKeyDown]);
 
   return (

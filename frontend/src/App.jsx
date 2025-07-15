@@ -53,7 +53,7 @@ const App = () => {
             {/* Routes không cần MainLayout (fullscreen) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/post/:id" element={<PostDetail />} />
+            <Route path="/post/:postId" element={<PostDetail />} />
             <Route path="/create-post" element={<CreatePostPage />} />
             <Route path="/user/:username" element={<UserProfile />} />
             <Route path="/profile" element={<UserProfile />} />

@@ -264,22 +264,59 @@ class APIService {
 
   async createPost(postData) {
     const isForm = postData instanceof FormData;
-    const opts = {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRFToken': this.getCSRFToken(),
-        // only set JSON header if it's not a FormData
-        ...(isForm ? {} : { 'Content-Type': 'application/json' }),
-      },
-      // pass FormData or JSON
-      body: isForm ? postData : JSON.stringify(postData),
-    };
-    return await fetch(`${this.baseURL}/api/posts/`, opts)
-              .then(r => r.json());
-  }
+    
+    // Ensure CSRF token is available
+    let csrfToken = this.getCSRFToken();
+    if (!csrfToken) {
+      csrfToken = await this.initCSRF();
+      if (!csrfToken) {
+        throw new Error('Could not get CSRF token');
+      }
+    }
 
+    const headers = {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': csrfToken,
+    };
+
+    // Only set JSON content type if it's not FormData
+    if (!isForm) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}/api/posts/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: isForm ? postData : JSON.stringify(postData),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          // Use original error message if parsing fails
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create post error:', error);
+      throw error;
+    }
+  }
 
   async updatePost(id, postData) {
     return await this.request(`/api/posts/${id}/`, {
@@ -302,7 +339,11 @@ class APIService {
       headers: this.getHeaders(false),
     });
   }
-
+  async getCommentsForPost(postId) {
+    return await this.request(`/api/posts/${postId}/comments/`, {
+      headers: this.getHeaders(false),
+    });
+  }
   async createComment(commentData) {
     return await this.request('/api/comments/', {
       method: 'POST',
