@@ -1,17 +1,52 @@
-// PostList.jsx - Đã cập nhật
-
+// Fixed PostList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // 1. Import Link để điều hướng
-import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react'; // 2. Import icons cho UI
-import styles from './PostList.module.css'; // 3. Import CSS module để tạo kiểu
+import { Link } from 'react-router-dom';
+import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
+import styles from './PostList.module.css';
+import { useAuth } from '../../contexts/AuthContext';
 
-const PostList = () => {
+const PostList = ({ filter = 'hot', showAllTags = false }) => {
+  const { user, isAuthenticated } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const getCSRFToken = () => {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  // Improved CSRF token handling
+  const getCookie = (name) => {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  };
+
+  const getCSRFToken = async () => {
+    // Try to get from cookie first
+    let token = getCookie('csrftoken');
+
+    // If no token, fetch from Django
+    if (!token) {
+      try {
+        const response = await fetch('/api/csrf/', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          token = getCookie('csrftoken');
+        }
+      } catch (err) {
+        console.error('Error fetching CSRF token:', err);
+      }
+    }
+
+    return token;
   };
 
   useEffect(() => {
@@ -22,8 +57,8 @@ const PostList = () => {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
           },
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -31,20 +66,8 @@ const PostList = () => {
         }
 
         const data = await response.json();
-        // Giả sử API trả về một object có key 'results' khi phân trang
         const postData = Array.isArray(data) ? data : data.results || [];
-        
-        // Lấy thông tin vote của user cho từng post
-        const postsWithUserVote = await Promise.all(postData.map(async (post) => {
-            const voteResponse = await fetch(`/api/posts/${post.id}/user_vote/`);
-            if(voteResponse.ok) {
-                const voteData = await voteResponse.json();
-                return { ...post, user_vote: voteData.user_vote };
-            }
-            return { ...post, user_vote: null };
-        }));
-
-        setPosts(postsWithUserVote);
+        setPosts(postData);
 
       } catch (err) {
         console.error('Error fetching posts:', err);
@@ -55,41 +78,60 @@ const PostList = () => {
     };
 
     fetchPosts();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleVote = async (postId, voteType) => {
+    if (!isAuthenticated) {
+      alert('Please login to vote!');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/posts/${postId}/vote/`, {
+      const csrfToken = getCookie('csrftoken');
+
+      // Use the same format as Vote.jsx which works
+      const response = await fetch('/vote/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(),
+          'X-CSRFToken': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({ vote_type: voteType }),
+        body: new URLSearchParams({
+          post_id: postId,
+          vote_type: voteType,
+          csrfmiddlewaretoken: csrfToken
+        }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        // Hiển thị lỗi cụ thể hơn nếu có, ví dụ "You must be logged in..."
-        throw new Error(errorData.detail || 'Vote failed');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.id === postId
-            ? { 
-                ...post, 
-                calculated_score: data.score, 
-                // Cập nhật trạng thái vote của user
-                user_vote: data.action === 'removed' ? null : voteType 
-              }
-            : post
-        )
-      );
+
+      if (data.success) {
+        // Update the post's vote count and user_vote status locally
+        setPosts(prevPosts =>
+          prevPosts.map(post =>
+            post.id === postId
+              ? {
+                  ...post,
+                  calculated_score: data.score,
+                  user_vote: data.action === 'removed' ? '' : voteType,
+                }
+              : post
+          )
+        );
+      } else {
+        console.error('Vote error:', data.error);
+        alert(`Failed to vote: ${data.error}`);
+      }
+
     } catch (err) {
-      // Thông báo lỗi cho người dùng
-      alert(err.message || "An error occurred while voting.");
+      console.error('Error voting:', err);
+      alert(`Failed to vote: ${err.message}`);
     }
   };
 
@@ -97,13 +139,10 @@ const PostList = () => {
   if (error) return <div className={styles.message}>Error: {error}</div>;
   if (posts.length === 0) return <div className={styles.message}>No posts found.</div>;
 
-
   return (
     <div className={styles.postListContainer}>
       {posts.map(post => (
-        // 4. Bọc mỗi bài post trong một card
         <div key={post.id} className={styles.postCard}>
-          {/* 5. Tích hợp hệ thống vote ở bên trái */}
           <div className={styles.voteSection}>
             <button
               onClick={() => handleVote(post.id, 'up')}
@@ -111,7 +150,7 @@ const PostList = () => {
             >
               <ChevronUp size={22} />
             </button>
-            <span className={styles.voteScore}>{post.calculated_score}</span>
+            <span className={styles.voteScore}>{post.calculated_score || 0}</span>
             <button
               onClick={() => handleVote(post.id, 'down')}
               className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
@@ -119,16 +158,14 @@ const PostList = () => {
               <ChevronDown size={22} />
             </button>
           </div>
-          
-          {/* 6. Phần nội dung chính của post có thể click được */}
+
           <div className={styles.postContentArea}>
             <Link to={`/posts/${post.id}`} className={styles.postLink}>
                 <div className={styles.postMeta}>
                     <span>Posted by u/{post.author?.username || 'Unknown'}</span>
                 </div>
                 <h3 className={styles.postTitle}>{post.title}</h3>
-                
-                {/* 7. Hiển thị ảnh nếu có */}
+
                 {post.image_url && (
                     <div className={styles.imageContainer}>
                         <img src={post.image_url} alt={post.title} className={styles.postImage} />
@@ -136,11 +173,10 @@ const PostList = () => {
                 )}
             </Link>
 
-            {/* 8. Footer cho các hành động như bình luận */}
             <div className={styles.postFooter}>
                 <Link to={`/posts/${post.id}`} className={styles.actionButton}>
                     <MessageCircle size={16} />
-                    <span>{post.num_comments || 0} Comments</span>
+                    <span>{post.comment_count || 0} Comments</span>
                 </Link>
             </div>
           </div>

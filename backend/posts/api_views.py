@@ -27,7 +27,13 @@ from .serializers import (
     NotificationSerializer, FollowSerializer
 )
 from django.views.decorators.csrf import ensure_csrf_cookie
+import logging
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
 
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -35,13 +41,9 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 @ensure_csrf_cookie
 def get_csrf_token_view(request):
     """
-    Endpoint to set the CSRF cookie for the client and return the token.
+    Enhanced CSRF token endpoint with better error handling
     """
-    token = get_token(request)
-    return Response({
-        'csrfToken': token,
-        'message': 'CSRF token generated successfully'
-    })
+    return JsonResponse({'csrfToken': get_token(request)})
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -135,54 +137,75 @@ class PostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def vote(self, request, pk=None):
-        """Vote on a post"""
-        post = self.get_object()
-        vote_type = request.data.get('vote_type')
-        
-        if vote_type not in ['up', 'down']:
-            return Response(
-                {'error': 'Invalid vote type'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        is_upvote = vote_type == 'up'
-        existing_vote = Vote.objects.filter(user=request.user, post=post).first()
-        
-        action = ''
-        if existing_vote:
-            if existing_vote.is_upvote == is_upvote:
-                existing_vote.delete()
-                action = 'removed'
+        """Vote on a post with improved error handling"""
+        try:
+            post = self.get_object()
+            vote_type = request.data.get('vote_type')
+            
+            # Log the request for debugging
+            logger.info(f"Vote request from user {request.user.id} for post {pk}: {vote_type}")
+            
+            if vote_type not in ['up', 'down']:
+                return Response(
+                    {'error': 'Invalid vote type. Must be "up" or "down"'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            is_upvote = vote_type == 'up'
+            existing_vote = Vote.objects.filter(user=request.user, post=post).first()
+            
+            action = ''
+            if existing_vote:
+                if existing_vote.is_upvote == is_upvote:
+                    existing_vote.delete()
+                    action = 'removed'
+                else:
+                    existing_vote.is_upvote = is_upvote
+                    existing_vote.save()
+                    action = 'updated'
             else:
-                existing_vote.is_upvote = is_upvote
-                existing_vote.save()
-                action = 'updated'
-        else:
-            Vote.objects.create(user=request.user, post=post, is_upvote=is_upvote)
-            action = 'created'
-        
-        # Recalculate score
-        upvotes = post.votes.filter(is_upvote=True).count()
-        downvotes = post.votes.filter(is_upvote=False).count()
-        new_score = upvotes - downvotes
-        
-        return Response({
-            'score': new_score,
-            'action': action,
-            'vote_type': vote_type,
-            'upvotes': upvotes,
-            'downvotes': downvotes
-        })
+                Vote.objects.create(user=request.user, post=post, is_upvote=is_upvote)
+                action = 'created'
+            
+            # Recalculate score
+            upvotes = post.votes.filter(is_upvote=True).count()
+            downvotes = post.votes.filter(is_upvote=False).count()
+            new_score = upvotes - downvotes
+            
+            logger.info(f"Vote {action} successfully. New score: {new_score}")
+            
+            return Response({
+                'score': new_score,
+                'action': action,
+                'vote_type': vote_type,
+                'upvotes': upvotes,
+                'downvotes': downvotes,
+                'message': f'Vote {action} successfully'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in vote endpoint: {str(e)}")
+            return Response(
+                {'error': f'An error occurred: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['get'])
     def user_vote(self, request, pk=None):
         """Get user's vote for this post"""
         if not request.user.is_authenticated:
             return Response({'user_vote': None})
-        
+
         post = self.get_object()
-        user_vote = post.get_user_vote(request.user)
-        return Response({'user_vote': user_vote})
+        # Lấy đối tượng Vote từ Post model
+        vote_object = post.get_user_vote(request.user) 
+
+        # Chuyển đổi đối tượng Vote thành 'up', 'down' hoặc None
+        user_vote_status = None
+        if vote_object:
+            user_vote_status = 'up' if vote_object.is_upvote else 'down'
+
+        return Response({'user_vote': user_vote_status})
 
     @action(detail=True, methods=['get'])
     def related_posts(self, request, pk=None):

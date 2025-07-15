@@ -6,6 +6,7 @@ import apiService from '../../../services/api';
 import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css'; // Import CSS Module
+import DefaultAvatar from '../../../assets/imgs/avatar-default.png';
 
 import NotificationManager from '../../Notification';
 
@@ -74,33 +75,12 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoading(true);
     try {
-      // 2. THÊM DẤU / VÀO CUỐI ENDPOINT
-      const response = await fetch('/api/auth/logout/', { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(), // Hàm mới sẽ được gọi ở đây
-        },
-      });
-
-      if (response.ok) {
-        // Xóa thông tin user khỏi local storage nếu bạn có lưu
-        localStorage.removeItem('user'); 
-        // Điều hướng về trang login hoặc trang chủ
-        window.location.href = '/login'; // Dùng window.location.href để refresh toàn bộ trang
-      } else {
-        const errorData = await response.json();
-        console.error('Logout failed:', errorData);
-        alert('Logout failed. Please try again.');
-      }
+      await logout();
+      // Có thể redirect về trang login hoặc home
+      window.location.href = '/';
     } catch (error) {
-      console.error('Error during logout:', error);
-      alert('Logout failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setIsUserMenuOpen(false);
+      console.error('Logout failed:', error);
     }
   };
 
@@ -267,12 +247,8 @@ const Header = () => {
                 >
                   <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
                   <img 
-                    src={user.profile.avatar || defaultAvatar} 
-                    className={styles.avatarSm}
-                    alt="avatar"
-                    onError={(e) => {
-                      e.target.src = defaultAvatar;
-                    }}
+                    src={DefaultAvatar} className={styles.logoIcon}
+                    alt={user.username || 'User'} 
                   />
                   {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
                 </button>

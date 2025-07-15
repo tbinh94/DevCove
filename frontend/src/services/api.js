@@ -1,61 +1,102 @@
-// services/api.js
+// services/api.js - Improved version with better CSRF and vote handling
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class APIService {
   constructor() {
-    this.baseURL = `${BASE_URL}/api`;
+    this.baseURL = BASE_URL;
     this.csrfToken = null;
   }
 
-  // Get CSRF token and set up headers
+  // Multiple methods to get CSRF token
+  getCSRFToken() {
+    // Method 1: From meta tag (most reliable for Django)
+    const metaToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    if (metaToken) return metaToken;
+
+    // Method 2: From cookie
+    const cookieToken = this.getCookie('csrftoken');
+    if (cookieToken) return cookieToken;
+
+    // Method 3: From stored token
+    return this.csrfToken;
+  }
+
+  // Get cookie value
+  getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Initialize CSRF token
   async initCSRF() {
     try {
       const response = await fetch(`${this.baseURL}/csrf/`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
       
       if (response.ok) {
-        const data = await response.json();
-        this.csrfToken = data.csrfToken;
-        return this.csrfToken;
+        // After calling /csrf/, the token should be in the cookie
+        const csrfToken = this.getCookie('csrftoken');
+        if (csrfToken) {
+          this.csrfToken = csrfToken;
+          return csrfToken;
+        }
       }
     } catch (error) {
-      console.error('CSRF token fetch failed:', error);
+      console.warn('CSRF token fetch failed:', error);
     }
+    
     return null;
   }
 
-  // Get default headers with CSRF token
-  getHeaders(includeCSRF = true) {
+  // Get default headers
+  getHeaders(includeCSRF = true, contentType = 'application/json') {
     const headers = {
-      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
     };
     
-    if (includeCSRF && this.csrfToken) {
-      headers['X-CSRFToken'] = this.csrfToken;
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    
+    if (includeCSRF) {
+      const csrfToken = this.getCSRFToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
     }
     
     return headers;
   }
 
-  // Generic API request method
+  // Generic API request method with better error handling
   async request(url, options = {}) {
+    // Ensure CSRF token is available for state-changing requests
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
+      if (!this.getCSRFToken()) {
+        await this.initCSRF();
+      }
+    }
+
     const config = {
       credentials: 'include',
-      headers: this.getHeaders(),
       ...options,
     };
 
-    // Add CSRF token to POST/PUT/DELETE requests
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method)) {
-      if (!this.csrfToken) {
-        await this.initCSRF();
-      }
-      config.headers['X-CSRFToken'] = this.csrfToken;
+    // Set headers if not already set
+    if (!config.headers) {
+      config.headers = this.getHeaders();
     }
 
     try {
@@ -63,8 +104,22 @@ class APIService {
       
       // Handle different response types
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          // Use original error message if parsing fails
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const contentType = response.headers.get('content-type');
@@ -79,11 +134,90 @@ class APIService {
     }
   }
 
+  // Vote method using FormData (Django-style)
+  async vote(postId, voteType) {
+    // Ensure CSRF token is available
+    let csrfToken = this.getCSRFToken();
+    if (!csrfToken) {
+      csrfToken = await this.initCSRF();
+      if (!csrfToken) {
+        throw new Error('Could not obtain CSRF token');
+      }
+    }
+
+    const formData = new FormData();
+    formData.append('post_id', postId);
+    formData.append('vote_type', voteType);
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    try {
+      const response = await fetch(`${this.baseURL}/vote/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Authentication failed. Please refresh the page and try again.');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error('Server returned an invalid response');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Vote failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Vote API error:', error);
+      throw error;
+    }
+  }
+
+  // Alternative vote method using JSON (if your Django view supports it)
+  async voteJSON(postId, voteType) {
+    return await this.request('/api/vote/', {
+      method: 'POST',
+      headers: this.getHeaders(true, 'application/json'),
+      body: JSON.stringify({
+        post_id: postId,
+        vote_type: voteType,
+      }),
+    });
+  }
+
+  // Get user's vote for a post
+  async getUserVote(postId) {
+    try {
+      return await this.request(`/api/posts/${postId}/user_vote/`);
+    } catch (error) {
+      if (error.message.includes('404')) {
+        return { user_vote: null };
+      }
+      throw error;
+    }
+  }
+
   // Authentication methods
   async login(credentials) {
     try {
-      const response = await this.request('/auth/login/', {
+      const response = await this.request('/api/auth/login/', {
         method: 'POST',
+        headers: this.getHeaders(),
         body: JSON.stringify(credentials),
       });
       return response;
@@ -94,8 +228,9 @@ class APIService {
 
   async register(userData) {
     try {
-      const response = await this.request('/auth/register/', {
+      const response = await this.request('/api/auth/register/', {
         method: 'POST',
+        headers: this.getHeaders(),
         body: JSON.stringify(userData),
       });
       return response;
@@ -106,14 +241,13 @@ class APIService {
 
   async logout() {
     try {
-      const response = await this.request('/auth/logout/', {
+      const response = await this.request('/api/auth/logout/', {
         method: 'POST',
+        headers: this.getHeaders(),
         body: JSON.stringify({}),
       });
       
-      // Clear CSRF token after logout
       this.csrfToken = null;
-      
       return response;
     } catch (error) {
       throw new Error(error.message || 'Logout failed');
@@ -122,8 +256,9 @@ class APIService {
 
   async checkAuth() {
     try {
-      const response = await this.request('/auth/user/', {
+      const response = await this.request('/api/auth/user/', {
         method: 'GET',
+        headers: this.getHeaders(false), // No CSRF needed for GET
       });
       return response;
     } catch (error) {
@@ -137,146 +272,68 @@ class APIService {
   // Posts methods
   async getPosts(params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `/posts/?${queryString}` : '/posts/';
-    return await this.request(url);
+    const url = queryString ? `/api/posts/?${queryString}` : '/api/posts/';
+    return await this.request(url, {
+      headers: this.getHeaders(false),
+    });
   }
 
   async getPost(id) {
-    return await this.request(`/posts/${id}/`);
+    return await this.request(`/api/posts/${id}/`, {
+      headers: this.getHeaders(false),
+    });
   }
 
   async createPost(postData) {
-    return await this.request('/posts/', {
+    return await this.request('/api/posts/', {
       method: 'POST',
+      headers: this.getHeaders(),
       body: JSON.stringify(postData),
     });
   }
 
   async updatePost(id, postData) {
-    return await this.request(`/posts/${id}/`, {
+    return await this.request(`/api/posts/${id}/`, {
       method: 'PUT',
+      headers: this.getHeaders(),
       body: JSON.stringify(postData),
     });
   }
 
   async deletePost(id) {
-    return await this.request(`/posts/${id}/`, {
+    return await this.request(`/api/posts/${id}/`, {
       method: 'DELETE',
+      headers: this.getHeaders(),
     });
-  }
-
-  async votePost(id, voteType) {
-    return await this.request(`/posts/${id}/vote/`, {
-      method: 'POST',
-      body: JSON.stringify({ vote_type: voteType }),
-    });
-  }
-
-  async getUserVote(postId) {
-    return await this.request(`/posts/${postId}/user_vote/`);
   }
 
   // Comments methods
   async getComments(postId) {
-    return await this.request(`/comments/?post=${postId}`);
+    return await this.request(`/api/comments/?post=${postId}`, {
+      headers: this.getHeaders(false),
+    });
   }
 
   async createComment(commentData) {
-    return await this.request('/comments/', {
+    return await this.request('/api/comments/', {
       method: 'POST',
+      headers: this.getHeaders(),
       body: JSON.stringify(commentData),
     });
   }
 
   async updateComment(id, commentData) {
-    return await this.request(`/comments/${id}/`, {
+    return await this.request(`/api/comments/${id}/`, {
       method: 'PUT',
+      headers: this.getHeaders(),
       body: JSON.stringify(commentData),
     });
   }
 
   async deleteComment(id) {
-    return await this.request(`/comments/${id}/`, {
+    return await this.request(`/api/comments/${id}/`, {
       method: 'DELETE',
-    });
-  }
-
-  // Search methods
-  async search(query, type = 'all') {
-    const params = new URLSearchParams({ q: query, type });
-    return await this.request(`/search/?${params}`);
-  }
-
-  // Tags methods
-  async getTags() {
-    return await this.request('/tags/');
-  }
-
-  async getPopularTags() {
-    return await this.request('/tags/popular/');
-  }
-
-  async getTagPosts(tagId) {
-    return await this.request(`/tags/${tagId}/posts/`);
-  }
-
-  // Communities methods
-  async getCommunities() {
-    return await this.request('/communities/');
-  }
-
-  async getCommunity(slug) {
-    return await this.request(`/communities/${slug}/`);
-  }
-
-  async createCommunity(communityData) {
-    return await this.request('/communities/', {
-      method: 'POST',
-      body: JSON.stringify(communityData),
-    });
-  }
-
-  async getCommunityPosts(slug) {
-    return await this.request(`/communities/${slug}/posts/`);
-  }
-
-  // Users methods
-  async getUser(username) {
-    return await this.request(`/users/${username}/`);
-  }
-
-  async getUserPosts(username) {
-    return await this.request(`/users/${username}/posts/`);
-  }
-
-  async followUser(username) {
-    return await this.request(`/users/${username}/follow/`, {
-      method: 'POST',
-    });
-  }
-
-  async getFollowStatus(username) {
-    return await this.request(`/users/${username}/follow_status/`);
-  }
-
-  // Notifications methods
-  async getNotifications() {
-    return await this.request('/notifications/');
-  }
-
-  async getUnreadCount() {
-    return await this.request('/notifications/unread_count/');
-  }
-
-  async markNotificationRead(id) {
-    return await this.request(`/notifications/${id}/mark_read/`, {
-      method: 'PATCH',
-    });
-  }
-
-  async markAllNotificationsRead() {
-    return await this.request('/notifications/mark_all_read/', {
-      method: 'PATCH',
+      headers: this.getHeaders(),
     });
   }
 
@@ -284,7 +341,7 @@ class APIService {
   get utils() {
     return {
       initCSRF: () => this.initCSRF(),
-      getCSRFToken: () => this.csrfToken,
+      getCSRFToken: () => this.getCSRFToken(),
       setCSRFToken: (token) => { this.csrfToken = token; },
     };
   }
