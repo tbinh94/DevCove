@@ -136,56 +136,34 @@ class APIService {
 
   // Vote method using FormData (Django-style)
   async vote(postId, voteType) {
-    // Ensure CSRF token is available
+    // make sure CSRF is initialized
     let csrfToken = this.getCSRFToken();
     if (!csrfToken) {
       csrfToken = await this.initCSRF();
-      if (!csrfToken) {
-        throw new Error('Could not obtain CSRF token');
-      }
+      if (!csrfToken) throw new Error('Could not get CSRF token');
     }
 
-    const formData = new FormData();
-    formData.append('post_id', postId);
-    formData.append('vote_type', voteType);
-    formData.append('csrfmiddlewaretoken', csrfToken);
+    const url = `/api/posts/${postId}/vote/`;      // ← correct endpoint
+    const body = JSON.stringify({ vote_type: voteType });
 
-    try {
-      const response = await fetch(`${this.baseURL}/vote/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': csrfToken,
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        credentials: 'include',
-        body: formData
-      });
+    const res = await fetch(`${this.baseURL}${url}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken,
+      },
+      body,
+    });
 
-      if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error('Authentication failed. Please refresh the page and try again.');
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error('Server returned an invalid response');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Vote failed');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Vote API error:', error);
-      throw error;
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Authentication failed. Please log in again.');
+      const txt = await res.text();
+      throw new Error(`Vote failed: ${res.status} ${txt}`);
     }
+
+    return await res.json();
   }
 
   // Alternative vote method using JSON (if your Django view supports it)
@@ -285,12 +263,23 @@ class APIService {
   }
 
   async createPost(postData) {
-    return await this.request('/api/posts/', {
+    const isForm = postData instanceof FormData;
+    const opts = {
       method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(postData),
-    });
+      credentials: 'include',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': this.getCSRFToken(),
+        // only set JSON header if it's not a FormData
+        ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      },
+      // pass FormData or JSON
+      body: isForm ? postData : JSON.stringify(postData),
+    };
+    return await fetch(`${this.baseURL}/api/posts/`, opts)
+              .then(r => r.json());
   }
+
 
   async updatePost(id, postData) {
     return await this.request(`/api/posts/${id}/`, {

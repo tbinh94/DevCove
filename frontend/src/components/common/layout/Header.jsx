@@ -7,9 +7,8 @@ import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css'; // Import CSS Module
 import DefaultAvatar from '../../../assets/imgs/avatar-default.png';
-
 import NotificationManager from '../../Notification';
-
+import CreatePost  from '../../CreatePost';
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {

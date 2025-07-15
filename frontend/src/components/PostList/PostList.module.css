@@ -536,22 +536,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 10px; /* Reduced gap for better fit */
     margin-top: 20px;
     padding: 20px 0;
     flex-wrap: wrap;
 }
 
 .pageBtn {
-    padding: 10px 20px;
+    padding: 8px 16px; /* Slightly smaller padding */
     background: #0079d3;
     color: #fff;
     text-decoration: none;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 13px; /* Slightly smaller font size */
     font-weight: 600;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0, 121, 211, 0.3);
+    border: none; /* Ensure no default button border */
+    cursor: pointer; /* Indicate clickable */
 }
 
 .pageBtn:hover {
@@ -562,10 +564,42 @@
     box-shadow: 0 4px 8px rgba(0, 121, 211, 0.4);
 }
 
+.pageBtn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.pageBtn.activePage {
+    background: #ff4500; /* Distinct color for active page */
+    border-color: #ff4500;
+    box-shadow: 0 2px 4px rgba(255, 69, 0, 0.3);
+}
+
 .pageInfo {
     color: #787c7e;
     font-size: 14px;
     font-weight: 500;
+    padding: 8px 12px; /* Add some padding for consistency */
+}
+
+/* Responsive adjustments for pagination */
+@media (max-width: 480px) {
+    .pagination {
+        gap: 5px; /* Even smaller gap on small screens */
+        padding: 15px 0;
+    }
+
+    .pageBtn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .pageInfo {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
 }
 
 /* Empty State */
