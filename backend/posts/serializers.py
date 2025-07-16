@@ -1,15 +1,37 @@
 # serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification
+User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer cho User model"""
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'profile']
         read_only_fields = ['id', 'date_joined']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.email = validated_data.get('email', instance.email)
+        instance.save()
+
+        # Cập nhật hoặc tạo Profile
+        profile, created = Profile.objects.get_or_create(user=instance)
+        profile.bio = profile_data.get('bio', profile.bio)
+        
+        # Xử lý avatar nếu có trong profile_data
+        if 'avatar' in profile_data:
+            profile.avatar = profile_data.get('avatar', profile.avatar)
+        
+        profile.save()
+
+        return instance
 
 
 class UserBasicSerializer(serializers.ModelSerializer):
@@ -182,32 +204,65 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Serializer cho Profile model"""
     user = UserBasicSerializer(read_only=True)
-    followers_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
-    following_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    # Thêm avatar_url để trả về đường dẫn đầy đủ
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'avatar', 'bio', 'followers_count', 'following_count', 'is_following']
-        read_only_fields = ['id']
+        fields = ['id', 'user', 'avatar', 'avatar_url', 'bio', 'followers_count', 'following_count', 'is_following']
+        read_only_fields = ['id', 'user']
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        if obj.avatar and hasattr(obj.avatar, 'url'):
+            return request.build_absolute_uri(obj.avatar.url)
+        return None
 
     def get_followers_count(self, obj):
-        """Đếm số người follow user này"""
         return obj.user.follower_set.count()
     
     def get_following_count(self, obj):
-        """Đếm số người mà user này đang follow"""
         return obj.user.following_set.count()
 
     def get_is_following(self, obj):
-        """
-        Kiểm tra xem người dùng hiện tại có đang theo dõi chủ sở hữu profile này không.
-        """
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            # Sửa: Sử dụng đúng related_name từ model đã update
             return obj.user.follower_set.filter(follower=request.user).exists()
         return False
+    
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer để cập nhật Profile và thông tin User liên quan."""
+    first_name = serializers.CharField(source='user.first_name', max_length=30, required=False)
+    last_name = serializers.CharField(source='user.last_name', max_length=150, required=False)
+    email = serializers.EmailField(source='user.email', required=False)
+    
+    class Meta:
+        model = Profile
+        fields = ['bio', 'avatar', 'first_name', 'last_name', 'email']
+
+    def update(self, instance, validated_data):
+        # Lấy dữ liệu của user từ validated_data
+        user_data = validated_data.pop('user', {})
+        
+        # Cập nhật các trường của Profile
+        instance.bio = validated_data.get('bio', instance.bio)
+        if 'avatar' in validated_data:
+             instance.avatar = validated_data.get('avatar', instance.avatar)
+        
+        instance.save()
+
+        # Cập nhật các trường của User
+        user = instance.user
+        if user_data:
+            user.first_name = user_data.get('first_name', user.first_name)
+            user.last_name = user_data.get('last_name', user.last_name)
+            user.email = user_data.get('email', user.email)
+            user.save()
+
+        return instance
 
 
 class FollowSerializer(serializers.ModelSerializer):

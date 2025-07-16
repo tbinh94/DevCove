@@ -19,6 +19,7 @@ import re
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny # Allow anyone to register
 from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
 
 from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
 from .serializers import (
@@ -26,7 +27,7 @@ from .serializers import (
     CommunityBasicSerializer, TagSerializer, TagBasicSerializer,
     PostSerializer, PostCreateUpdateSerializer, PostDetailSerializer,
     VoteSerializer, CommentSerializer, ProfileSerializer,
-    NotificationSerializer, FollowSerializer
+    NotificationSerializer,  ProfileUpdateSerializer
 )
 from django.views.decorators.csrf import ensure_csrf_cookie
 import logging
@@ -34,6 +35,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -530,23 +532,63 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for user profiles
+    ViewSet được cải tiến để xem và cập nhật user profiles.
+    - Cho phép tra cứu profile bằng username.
+    - Sử dụng serializer riêng cho việc cập nhật (PATCH).
+    - Đảm bảo chỉ chủ sở hữu mới có quyền chỉnh sửa.
     """
-    queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = Profile.objects.select_related('user').all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'user__username'  # Sửa: Dùng username của user để tra cứu
+    lookup_url_kwarg = 'user__username' # Chỉ định tên kwarg trong URL
 
-    def get_queryset(self):
-        # Users can only access their own profile
-        return Profile.objects.filter(user=self.request.user)
+    def get_serializer_class(self):
+        """
+        Trả về serializer phù hợp với hành động.
+        - ProfileUpdateSerializer cho 'partial_update' (PATCH).
+        - ProfileSerializer cho các hành động khác (GET).
+        """
+        if self.action == 'partial_update':
+            return ProfileUpdateSerializer
+        return ProfileSerializer
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def get_permissions(self):
+        """
+        Yêu cầu quyền IsAuthenticated cho việc cập nhật.
+        Bất kỳ ai cũng có thể xem (IsAuthenticatedOrReadOnly).
+        """
+        if self.action in ['partial_update', 'update']:
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
 
-    def perform_update(self, serializer):
-        if serializer.instance.user != self.request.user:
-            raise permissions.PermissionDenied("You can only edit your own profile.")
-        serializer.save()
+    def retrieve(self, request, username=None):
+        # Đảm bảo người dùng chỉ có thể lấy profile của chính họ
+        if request.user.username != username:
+            return Response({"detail": "Bạn không có quyền xem profile này."}, status=status.HTTP_403_FORBIDDEN)
+        
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, context={'request': request}) # Truyền context request
+        return Response(serializer.data)
+    
+    def perform_update(self, request, username=None, *args, **kwargs):
+        """
+        Kiểm tra quyền trước khi lưu.
+        Người dùng chỉ có thể cập nhật profile của chính mình.
+        """
+        if request.user.username != username:
+            return Response({"detail": "Bạn không có quyền cập nhật profile này."}, status=status.HTTP_403_FORBIDDEN)
+        
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial, context={'request': request}) # Truyền context request
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        return Response(serializer.data)
+
+    def partial_update(self, request, username=None, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, username, *args, **kwargs)
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
