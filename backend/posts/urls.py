@@ -46,7 +46,7 @@ urlpatterns = [
     path('post/<int:pk>/',    views.post_detail,                 name='post_detail'),
     path('post/<int:pk>/edit/',   views.edit_post,              name='edit_post'),
     path('post/<int:pk>/delete/', views.delete_post,            name='delete_post'),
-    path('vote/',             views.vote_post,                   name='vote'),
+    # Removed: path('vote/',             views.vote_post,                   name='vote'), // Handled by PostViewSet API
 
     # Auth templates
     path('register/',         views.register,                    name='register'),
@@ -54,10 +54,10 @@ urlpatterns = [
     path('password-change/',  views.password_change_view,        name='password_change'),
 
     # User profiles
-    path('profile/<int:pk>/',      views.profile_view,          name='user_profile'),
+    # Removed: path('profile/<int:pk>/',      views.profile_view,          name='user_profile'), // Handled by UserViewSet API
     path('profile/edit/',          views.profile_edit,          name='profile_edit'),
-    path('users/<str:username>/',  views.user_profile_view,     name='user_profile'),
-    path('users/<str:username>/follow/', views.follow_toggle,    name='follow_toggle'),
+    # Removed: path('users/<str:username>/',  views.user_profile_view,     name='user_profile'), // Handled by UserViewSet API
+    # Removed: path('users/<str:username>/follow/', views.follow_toggle,    name='follow_toggle'), // Handled by UserViewSet API
 
     # Communities
     path('communities/',            views.community_list,      name='community_list'),

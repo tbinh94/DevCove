@@ -1,105 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, User, LogOut, Settings, Key, X } from 'lucide-react';
+import { Bell, Plus, User, LogOut, Settings, Key, X } from 'lucide-react';
 import defaultAvatar from '../../../assets/imgs/avatar-default.png';
-import apiService from '../../../services/api';
 import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
 import DefaultAvatar from '../../../assets/imgs/avatar-default.png';
 import NotificationManager from '../../Notification';
-import CreatePost from '../../CreatePost'; // Import CreatePost component
-
-// Utility function to get CSRF token
-const getCSRFToken = () => {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken' + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-};
+import CreatePost from '../../CreatePost';
+import UnifiedSearch from '../../UnifiedSearch';
 
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchResults, setSearchResults] = useState({ posts: [], users: [] });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false); // State for CreatePost modal
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   
-  const searchRef = useRef(null);
   const userMenuRef = useRef(null);
-
-  const handleSearch = async (query) => {
-    if (query.trim().length < 2) {
-      setSearchResults({ posts: [], users: [] });
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const results = await apiService.search(query); 
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search failed:', error);
-      setSearchResults({ posts: [], users: [] });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
+      setIsLoading(true);
       await logout();
       window.location.href = '/';
     } catch (error) {
       console.error('Logout failed:', error);
-    }
-  };
-
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    
-    if (query.length >= 2) {
-      const debounceTimer = setTimeout(() => {
-        handleSearch(query);
-      }, 300);
-      
-      return () => clearTimeout(debounceTimer);
-    } else {
-      setSearchResults({ posts: [], users: [] });
-    }
-  };
-
-  const handleSearchResultClick = (type, id) => {
-    if (type === 'post') {
-      navigate(`/post/${id}`);
-    } else if (type === 'user') {
-      navigate(`/profile/${id}`);
-    }
-    setSearchQuery('');
-    setSearchResults({ posts: [], users: [] });
-    setIsSearchFocused(false);
-  };
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-      setSearchResults({ posts: [], users: [] });
-      setIsSearchFocused(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,13 +42,9 @@ const Header = () => {
     setIsCreatePostOpen(false);
   };
 
-  // Click outside handlers
+  // Click outside handler for user menu
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsSearchFocused(false);
-        setSearchResults({ posts: [], users: [] });
-      }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
       }
@@ -156,84 +81,16 @@ const Header = () => {
             </Link>
           </div>
 
-          {/* Search Bar */}
-          <div className={styles.searchBar} ref={searchRef}>
-            <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
-              <div className={styles.searchInputContainer}>
-                <Search className={styles.searchIcon} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onFocus={() => setIsSearchFocused(true)}
-                  placeholder="Search posts, users..."
-                  className={styles.searchInput}
-                />
-              </div>
-            </form>
-
-            {/* Search Results Dropdown */}
-            {isSearchFocused && (searchResults.posts.length > 0 || searchResults.users.length > 0 || isLoading) && (
-              <div className={styles.searchResultsDropdown}>
-                {isLoading ? (
-                  <div className={styles.searchLoading}>Searching...</div> 
-                ) : (
-                  <>
-                    {/* Posts Results */}
-                    {searchResults.posts.length > 0 && (
-                      <div className={styles.searchSection}>
-                        <h3 className={styles.searchSectionTitle}>Posts</h3>
-                        {searchResults.posts.map((post) => (
-                          <div
-                            key={`post-${post.id}`}
-                            className={styles.searchItem}
-                            onClick={() => handleSearchResultClick('post', post.id)}
-                          >
-                            <div className={styles.searchItemTitle}>
-                              {post.title}
-                            </div>
-                            <div className={styles.searchItemMeta}>
-                              by {post.author} • {post.vote_score} points
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Users Results */}
-                    {searchResults.users.length > 0 && (
-                      <div className={`${styles.searchSection} ${styles.searchSectionBorderTop}`}>
-                        <h3 className={styles.searchSectionTitle}>Users</h3>
-                        {searchResults.users.map((resultUser) => (
-                          <div
-                            key={`user-${resultUser.id}`}
-                            className={styles.searchItem}
-                            onClick={() => handleSearchResultClick('user', resultUser.username)}
-                          >
-                            <div className={styles.searchItemTitle}>
-                              u/{resultUser.username}
-                            </div>
-                            <div className={styles.searchItemMeta}>
-                              {resultUser.karma} karma • {resultUser.post_count} posts
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {searchResults.posts.length === 0 && searchResults.users.length === 0 && searchQuery.length >= 2 && (
-                         <div className={styles.noResults}>No results found.</div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+          {/* Unified Search Bar */}
+          <div className={styles.searchBar}>
+            <UnifiedSearch />
           </div>
 
           {/* Right Side - User Actions */}
           <div className={styles.rightSide}>
             {isAuthenticated ? (
               <>
-                {/* Create Post Button - Updated to use modal */}
+                {/* Create Post Button */}
                 <button
                   onClick={handleCreatePostClick}
                   className={styles.createPostButton}
@@ -253,7 +110,8 @@ const Header = () => {
                   >
                     <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
                     <img 
-                      src={DefaultAvatar} className={styles.logoIcon}
+                      src={DefaultAvatar} 
+                      className={styles.logoIcon}
                       alt={user.username || 'User'} 
                     />
                     {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
@@ -365,7 +223,7 @@ const Header = () => {
             <div className={styles.modalBody}>
               <CreatePost 
                 isAuthenticated={isAuthenticated} 
-                onPostCreated={handleCreatePostClose} // Close modal after successful post creation
+                onPostCreated={handleCreatePostClose}
               />
             </div>
           </div>

@@ -23,7 +23,7 @@ from rest_framework.views import APIView
 from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
 from .serializers import (
     UserSerializer, UserBasicSerializer, CommunitySerializer,
-    CommunityBasicSerializer, TagSerializer, TagBasicSerializer, 
+    CommunityBasicSerializer, TagSerializer, TagBasicSerializer,
     PostSerializer, PostCreateUpdateSerializer, PostDetailSerializer,
     VoteSerializer, CommentSerializer, ProfileSerializer,
     NotificationSerializer, FollowSerializer
@@ -101,7 +101,7 @@ class PostViewSet(viewsets.ModelViewSet):
                 time_threshold = now - timedelta(days=30)
             elif time_filter == 'year':
                 time_threshold = now - timedelta(days=365)
-            
+
             if time_threshold:
                 queryset = queryset.filter(created_at__gte=time_threshold)
 
@@ -112,6 +112,24 @@ class PostViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by('-calculated_score', '-created_at')
         else:  # Default to 'new'
             queryset = queryset.order_by('-created_at')
+
+        # Filter by author username for the posts_list_api functionality
+        author_username = self.request.query_params.get('author')
+        if author_username:
+            queryset = queryset.filter(author__username=author_username)
+
+        author_username_alt = self.request.query_params.get('author_username')
+        if author_username_alt:
+            queryset = queryset.filter(author__username=author_username_alt)
+
+        user_param = self.request.query_params.get('user')
+        if user_param:
+            queryset = queryset.filter(author__username=user_param)
+
+        created_by = self.request.query_params.get('created_by')
+        if created_by:
+            queryset = queryset.filter(author__username=created_by)
+
 
         return queryset
 
@@ -143,19 +161,19 @@ class PostViewSet(viewsets.ModelViewSet):
         try:
             post = self.get_object()
             vote_type = request.data.get('vote_type')
-            
+
             # Log the request for debugging
             logger.info(f"Vote request from user {request.user.id} for post {pk}: {vote_type}")
-            
+
             if vote_type not in ['up', 'down']:
                 return Response(
-                    {'error': 'Invalid vote type. Must be "up" or "down"'}, 
+                    {'error': 'Invalid vote type. Must be "up" or "down"'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             is_upvote = vote_type == 'up'
             existing_vote = Vote.objects.filter(user=request.user, post=post).first()
-            
+
             action = ''
             if existing_vote:
                 if existing_vote.is_upvote == is_upvote:
@@ -168,14 +186,14 @@ class PostViewSet(viewsets.ModelViewSet):
             else:
                 Vote.objects.create(user=request.user, post=post, is_upvote=is_upvote)
                 action = 'created'
-            
+
             # Recalculate score
             upvotes = post.votes.filter(is_upvote=True).count()
             downvotes = post.votes.filter(is_upvote=False).count()
             new_score = upvotes - downvotes
-            
+
             logger.info(f"Vote {action} successfully. New score: {new_score}")
-            
+
             return Response({
                 'score': new_score,
                 'action': action,
@@ -184,11 +202,11 @@ class PostViewSet(viewsets.ModelViewSet):
                 'downvotes': downvotes,
                 'message': f'Vote {action} successfully'
             })
-            
+
         except Exception as e:
             logger.error(f"Error in vote endpoint: {str(e)}")
             return Response(
-                {'error': f'An error occurred: {str(e)}'}, 
+                {'error': f'An error occurred: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -200,7 +218,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
         post = self.get_object()
         # Lấy đối tượng Vote từ Post model
-        vote_object = post.get_user_vote(request.user) 
+        vote_object = post.get_user_vote(request.user)
 
         # Chuyển đổi đối tượng Vote thành 'up', 'down' hoặc None
         user_vote_status = None
@@ -214,15 +232,15 @@ class PostViewSet(viewsets.ModelViewSet):
         """Get related posts based on tags"""
         post = self.get_object()
         related_posts = []
-        
+
         if post.tags.exists():
             related_posts = Post.objects.filter(
                 tags__in=post.tags.all()
             ).exclude(pk=post.pk).distinct()[:5]
-        
+
         serializer = PostSerializer(related_posts, many=True, context={'request': request})
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['get'])
     def comments(self, request, pk=None):
         """
@@ -230,11 +248,11 @@ class PostViewSet(viewsets.ModelViewSet):
         """
         post = self.get_object()
         comments = post.comments.all().order_by('-created') # Assuming 'comments' is the related_name for Comment model's ForeignKey to Post, and 'created' is the field for creation timestamp
-        
+
         # Paginate comments if needed, similar to other list views
         paginator = StandardResultsSetPagination() # Use your existing pagination class
         page = paginator.paginate_queryset(comments, request)
-        
+
         serializer = CommentSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
 
@@ -289,7 +307,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
                 output_field=IntegerField()
             )), 0)
         ).order_by('-created_at')
-        
+
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostSerializer(page, many=True, context={'request': request})
@@ -334,7 +352,7 @@ class CommunityViewSet(viewsets.ModelViewSet):
                 output_field=IntegerField()
             )), 0)
         ).order_by('-created_at')
-        
+
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostSerializer(page, many=True, context={'request': request})
@@ -353,103 +371,161 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def posts(self, request, username=None):
-        """Get all posts by this user"""
-        user = self.get_object()
-        posts = Post.objects.filter(author=user).annotate(
-            num_comments=Count('comments'),
-            calculated_score=Coalesce(Sum(Case(
-                When(votes__is_upvote=True, then=1),
-                When(votes__is_upvote=False, then=-1),
-                default=0,
-                output_field=IntegerField()
-            )), 0)
-        ).order_by('-created_at')
-        
-        paginator = StandardResultsSetPagination()
-        page = paginator.paginate_queryset(posts, request)
-        serializer = PostSerializer(page, many=True, context={'request': request})
-        return paginator.get_paginated_response(serializer.data)
+        """
+        Get posts by specific user
+        """
+        try:
+            user = get_object_or_404(User, username=username)
+            posts = Post.objects.filter(author=user).order_by('-created_at')
+
+            serializer = PostSerializer(posts, many=True, context={'request': request})
+
+            return Response({
+                'results': serializer.data,
+                'count': posts.count(),
+                'username': username
+            })
+
+        except User.DoesNotExist:
+            return Response(
+                {'error': f'User "{username}" not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def follow_status(self, request, username=None):
-        """Check if current user is following this user"""
-        target_user = self.get_object()
-        is_following = Follow.objects.filter(
-            follower=request.user,
-            following=target_user
-        ).exists()
-        
-        return Response({'is_following': is_following})
+        """
+        Check if current user is following specified user
+        """
+        try:
+            user = get_object_or_404(User, username=username)
+
+            is_following = Follow.objects.filter(
+                follower=request.user,
+                following=user
+            ).exists()
+
+            return Response({
+                'is_following': is_following,
+                'username': username
+            })
+
+        except User.DoesNotExist:
+            return Response(
+                {'error': f'User "{username}" not found'},
+                status=status.HTTP_404_NOT_FOUND
+        )
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def follow(self, request, username=None):
-        """Follow/unfollow a user"""
-        target_user = self.get_object()
-        
-        if target_user == request.user:
-            return Response(
-                {'error': 'You cannot follow yourself'},
-                status=status.HTTP_400_BAD_REQUEST
+        """
+        Follow/unfollow a user
+        """
+        try:
+            user_to_follow = get_object_or_404(User, username=username)
+
+            # Can't follow yourself
+            if user_to_follow == request.user:
+                return Response(
+                    {'error': 'Cannot follow yourself'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if already following
+            follow_obj, created = Follow.objects.get_or_create(
+                follower=request.user,
+                following=user_to_follow
             )
-        
-        follow_obj, created = Follow.objects.get_or_create(
-            follower=request.user,
-            following=target_user
-        )
-        
-        if not created:
-            follow_obj.delete()
+
+            if not created:
+                # Already following, so unfollow
+                follow_obj.delete()
+                following = False
+            else:
+                # Just followed
+                following = True
+
+            # Get updated follower count
+            follower_count = Follow.objects.filter(following=user_to_follow).count()
+
             return Response({
-                'action': 'unfollowed',
-                'is_following': False,
-                'message': f'You unfollowed {username}'
+                'following': following,
+                'follower_count': follower_count,
+                'username': username,
+                'message': f'Successfully {"followed" if following else "unfollowed"} {username}'
             })
-        else:
-            return Response({
-                'action': 'followed',
-                'is_following': True,
-                'message': f'You are now following {username}'
-            })
-        
-    @action(detail=True, methods=['get'])
+
+        except User.DoesNotExist:
+            return Response(
+                {'error': f'User "{username}" not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticatedOrReadOnly])
     def profile(self, request, username=None):
         """
-        Lấy thông tin chi tiết về hồ sơ của người dùng cụ thể và các bài đăng của họ.
-        Truy cập qua /api/users/{username}/profile/
+        Get user profile with posts
         """
-        user = self.get_object() # Lấy đối tượng User dựa trên username từ URL
-        profile = get_object_or_404(Profile, user=user) # Lấy Profile của User đó
-        
-        # Serialize Profile, truyền context để get_is_following hoạt động
-        profile_serializer = ProfileSerializer(profile, context={'request': request})
-        
-        # Lấy các bài đăng của người dùng này
-        posts_queryset = Post.objects.filter(author=user).annotate(
-            num_comments=Count('comments'),
-            calculated_score=Coalesce(Sum(Case(
-                When(votes__is_upvote=True, then=1),
-                When(votes__is_upvote=False, then=-1),
-                default=0,
-                output_field=IntegerField()
-            )), 0)
-        ).order_by('-created_at')
-        
-        # Áp dụng phân trang cho các bài đăng
-        paginator = StandardResultsSetPagination()
-        page = paginator.paginate_queryset(posts_queryset, request)
-        posts_serializer = PostSerializer(page, many=True, context={'request': request})
-        
-        # Trả về dữ liệu theo định dạng mà frontend mong đợi
-        return Response({
-            'user': profile_serializer.data.get('user'), # Lấy thông tin user từ profile serializer
-            'profile': profile_serializer.data, # Dữ liệu profile (bao gồm is_following)
-            'posts': posts_serializer.data, # Dữ liệu các bài đăng
-            'posts_pagination': { # Thông tin phân trang cho posts
-                'count': paginator.page.paginator.count,
-                'next': paginator.get_next_link(),
-                'previous': paginator.get_previous_link(),
-            }
-        })
+        try:
+            user = get_object_or_404(User, username=username)
+
+            # Get user's profile
+            profile, created = Profile.objects.get_or_create(user=user)
+
+            # Get user's posts
+            posts = Post.objects.filter(author=user).order_by('-created_at')
+
+            # Check if current user is following this user
+            is_following = False
+            if request.user.is_authenticated:
+                is_following = Follow.objects.filter(
+                    follower=request.user,
+                    following=user
+                ).exists()
+
+            # Get follower/following counts
+            follower_count = Follow.objects.filter(following=user).count()
+            following_count = Follow.objects.filter(follower=user).count()
+
+            # Serialize posts with context
+            posts_serializer = PostSerializer(posts, many=True, context={'request': request})
+
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'date_joined': user.date_joined,
+                    'follower_count': follower_count,
+                    'following_count': following_count,
+                },
+                'profile': {
+                    'bio': profile.bio,
+                    'avatar_url': profile.avatar.url if profile.avatar else None,
+                    'joined_date': user.date_joined,
+                },
+                'posts': posts_serializer.data,
+                'is_following': is_following
+            })
+
+        except User.DoesNotExist:
+            return Response(
+                {'error': f'User "{username}" not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -528,13 +604,13 @@ def login_view(request):
     """Login API endpoint"""
     username = request.data.get('username')
     password = request.data.get('password')
-    
+
     if not username or not password:
         return Response(
             {'error': 'Username and password required'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     user = authenticate(username=username, password=password)
     if user:
         login(request, user)
@@ -558,45 +634,45 @@ def register_view(request):
     password = request.data.get('password')
     password_confirm = request.data.get('password_confirm')
     email = request.data.get('email')
-    
+
     if not all([username, password, password_confirm]):
         return Response(
             {'error': 'Username, password, and password confirmation required'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if password != password_confirm:
         return Response(
             {'error': 'Passwords do not match'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if User.objects.filter(username=username).exists():
         return Response(
             {'error': 'Username already exists'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if email and User.objects.filter(email=email).exists():
         return Response(
             {'error': 'Email already exists'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     try:
         user = User.objects.create_user(
             username=username,
             password=password,
             email=email
         )
-        
+
         login(request, user)
         serializer = UserSerializer(user, context={'request': request})
         return Response({
             'message': 'Registration successful',
             'user': serializer.data
         }, status=status.HTTP_201_CREATED)
-        
+
     except Exception as e:
         return Response(
             {'error': f'Registration failed: {str(e)}'},
@@ -660,20 +736,20 @@ def search_api(request):
     """Unified search API"""
     query = request.GET.get('q', '').strip()
     search_type = request.GET.get('type', 'all')
-    
+
     if len(query) < 2:
         return Response({'posts': [], 'users': []})
-    
+
     results = {'posts': [], 'users': []}
-    
+
     if search_type in ['posts', 'all']:
         posts = search_posts_enhanced(query)
         results['posts'] = format_post_results(posts, request)
-    
+
     if search_type in ['users', 'all']:
         users = search_users_enhanced(query)
         results['users'] = format_user_results(users, request)
-    
+
     return Response(results)
 
 
@@ -683,19 +759,19 @@ def search_posts_enhanced(query):
         try:
             search_vector = SearchVector('title', weight='A') + SearchVector('content', weight='B')
             search_query = SearchQuery(query)
-            
+
             posts = Post.objects.annotate(
                 search=search_vector,
                 rank=SearchRank(search_vector, search_query)
             ).filter(
                 search=search_query
             ).select_related('author', 'community').order_by('-rank')[:5]
-            
+
             if posts.exists():
                 return posts
         except:
             pass
-    
+
     # Fallback search
     posts = Post.objects.filter(
         Q(title__icontains=query) | Q(content__icontains=query)
@@ -708,7 +784,7 @@ def search_posts_enhanced(query):
             output_field=IntegerField()
         )
     ).select_related('author', 'community').order_by('-relevance_score', '-created_at')[:5]
-    
+
     return posts
 
 
@@ -725,17 +801,17 @@ def search_users_enhanced(query):
             output_field=IntegerField()
         )
     ).select_related('profile').order_by('-relevance_score', '-date_joined')[:5]
-    
+
     return users
 
 
 def format_post_results(posts, request):
     """Format post results for API response"""
     results = []
-    
+
     for post in posts:
         content_snippet = post.content[:100] + '...' if len(post.content) > 100 else post.content
-        
+
         results.append({
             'id': post.id,
             'title': post.title,
@@ -746,14 +822,14 @@ def format_post_results(posts, request):
             'vote_score': getattr(post, 'calculated_score', 0),
             'comment_count': post.comments.count() if hasattr(post, 'comments') else 0
         })
-    
+
     return results
 
 
 def format_user_results(users, request):
     """Format user results for API response"""
     results = []
-    
+
     for user in users:
         results.append({
             'id': user.id,
@@ -763,7 +839,7 @@ def format_user_results(users, request):
             'avatar': user.profile.avatar.url if hasattr(user, 'profile') and user.profile.avatar else None,
             'post_count': user.posts.count() if hasattr(user, 'posts') else 0
         })
-    
+
     return results
 
 
@@ -774,7 +850,7 @@ def popular_tags(request):
     tags = Tag.objects.annotate(
         post_count=Count('posts')
     ).filter(post_count__gt=0).order_by('-post_count')[:10]
-    
+
     serializer = TagSerializer(tags, many=True)
     return Response(serializer.data)
 
@@ -785,20 +861,20 @@ def toggle_tag_filter(request):
     """Toggle tag filter (for frontend state management)"""
     tag_slug = request.data.get('tag_slug')
     current_tags = request.data.get('current_tags', [])
-    
+
     if not tag_slug:
         return Response(
             {'error': 'Tag slug required'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if tag_slug in current_tags:
         current_tags.remove(tag_slug)
         action = 'removed'
     else:
         current_tags.append(tag_slug)
         action = 'added'
-    
+
     return Response({
         'action': action,
         'current_tags': current_tags,
@@ -811,7 +887,7 @@ def get_user_vote_data_for_posts(user, posts):
     """Get user vote data for posts"""
     upvoted_posts = set()
     downvoted_posts = set()
-    
+
     if not user.is_authenticated:
         return upvoted_posts, downvoted_posts
 
@@ -829,5 +905,5 @@ def get_user_vote_data_for_posts(user, posts):
             upvoted_posts.add(vote['post_id'])
         else:
             downvoted_posts.add(vote['post_id'])
-            
+
     return upvoted_posts, downvoted_posts

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import styles from './UnifiedSearch.module.css';
+
 const UnifiedSearch = () => {
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState('posts');
@@ -41,16 +43,17 @@ const UnifiedSearch = () => {
 
   // Handle input change with debouncing
   const handleInputChange = (e) => {
-    const value = e.target.value.trim();
+    const value = e.target.value;
     setQuery(value);
     
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
     
-    if (value.length >= 2) {
+    const trimmedValue = value.trim();
+    if (trimmedValue.length >= 2) {
       searchTimeout.current = setTimeout(() => {
-        performSearch(value);
+        performSearch(trimmedValue);
       }, 300);
     } else {
       setIsDropdownOpen(false);
@@ -69,7 +72,7 @@ const UnifiedSearch = () => {
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
-    const resultElements = document.querySelectorAll('.search-result');
+    const resultElements = document.querySelectorAll(`.${styles.searchResult}`);
     
     switch (e.key) {
       case 'ArrowDown':
@@ -91,6 +94,19 @@ const UnifiedSearch = () => {
         setSelectedIndex(-1);
         break;
     }
+  };
+
+  // Handle result click
+  const handleResultClick = (result, type) => {
+    if (type === 'post') {
+      // Navigate to post detail page using the same pattern as PostList
+      navigate(`/post/${result.id}`);
+    } else if (type === 'user') {
+      // Navigate to user profile page
+      navigate(result.url || `/user/${result.username}`);
+    }
+    setIsDropdownOpen(false);
+    setSelectedIndex(-1);
   };
 
   // Highlight search terms
@@ -115,12 +131,12 @@ const UnifiedSearch = () => {
   }, []);
 
   return (
-    <div ref={searchRef} className="unified-search">
-      <form onSubmit={handleSubmit} className="search-form">
-        <div className="search-input-container">
+    <div ref={searchRef} className={styles.unifiedSearch}>
+      <form onSubmit={handleSubmit} className={styles.searchForm}>
+        <div className={styles.searchInputContainer}>
           <button
             type="button"
-            className="search-type-selector"
+            className={styles.searchTypeSelector}
             onClick={() => setSearchType(searchType === 'posts' ? 'users' : 'posts')}
           >
             {searchType === 'posts' ? 'Posts' : 'Users'}
@@ -133,34 +149,34 @@ const UnifiedSearch = () => {
             onKeyDown={handleKeyDown}
             onFocus={() => query.length >= 2 && setIsDropdownOpen(true)}
             placeholder={searchType === 'posts' ? 'Search posts...' : 'Search users...'}
-            className="search-input"
+            className={styles.searchInput}
           />
           
-          <button type="submit" className="search-submit">
+          <button type="submit" className={styles.searchSubmit}>
             🔍
           </button>
         </div>
       </form>
       
       {isDropdownOpen && (
-        <div className="search-dropdown show">
+        <div className={`${styles.searchDropdown} ${styles.show}`}>
           {isLoading ? (
-            <div className="search-loading">🔍 Searching...</div>
+            <div className={styles.searchLoading}>🔍 Searching...</div>
           ) : results.error ? (
-            <div className="search-error">❌ {results.error}</div>
+            <div className={styles.searchError}>❌ {results.error}</div>
           ) : (
-            <div className="search-results">
+            <div className={styles.searchResults}>
               {results.posts.length > 0 && (
                 <>
-                  <div className="search-category">📝 Posts</div>
+                  <div className={styles.searchCategory}>📝 Posts</div>
                   {results.posts.map((post, index) => (
                     <div
-                      key={`post-${index}`}
-                      className={`search-result ${selectedIndex === index ? 'selected' : ''}`}
-                      onClick={() => navigate(post.url)}
+                      key={`post-${post.id || index}`}
+                      className={`${styles.searchResult} ${selectedIndex === index ? styles.selected : ''}`}
+                      onClick={() => handleResultClick(post, 'post')}
                     >
-                      <div className="result-title">
-                        <span className="result-icon">📝</span>
+                      <div className={styles.resultTitle}>
+                        <span className={styles.resultIcon}>📝</span>
                         <span 
                           dangerouslySetInnerHTML={{
                             __html: highlightText(post.title, query)
@@ -169,17 +185,17 @@ const UnifiedSearch = () => {
                       </div>
                       {post.content_snippet && (
                         <div 
-                          className="result-snippet"
+                          className={styles.resultSnippet}
                           dangerouslySetInnerHTML={{
                             __html: highlightText(post.content_snippet, query)
                           }}
                         />
                       )}
-                      <div className="result-meta">
-                        <span className="result-author">by u/{post.author}</span>
-                        <span className="result-date">{post.created_at}</span>
+                      <div className={styles.resultMeta}>
+                        <span className={styles.resultAuthor}>by u/{post.author}</span>
+                        <span className={styles.resultDate}>{post.created_at}</span>
                         {post.community && (
-                          <span className="result-community">in r/{post.community}</span>
+                          <span className={styles.resultCommunity}>in r/{post.community}</span>
                         )}
                       </div>
                     </div>
@@ -189,17 +205,17 @@ const UnifiedSearch = () => {
               
               {results.users.length > 0 && (
                 <>
-                  <div className="search-category">👤 Users</div>
+                  <div className={styles.searchCategory}>👤 Users</div>
                   {results.users.map((user, index) => (
                     <div
-                      key={`user-${index}`}
-                      className={`search-result ${
-                        selectedIndex === index + results.posts.length ? 'selected' : ''
+                      key={`user-${user.id || index}`}
+                      className={`${styles.searchResult} ${
+                        selectedIndex === index + results.posts.length ? styles.selected : ''
                       }`}
-                      onClick={() => navigate(user.url)}
+                      onClick={() => handleResultClick(user, 'user')}
                     >
-                      <div className="result-title">
-                        <span className="result-icon">👤</span>
+                      <div className={styles.resultTitle}>
+                        <span className={styles.resultIcon}>👤</span>
                         u/
                         <span 
                           dangerouslySetInnerHTML={{
@@ -207,9 +223,9 @@ const UnifiedSearch = () => {
                           }}
                         />
                       </div>
-                      <div className="result-meta">
-                        <span className="result-karma">Karma: {user.karma}</span>
-                        <span className="result-joined">Joined: {user.joined}</span>
+                      <div className={styles.resultMeta}>
+                        <span className={styles.resultKarma}>Karma: {user.karma}</span>
+                        <span className={styles.resultJoined}>Joined: {user.joined}</span>
                       </div>
                     </div>
                   ))}
@@ -217,9 +233,9 @@ const UnifiedSearch = () => {
               )}
               
               {results.posts.length === 0 && results.users.length === 0 && !isLoading && (
-                <div className="search-no-results">
-                  <div className="no-results-icon">🔍</div>
-                  <div className="no-results-text">No results found for "{query}"</div>
+                <div className={styles.searchNoResults}>
+                  <div className={styles.noResultsIcon}>🔍</div>
+                  <div className={styles.noResultsText}>No results found for "{query}"</div>
                 </div>
               )}
             </div>
@@ -229,4 +245,5 @@ const UnifiedSearch = () => {
     </div>
   );
 };
+
 export default UnifiedSearch;

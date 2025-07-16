@@ -1,46 +1,70 @@
-// UserProfile.jsx
-
+// UserProfile.jsx - Improved error handling
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api'; 
 import styles from './UserProfile.module.css';
 
 const UserProfile = () => {
   const { username } = useParams();
+  const { user: currentUser, isAuthenticated } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  
-  // Giả định currentUser được truyền từ context hoặc App state
-  const [currentUser] = useState({ id: 1, isAuthenticated: true });
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Get CSRF token
-  const getCSRFToken = () => {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-  };
+  // Fetch user profile data with improved error handling
+  const fetchProfile = async (showLoading = true) => {
+    if (!username) {
+      setError('Invalid username');
+      setLoading(false);
+      return;
+    }
 
-  // Fetch user profile data
-  const fetchProfile = async () => {
-    if (!username) return;
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
-      const response = await fetch(`/api/users/${username}/profile/`);
+      console.log(`Fetching profile for user: ${username}`);
       
-      if (!response.ok) {
-        throw new Error(`Could not find user: ${username}`);
+      // Use the new getUserProfile method with better error handling
+      const response = await apiService.getUserProfile(username);
+      
+      console.log('Profile data received:', response);
+      
+      if (!response || !response.user) {
+        throw new Error('Invalid profile data received');
       }
       
-      const data = await response.json();
-      setProfileData(data);
-      setIsFollowing(data.is_following);
+      setProfileData(response);
+      setIsFollowing(response.is_following || false);
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
-      setError(err.message || `Could not find user: ${username}`);
+      console.error('Error fetching profile:', err);
+      
+      // Set user-friendly error message
+      if (err.message.includes('not found') || err.message.includes('404')) {
+        setError(`User "${username}" not found`);
+      } else if (err.message.includes('500')) {
+        setError('Server error. Please try again later.');
+      } else if (err.message.includes('Network error')) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err.message || 'Failed to load profile');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // Retry function for failed requests
+  const retryFetch = () => {
+    setRetryCount(prev => prev + 1);
+    fetchProfile(true);
   };
 
   useEffect(() => {
@@ -48,26 +72,13 @@ const UserProfile = () => {
   }, [username]);
 
   const handleVote = async (postId, voteType) => {
-    if (!currentUser.isAuthenticated) {
+    if (!isAuthenticated) {
       alert('Please login to vote');
       return;
     }
 
     try {
-      const response = await fetch(`/api/posts/${postId}/vote/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ vote_type: voteType })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to vote');
-      }
-
-      const data = await response.json();
+      const data = await apiService.vote(postId, voteType);
       
       // Update post data in profileData
       setProfileData(prev => ({
@@ -89,25 +100,14 @@ const UserProfile = () => {
   };
 
   const handleFollowToggle = async () => {
-    if (!currentUser.isAuthenticated) {
+    if (!isAuthenticated) {
       alert('Please login to follow users');
       return;
     }
     
     try {
-      const response = await fetch(`/api/users/${username}/follow/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json'
-        }
-      });
+      const data = await apiService.followUser(username);
 
-      if (!response.ok) {
-        throw new Error('Failed to update follow status');
-      }
-
-      const data = await response.json();
       setIsFollowing(data.following);
       
       // Update follower count if provided by API
@@ -127,19 +127,95 @@ const UserProfile = () => {
   };
 
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
-    
-    if (diff < 60000) return 'just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'Unknown time';
+    }
   };
 
-  if (loading) return <div className={styles.loading}>Loading profile...</div>;
-  if (error) return <div className={styles.error}>{error}</div>;
-  if (!profileData) return <div className={styles.error}>User not found.</div>;
+  // Loading state
+  if (loading) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.loading}>
+          <div className={styles.spinner}></div>
+          <p>Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state with retry option
+  if (error) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>
+            <AlertCircle size={48} />
+          </div>
+          <h2 className={styles.errorTitle}>Oops! Something went wrong</h2>
+          <p className={styles.errorMessage}>{error}</p>
+          
+          {retryCount < 3 && (
+            <div className={styles.errorActions}>
+              <button 
+                onClick={retryFetch} 
+                className={styles.retryButton}
+                disabled={loading}
+              >
+                <RefreshCw size={16} />
+                Try Again
+              </button>
+            </div>
+          )}
+          
+          {retryCount >= 3 && (
+            <div className={styles.errorActions}>
+              <p className={styles.retryLimitMessage}>
+                Multiple attempts failed. Please try again later or contact support.
+              </p>
+              <Link to="/" className={styles.homeButton}>
+                Go to Home
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // No profile data
+  if (!profileData || !profileData.user) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>
+            <AlertCircle size={48} />
+          </div>
+          <h2 className={styles.errorTitle}>Profile not found</h2>
+          <p className={styles.errorMessage}>
+            The user "{username}" could not be found.
+          </p>
+          <Link to="/" className={styles.homeButton}>
+            Go to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const { user, profile, posts } = profileData;
 
@@ -149,12 +225,21 @@ const UserProfile = () => {
         <div className={styles.profileInfo}>
           <div className={styles.avatar}>
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={`${user.username}'s avatar`} />
-            ) : (
-              <div className={styles.defaultAvatar}>
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-            )}
+              <img 
+                src={profile.avatar_url} 
+                alt={`${user.username}'s avatar`}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className={styles.defaultAvatar}
+              style={profile?.avatar_url ? { display: 'none' } : {}}
+            >
+              {user.username.charAt(0).toUpperCase()}
+            </div>
           </div>
           
           <h2>{user.username}</h2>
@@ -165,7 +250,7 @@ const UserProfile = () => {
           
           <div className={styles.profileStats}>
             <div className={styles.stat}>
-              <span className={styles.statNumber}>{posts.length}</span>
+              <span className={styles.statNumber}>{posts?.length || 0}</span>
               <span className={styles.statLabel}>Posts</span>
             </div>
             <div className={styles.stat}>
@@ -185,7 +270,7 @@ const UserProfile = () => {
             </div>
           )}
           
-          {currentUser.isAuthenticated && user.id !== currentUser.id && (
+          {isAuthenticated && currentUser && user.id !== currentUser.id && (
             <button 
               onClick={handleFollowToggle} 
               className={`${styles.followBtn} ${isFollowing ? styles.unfollow : ''}`}
@@ -211,7 +296,7 @@ const UserProfile = () => {
           <h3>Posts by {user.username}</h3>
         </div>
         <div className={styles.postsList}>
-          {posts.length > 0 ? (
+          {posts && posts.length > 0 ? (
             posts.map((post, index) => (
               <div key={post.id} className={`${styles.postCard} ${styles.fadeInUp}`}>
                 <div className={styles.postHeader}>
@@ -238,7 +323,13 @@ const UserProfile = () => {
                   
                   {post.image_url && (
                     <div className={styles.postImage}>
-                      <img src={post.image_url} alt="Post content" />
+                      <img 
+                        src={post.image_url} 
+                        alt="Post content"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -248,6 +339,7 @@ const UserProfile = () => {
                     <button 
                       className={`${styles.voteBtn} ${post.user_vote === 'up' ? styles.upvoted : ''}`}
                       onClick={() => handleVote(post.id, 'up')}
+                      disabled={!isAuthenticated}
                     >
                       <ArrowUp size={16} />
                     </button>
@@ -255,6 +347,7 @@ const UserProfile = () => {
                     <button 
                       className={`${styles.voteBtn} ${post.user_vote === 'down' ? styles.downvoted : ''}`}
                       onClick={() => handleVote(post.id, 'down')}
+                      disabled={!isAuthenticated}
                     >
                       <ArrowDown size={16} />
                     </button>
@@ -280,6 +373,11 @@ const UserProfile = () => {
           ) : (
             <div className={styles.emptyState}>
               <p>No posts yet.</p>
+              {isAuthenticated && currentUser && user.id === currentUser.id && (
+                <Link to="/create-post" className={styles.createFirstPost}>
+                  Create your first post
+                </Link>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-// services/api.js - Improved version with better CSRF and vote handling
+// services/api.js - Fixed version with correct endpoints
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class APIService {
@@ -143,7 +143,7 @@ class APIService {
       if (!csrfToken) throw new Error('Could not get CSRF token');
     }
 
-    const url = `/api/posts/${postId}/vote/`;      // ← correct endpoint
+    const url = `/api/posts/${postId}/vote/`;
     const body = JSON.stringify({ vote_type: voteType });
 
     const res = await fetch(`${this.baseURL}${url}`, {
@@ -166,18 +166,6 @@ class APIService {
     return await res.json();
   }
 
-  // Alternative vote method using JSON (if your Django view supports it)
-  async voteJSON(postId, voteType) {
-    return await this.request('/api/vote/', {
-      method: 'POST',
-      headers: this.getHeaders(true, 'application/json'),
-      body: JSON.stringify({
-        post_id: postId,
-        vote_type: voteType,
-      }),
-    });
-  }
-
   // Get user's vote for a post
   async getUserVote(postId) {
     try {
@@ -187,6 +175,153 @@ class APIService {
         return { user_vote: null };
       }
       throw error;
+    }
+  }
+
+  // FIXED: Get user profile with correct posts endpoint
+  async getUserProfile(username) {
+    if (!username) {
+      throw new Error('Username is required');
+    }
+
+    try {
+      // Get user basic info - try different endpoints
+      let userResponse;
+      try {
+        userResponse = await this.request(`/api/users/${username}/`, {
+          method: 'GET'
+        });
+      } catch (error) {
+        // Try alternative endpoint
+        userResponse = await this.request(`/api/auth/users/${username}/`, {
+          method: 'GET'
+        });
+      }
+      
+      // Get user's posts - try multiple endpoints
+      let posts = [];
+      const possibleEndpoints = [
+        `/api/posts/?author=${username}`,
+        `/api/posts/?author_username=${username}`,
+        `/api/users/${username}/posts/`,
+        `/api/posts/?user=${username}`,
+        `/api/posts/?created_by=${username}`
+      ];
+      
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying posts endpoint: ${endpoint}`);
+          const postsResponse = await this.request(endpoint, {
+            method: 'GET'
+          });
+          
+          // Handle different response formats
+          if (Array.isArray(postsResponse)) {
+            posts = postsResponse;
+          } else if (postsResponse.results) {
+            posts = postsResponse.results;
+          } else if (postsResponse.data) {
+            posts = postsResponse.data;
+          }
+          
+          console.log(`Successfully fetched ${posts.length} posts from ${endpoint}`);
+          break;
+        } catch (postsError) {
+          console.warn(`Failed to fetch posts from ${endpoint}:`, postsError.message);
+          continue;
+        }
+      }
+      
+      // Check if user is being followed by current user
+      let isFollowing = false;
+      try {
+        const followResponse = await this.request(`/api/users/${username}/follow_status/`, {
+          method: 'GET'
+        });
+        isFollowing = followResponse.is_following || false;
+      } catch (error) {
+        console.warn('Could not fetch follow status:', error);
+      }
+      
+      // Transform response to match expected format
+      return {
+        user: {
+          id: userResponse.id,
+          username: userResponse.username,
+          email: userResponse.email,
+          first_name: userResponse.first_name,
+          last_name: userResponse.last_name,
+          follower_count: userResponse.follower_count || 0,
+          following_count: userResponse.following_count || 0,
+        },
+        profile: {
+          bio: userResponse.bio || '',
+          avatar_url: userResponse.avatar_url || userResponse.avatar || '',
+          joined_date: userResponse.date_joined,
+        },
+        posts: posts.map(post => ({
+          ...post,
+          subreddit: post.community?.name || post.subreddit || 'general',
+          vote_score: post.calculated_score || post.score || 0,
+          comment_count: post.comment_count || 0,
+          image_url: post.image_url || post.image,
+          created_at: post.created_at || post.created,
+          user_vote: post.user_vote || null
+        })),
+        is_following: isFollowing
+      };
+    } catch (error) {
+      // Add specific context for profile errors
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        throw new Error(`User "${username}" not found`);
+      }
+      
+      if (error.message.includes('500')) {
+        throw new Error(`Unable to load profile for "${username}". Please try again later.`);
+      }
+      
+      throw error;
+    }
+  }
+
+  // FIXED: Add followUser method
+  async followUser(username) {
+    if (!username) {
+      throw new Error('Username is required');
+    }
+
+    try {
+      // Try different follow endpoints
+      const possibleEndpoints = [
+        `/api/users/${username}/follow/`,
+        `/api/follow/${username}/`,
+        `/api/users/${username}/toggle_follow/`,
+        `/api/auth/users/${username}/follow/`
+      ];
+
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying follow endpoint: ${endpoint}`);
+          const response = await this.request(endpoint, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({})
+          });
+          
+          console.log(`Successfully used follow endpoint: ${endpoint}`);
+          return {
+            following: response.following || response.is_following || true,
+            follower_count: response.follower_count || response.followers_count
+          };
+        } catch (error) {
+          console.warn(`Failed to use follow endpoint ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+      
+      throw new Error('No working follow endpoint found');
+    } catch (error) {
+      throw new Error(error.message || 'Failed to update follow status');
     }
   }
 
@@ -205,16 +340,11 @@ class APIService {
   }
 
   async register(userData) {
-    try {
-      const response = await this.request('/api/auth/register/', {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(userData),
-      });
-      return response;
-    } catch (error) {
-      throw new Error(error.message || 'Registration failed');
-    }
+    return await this.request('/api/register/', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(userData),
+    });
   }
 
   async logout() {
@@ -339,11 +469,13 @@ class APIService {
       headers: this.getHeaders(false),
     });
   }
+
   async getCommentsForPost(postId) {
     return await this.request(`/api/posts/${postId}/comments/`, {
       headers: this.getHeaders(false),
     });
   }
+
   async createComment(commentData) {
     return await this.request('/api/comments/', {
       method: 'POST',
