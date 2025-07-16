@@ -42,12 +42,16 @@ class CommunityBasicSerializer(serializers.ModelSerializer):
 
 class TagSerializer(serializers.ModelSerializer):
     """Serializer cho Tag model"""
-    posts_count = serializers.ReadOnlyField()
+    posts_count = serializers.SerializerMethodField()  # Sửa: Đổi từ ReadOnlyField thành SerializerMethodField
     
     class Meta:
         model = Tag
         fields = ['id', 'name', 'slug', 'color', 'created_at', 'posts_count']
         read_only_fields = ['id', 'slug', 'created_at']
+    
+    def get_posts_count(self, obj):
+        """Sử dụng method từ model"""
+        return obj.posts_count()
 
 
 class TagBasicSerializer(serializers.ModelSerializer):
@@ -73,8 +77,8 @@ class CommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'author', 'text', 'created'] # Đã sửa từ 'created_at' thành 'created'
-        read_only_fields = ['id', 'created'] # Đã sửa từ 'created_at' thành 'created'
+        fields = ['id', 'post', 'author', 'text', 'created']
+        read_only_fields = ['id', 'created']
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -87,11 +91,11 @@ class PostSerializer(serializers.ModelSerializer):
     community = CommunityBasicSerializer(read_only=True)
     tags = TagBasicSerializer(many=True, read_only=True)
     
-    # Sửa: Sử dụng ReadOnlyField để lấy giá trị từ model property/annotation
+    # Sửa: Sử dụng property từ model
     calculated_score = serializers.IntegerField(source='score', read_only=True)
-    comment_count = serializers.IntegerField(read_only=True) # Giả sử bạn đã annotate ở view
+    comment_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
     
-    # 1. Thay thế 'image' bằng 'image_url'
+    # Thay thế 'image' bằng 'image_url'
     image_url = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     
@@ -99,33 +103,33 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             'id', 'title', 'content', 
-            'image_url',  # Đã thay 'image' bằng 'image_url'
+            'image_url',
             'author', 'community', 'tags', 'created_at', 
-            'calculated_score', # Đã sửa 'score' thành 'calculated_score' để khớp với view
+            'calculated_score',
             'comment_count', 'user_vote'
         ]
         read_only_fields = ['id', 'created_at']
     
-    # 2. Thêm phương thức để tạo URL tuyệt đối cho ảnh
     def get_image_url(self, post):
         """
         Tạo URL đầy đủ cho ảnh nếu nó tồn tại.
         """
         request = self.context.get('request')
         if post.image and hasattr(post.image, 'url'):
-            # build_absolute_uri sẽ tạo ra http://localhost:8000/media/post_images/...
             return request.build_absolute_uri(post.image.url)
-        return None # Trả về null nếu không có ảnh
-
+        return None
+    
+    def get_comment_count(self, post):
+        """Sử dụng property từ model"""
+        return post.comment_count
+    
     def get_user_vote(self, post):
         """
         Tối ưu: Lấy vote của user và trả về 'up', 'down', hoặc null.
-        Dữ liệu trả về đơn giản, nhẹ và dễ xử lý ở frontend.
         """
-        user = self.context.get('request').user
-        if user.is_authenticated:
-            # Dùng filter().first() để tránh lỗi khi không tìm thấy
-            vote = post.votes.filter(user=user).first()
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            vote = post.votes.filter(user=request.user).first()
             if vote:
                 return 'up' if vote.is_upvote else 'down'
         return None
@@ -178,13 +182,32 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Serializer cho Profile model"""
     user = UserBasicSerializer(read_only=True)
-    followers_count = serializers.ReadOnlyField()
-    following_count = serializers.ReadOnlyField()
-    
+    followers_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
+    following_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
+    is_following = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'avatar', 'bio', 'followers_count', 'following_count']
+        fields = ['id', 'user', 'avatar', 'bio', 'followers_count', 'following_count', 'is_following']
         read_only_fields = ['id']
+
+    def get_followers_count(self, obj):
+        """Đếm số người follow user này"""
+        return obj.user.follower_set.count()
+    
+    def get_following_count(self, obj):
+        """Đếm số người mà user này đang follow"""
+        return obj.user.following_set.count()
+
+    def get_is_following(self, obj):
+        """
+        Kiểm tra xem người dùng hiện tại có đang theo dõi chủ sở hữu profile này không.
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Sửa: Sử dụng đúng related_name từ model đã update
+            return obj.user.follower_set.filter(follower=request.user).exists()
+        return False
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -194,7 +217,7 @@ class FollowSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Follow
-        fields = ['id', 'follower', 'following', 'created_at']
+        fields = ['id', 'follower', 'following', 'created_at']  # Sửa: Đổi field names cho đúng
         read_only_fields = ['id', 'created_at']
 
 
@@ -204,9 +227,9 @@ class NotificationSerializer(serializers.ModelSerializer):
     recipient = UserBasicSerializer(read_only=True)
     post = serializers.StringRelatedField(read_only=True)
     comment = serializers.StringRelatedField(read_only=True)
-    notification_icon = serializers.ReadOnlyField(source='get_notification_icon')
-    notification_color = serializers.ReadOnlyField(source='get_notification_color')
-    action_url = serializers.ReadOnlyField(source='get_action_url')
+    notification_icon = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
+    notification_color = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
+    action_url = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
     
     class Meta:
         model = Notification
@@ -216,6 +239,18 @@ class NotificationSerializer(serializers.ModelSerializer):
             'notification_icon', 'notification_color', 'action_url'
         ]
         read_only_fields = ['id', 'created_at', 'read_at']
+    
+    def get_notification_icon(self, obj):
+        """Sử dụng method từ model"""
+        return obj.get_notification_icon()
+    
+    def get_notification_color(self, obj):
+        """Sử dụng method từ model"""
+        return obj.get_notification_color()
+    
+    def get_action_url(self, obj):
+        """Sử dụng method từ model"""
+        return obj.get_action_url()
 
 
 # Serializers để thống kê
@@ -232,8 +267,6 @@ class CommunityStatsSerializer(serializers.ModelSerializer):
         return obj.post_set.count()
     
     def get_members_count(self, obj):
-        # Giả sử bạn có relationship members trong Community model
-        # Nếu không có, có thể đếm số user unique đã post trong community
         return obj.post_set.values('author').distinct().count()
 
 

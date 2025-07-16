@@ -17,6 +17,8 @@ from django.db import connection
 from django.urls import reverse
 import re
 from django.middleware.csrf import get_token
+from rest_framework.permissions import AllowAny # Allow anyone to register
+from rest_framework.views import APIView
 
 from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
 from .serializers import (
@@ -408,6 +410,46 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 'is_following': True,
                 'message': f'You are now following {username}'
             })
+        
+    @action(detail=True, methods=['get'])
+    def profile(self, request, username=None):
+        """
+        Lấy thông tin chi tiết về hồ sơ của người dùng cụ thể và các bài đăng của họ.
+        Truy cập qua /api/users/{username}/profile/
+        """
+        user = self.get_object() # Lấy đối tượng User dựa trên username từ URL
+        profile = get_object_or_404(Profile, user=user) # Lấy Profile của User đó
+        
+        # Serialize Profile, truyền context để get_is_following hoạt động
+        profile_serializer = ProfileSerializer(profile, context={'request': request})
+        
+        # Lấy các bài đăng của người dùng này
+        posts_queryset = Post.objects.filter(author=user).annotate(
+            num_comments=Count('comments'),
+            calculated_score=Coalesce(Sum(Case(
+                When(votes__is_upvote=True, then=1),
+                When(votes__is_upvote=False, then=-1),
+                default=0,
+                output_field=IntegerField()
+            )), 0)
+        ).order_by('-created_at')
+        
+        # Áp dụng phân trang cho các bài đăng
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(posts_queryset, request)
+        posts_serializer = PostSerializer(page, many=True, context={'request': request})
+        
+        # Trả về dữ liệu theo định dạng mà frontend mong đợi
+        return Response({
+            'user': profile_serializer.data.get('user'), # Lấy thông tin user từ profile serializer
+            'profile': profile_serializer.data, # Dữ liệu profile (bao gồm is_following)
+            'posts': posts_serializer.data, # Dữ liệu các bài đăng
+            'posts_pagination': { # Thông tin phân trang cho posts
+                'count': paginator.page.paginator.count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            }
+        })
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -506,7 +548,6 @@ def login_view(request):
             {'error': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED
         )
-
 
 @api_view(['POST'])
 @permission_classes([])
