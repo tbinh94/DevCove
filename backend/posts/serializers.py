@@ -1,9 +1,7 @@
 # serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from django.contrib.auth import get_user_model
 from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification
-User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -12,26 +10,6 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'profile']
         read_only_fields = ['id', 'date_joined']
-
-    def update(self, instance, validated_data):
-        profile_data = validated_data.pop('profile', {})
-        
-        instance.first_name = validated_data.get('first_name', instance.first_name)
-        instance.last_name = validated_data.get('last_name', instance.last_name)
-        instance.email = validated_data.get('email', instance.email)
-        instance.save()
-
-        # Cập nhật hoặc tạo Profile
-        profile, created = Profile.objects.get_or_create(user=instance)
-        profile.bio = profile_data.get('bio', profile.bio)
-        
-        # Xử lý avatar nếu có trong profile_data
-        if 'avatar' in profile_data:
-            profile.avatar = profile_data.get('avatar', profile.avatar)
-        
-        profile.save()
-
-        return instance
 
 
 class UserBasicSerializer(serializers.ModelSerializer):

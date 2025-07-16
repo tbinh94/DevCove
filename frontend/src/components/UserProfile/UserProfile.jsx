@@ -1,5 +1,5 @@
-// UserProfile.jsx - Improved error handling
-import React, { useState, useEffect } from 'react';
+// UserProfile.jsx - Fixed version
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,14 +14,34 @@ const UserProfile = () => {
   const [error, setError] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  
+  // Ref to prevent multiple simultaneous requests
+  const fetchingRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
-  // Fetch user profile data with improved error handling
-  const fetchProfile = async (showLoading = true) => {
+  // Memoized fetchProfile function to prevent useEffect dependency issues
+  const fetchProfile = useCallback(async (showLoading = true) => {
     if (!username) {
       setError('Invalid username');
       setLoading(false);
       return;
     }
+
+    // Prevent multiple simultaneous requests
+    if (fetchingRef.current) {
+      console.log('Request already in progress, skipping...');
+      return;
+    }
+
+    // Cancel previous request if exists
+    if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+      console.log('Canceling previous request...');
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    fetchingRef.current = true;
 
     if (showLoading) {
       setLoading(true);
@@ -31,45 +51,122 @@ const UserProfile = () => {
     try {
       console.log(`Fetching profile for user: ${username}`);
       
-      // Use the new getUserProfile method with better error handling
-      const response = await apiService.getUserProfile(username);
+      // Check if already aborted before making request
+      if (abortControllerRef.current.signal.aborted) {
+        console.log('Request aborted before starting');
+        return;
+      }
+      
+      // Use the new getUserProfile method with abort signal
+      const response = await apiService.getUserProfile(username, {
+        signal: abortControllerRef.current.signal
+      });
+      
+      // Check if aborted after request
+      if (abortControllerRef.current.signal.aborted) {
+        console.log('Request was aborted after completion');
+        return;
+      }
       
       console.log('Profile data received:', response);
       
-      if (!response || !response.user) {
-        throw new Error('Invalid profile data received');
+      // More robust response validation
+      if (!response) {
+        throw new Error('No response received from server');
+      }
+      
+      if (!response.user) {
+        throw new Error('Invalid profile data: missing user information');
+      }
+      
+      // Validate required user fields
+      if (!response.user.username || !response.user.id) {
+        throw new Error('Invalid user data received');
       }
       
       setProfileData(response);
       setIsFollowing(response.is_following || false);
       setRetryCount(0); // Reset retry count on success
+      
     } catch (err) {
+      // Don't set error if request was aborted or component unmounted
+      if (err.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+        console.log('Request was aborted, not setting error');
+        return;
+      }
+      
       console.error('Error fetching profile:', err);
       
-      // Set user-friendly error message
+      // Enhanced error handling with more specific messages
+      let errorMessage = 'Failed to load profile';
+      
       if (err.message.includes('not found') || err.message.includes('404')) {
-        setError(`User "${username}" not found`);
+        errorMessage = `User "${username}" not found`;
+      } else if (err.message.includes('400')) {
+        errorMessage = 'Invalid request. Please check the username and try again.';
       } else if (err.message.includes('500')) {
-        setError('Server error. Please try again later.');
-      } else if (err.message.includes('Network error')) {
-        setError('Network error. Please check your connection and try again.');
-      } else {
-        setError(err.message || 'Failed to load profile');
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.message.includes('Network error') || err.message.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (err.message.includes('timeout')) {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Only set error if component is still mounted and not aborted
+      if (!abortControllerRef.current?.signal.aborted) {
+        setError(errorMessage);
       }
     } finally {
-      setLoading(false);
+      // Only update loading state if not aborted
+      if (!abortControllerRef.current?.signal.aborted) {
+        setLoading(false);
+      }
+      fetchingRef.current = false;
     }
-  };
+  }, [username]); // Only username as dependency
 
   // Retry function for failed requests
-  const retryFetch = () => {
+  const retryFetch = useCallback(() => {
     setRetryCount(prev => prev + 1);
     fetchProfile(true);
-  };
+  }, [fetchProfile]);
 
+  // Effect with proper cleanup
   useEffect(() => {
-    fetchProfile();
-  }, [username]);
+    // Clear any existing state
+    setProfileData(null);
+    setError(null);
+    setIsFollowing(false);
+    setRetryCount(0);
+    
+    // Small delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      fetchProfile();
+    }, 50);
+    
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId);
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        console.log('Cleanup: Aborting request due to effect cleanup');
+        abortControllerRef.current.abort();
+      }
+      fetchingRef.current = false;
+    };
+  }, [username]); // Only depend on username, not fetchProfile
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log('Component unmounting, cleaning up...');
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current.abort();
+      }
+      fetchingRef.current = false;
+    };
+  }, []);
 
   const handleVote = async (postId, voteType) => {
     if (!isAuthenticated) {
@@ -80,19 +177,23 @@ const UserProfile = () => {
     try {
       const data = await apiService.vote(postId, voteType);
       
-      // Update post data in profileData
-      setProfileData(prev => ({
-        ...prev,
-        posts: prev.posts.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                vote_score: data.vote_score,
-                user_vote: data.user_vote
-              }
-            : post
-        )
-      }));
+      // Update post data in profileData with error handling
+      setProfileData(prev => {
+        if (!prev || !prev.posts) return prev;
+        
+        return {
+          ...prev,
+          posts: prev.posts.map(post => 
+            post.id === postId 
+              ? { 
+                  ...post, 
+                  vote_score: data.vote_score ?? post.vote_score,
+                  user_vote: data.user_vote ?? post.user_vote
+                }
+              : post
+          )
+        };
+      });
     } catch (err) {
       console.error('Error voting:', err);
       alert(err.message || "Failed to vote");
@@ -112,13 +213,17 @@ const UserProfile = () => {
       
       // Update follower count if provided by API
       if (data.follower_count !== undefined) {
-        setProfileData(prev => ({
-          ...prev,
-          user: {
-            ...prev.user,
-            follower_count: data.follower_count
-          }
-        }));
+        setProfileData(prev => {
+          if (!prev || !prev.user) return prev;
+          
+          return {
+            ...prev,
+            user: {
+              ...prev.user,
+              follower_count: data.follower_count
+            }
+          };
+        });
       }
     } catch (err) {
       console.error('Error following user:', err);
@@ -128,6 +233,8 @@ const UserProfile = () => {
 
   const formatTime = (timestamp) => {
     try {
+      if (!timestamp) return 'Unknown time';
+      
       const date = new Date(timestamp);
       if (isNaN(date.getTime())) {
         return 'Invalid date';
@@ -238,7 +345,7 @@ const UserProfile = () => {
               className={styles.defaultAvatar}
               style={profile?.avatar_url ? { display: 'none' } : {}}
             >
-              {user.username.charAt(0).toUpperCase()}
+              {user.username?.charAt(0)?.toUpperCase() || '?'}
             </div>
           </div>
           

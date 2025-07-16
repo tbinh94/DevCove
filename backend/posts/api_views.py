@@ -19,7 +19,6 @@ import re
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny # Allow anyone to register
 from rest_framework.views import APIView
-from django.contrib.auth import get_user_model
 
 from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
 from .serializers import (
@@ -35,7 +34,6 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 
-User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -561,34 +559,33 @@ class ProfileViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
 
-    def retrieve(self, request, username=None):
-        # Đảm bảo người dùng chỉ có thể lấy profile của chính họ
-        if request.user.username != username:
-            return Response({"detail": "Bạn không có quyền xem profile này."}, status=status.HTTP_403_FORBIDDEN)
-        
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, context={'request': request}) # Truyền context request
-        return Response(serializer.data)
-    
-    def perform_update(self, request, username=None, *args, **kwargs):
+    def perform_update(self, serializer):
         """
         Kiểm tra quyền trước khi lưu.
         Người dùng chỉ có thể cập nhật profile của chính mình.
         """
-        if request.user.username != username:
-            return Response({"detail": "Bạn không có quyền cập nhật profile này."}, status=status.HTTP_403_FORBIDDEN)
-        
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial, context={'request': request}) # Truyền context request
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        
-        return Response(serializer.data)
+        if serializer.instance.user != self.request.user:
+            raise permissions.PermissionDenied("You do not have permission to edit this profile.")
+        serializer.save()
 
-    def partial_update(self, request, username=None, *args, **kwargs):
-        kwargs['partial'] = True
-        return self.update(request, username, *args, **kwargs)
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Ghi đè hành vi PATCH để trả về đối tượng User hoàn chỉnh sau khi cập nhật.
+        """
+        instance = self.get_object()
+        
+        # Kiểm tra quyền
+        if instance.user != request.user:
+            raise permissions.PermissionDenied("You do not have permission to edit this profile.")
+            
+        serializer = ProfileUpdateSerializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save() # Lưu các thay đổi vào DB
+
+        # Sau khi lưu, tạo một response mới sử dụng UserSerializer
+        # để trả về dữ liệu user hoàn chỉnh, bao gồm cả profile đã cập nhật.
+        updated_user_data = UserSerializer(instance.user, context={'request': request}).data
+        return Response(updated_user_data)
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

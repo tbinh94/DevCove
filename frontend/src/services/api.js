@@ -179,107 +179,212 @@ class APIService {
   }
 
   // FIXED: Get user profile with correct posts endpoint
-  async getUserProfile(username) {
+  async getUserProfile(username, options = {}) {
     if (!username) {
       throw new Error('Username is required');
     }
 
+    // Support for request cancellation
+    const { signal } = options;
+
     try {
       // Get user basic info - try different endpoints
       let userResponse;
-      try {
-        userResponse = await this.request(`/api/users/${username}/`, {
-          method: 'GET'
-        });
-      } catch (error) {
-        // Try alternative endpoint
-        userResponse = await this.request(`/api/auth/users/${username}/`, {
-          method: 'GET'
-        });
+      const userEndpoints = [
+        `/api/users/${username}/`,
+        `/api/auth/users/${username}/`,
+        `/api/users/${username}`,
+        `/api/profile/${username}/`
+      ];
+
+      for (const endpoint of userEndpoints) {
+        try {
+          console.log(`Trying user endpoint: ${endpoint}`);
+          userResponse = await this.request(endpoint, {
+            method: 'GET',
+            signal
+          });
+          
+          if (userResponse && (userResponse.id || userResponse.username)) {
+            console.log(`Successfully fetched user data from ${endpoint}`);
+            break;
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            throw error; // Re-throw abort errors immediately
+          }
+          console.warn(`Failed to fetch user from ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+
+      if (!userResponse) {
+        throw new Error(`User "${username}" not found`);
       }
       
-      // Get user's posts - try multiple endpoints
+      // Get user's posts - try multiple endpoints with better error handling
       let posts = [];
       const possibleEndpoints = [
-        `/api/posts/?author=${username}`,
-        `/api/posts/?author_username=${username}`,
+        `/api/posts/?author_username=${username}`, // Most likely to work based on logs
         `/api/users/${username}/posts/`,
+        `/api/posts/?author=${username}`,
         `/api/posts/?user=${username}`,
-        `/api/posts/?created_by=${username}`
+        `/api/posts/?created_by=${username}`,
+        `/api/posts/?username=${username}`
       ];
       
       for (const endpoint of possibleEndpoints) {
         try {
           console.log(`Trying posts endpoint: ${endpoint}`);
           const postsResponse = await this.request(endpoint, {
-            method: 'GET'
+            method: 'GET',
+            signal
           });
           
           // Handle different response formats
           if (Array.isArray(postsResponse)) {
             posts = postsResponse;
-          } else if (postsResponse.results) {
+          } else if (postsResponse?.results && Array.isArray(postsResponse.results)) {
             posts = postsResponse.results;
-          } else if (postsResponse.data) {
+          } else if (postsResponse?.data && Array.isArray(postsResponse.data)) {
             posts = postsResponse.data;
+          } else if (postsResponse?.posts && Array.isArray(postsResponse.posts)) {
+            posts = postsResponse.posts;
           }
           
           console.log(`Successfully fetched ${posts.length} posts from ${endpoint}`);
           break;
         } catch (postsError) {
+          if (postsError.name === 'AbortError') {
+            throw postsError; // Re-throw abort errors immediately
+          }
           console.warn(`Failed to fetch posts from ${endpoint}:`, postsError.message);
           continue;
         }
       }
       
-      // Check if user is being followed by current user
-      let isFollowing = false;
-      try {
-        const followResponse = await this.request(`/api/users/${username}/follow_status/`, {
-          method: 'GET'
-        });
-        isFollowing = followResponse.is_following || false;
-      } catch (error) {
-        console.warn('Could not fetch follow status:', error);
+      // If no posts found, set empty array but don't fail
+      if (!Array.isArray(posts)) {
+        console.warn('No posts found or invalid posts format, using empty array');
+        posts = [];
       }
       
-      // Transform response to match expected format
-      return {
+      // Check if user is being followed by current user
+      let isFollowing = false;
+      const followEndpoints = [
+        `/api/users/${username}/follow_status/`,
+        `/api/users/${username}/is_following/`,
+        `/api/follow/${username}/status/`
+      ];
+      
+      for (const endpoint of followEndpoints) {
+        try {
+          const followResponse = await this.request(endpoint, {
+            method: 'GET',
+            signal
+          });
+          isFollowing = followResponse?.is_following || followResponse?.following || false;
+          console.log(`Successfully fetched follow status from ${endpoint}`);
+          break;
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            throw error; // Re-throw abort errors immediately
+          }
+          console.warn(`Could not fetch follow status from ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+      
+      // Transform response to match expected format with safe property access
+      const transformedResponse = {
         user: {
           id: userResponse.id,
           username: userResponse.username,
-          email: userResponse.email,
-          first_name: userResponse.first_name,
-          last_name: userResponse.last_name,
-          follower_count: userResponse.follower_count || 0,
-          following_count: userResponse.following_count || 0,
+          email: userResponse.email || '',
+          first_name: userResponse.first_name || '',
+          last_name: userResponse.last_name || '',
+          follower_count: Number(userResponse.follower_count) || 0,
+          following_count: Number(userResponse.following_count) || 0,
         },
         profile: {
-          bio: userResponse.bio || '',
-          avatar_url: userResponse.avatar_url || userResponse.avatar || '',
-          joined_date: userResponse.date_joined,
+          bio: userResponse.bio || userResponse.profile?.bio || '',
+          avatar_url: userResponse.avatar_url || userResponse.avatar || userResponse.profile?.avatar_url || '',
+          joined_date: userResponse.date_joined || userResponse.created_at || userResponse.profile?.joined_date,
         },
-        posts: posts.map(post => ({
-          ...post,
-          subreddit: post.community?.name || post.subreddit || 'general',
-          vote_score: post.calculated_score || post.score || 0,
-          comment_count: post.comment_count || 0,
-          image_url: post.image_url || post.image,
-          created_at: post.created_at || post.created,
-          user_vote: post.user_vote || null
-        })),
+        posts: posts.map(post => {
+          // Safe post transformation with fallbacks
+          try {
+            return {
+              id: post.id,
+              title: post.title || '',
+              content: post.content || post.text || '',
+              subreddit: post.community?.name || post.subreddit || post.category || 'general',
+              vote_score: Number(post.calculated_score || post.score || post.upvotes || 0),
+              comment_count: Number(post.comment_count || post.comments_count || 0),
+              image_url: post.image_url || post.image || '',
+              created_at: post.created_at || post.created || post.timestamp,
+              user_vote: post.user_vote || null,
+              author: post.author || username,
+              url: post.url || '',
+              is_self: post.is_self || false
+            };
+          } catch (postError) {
+            console.warn('Error transforming post:', postError, post);
+            return {
+              id: post.id || Math.random().toString(36),
+              title: 'Error loading post',
+              content: '',
+              subreddit: 'general',
+              vote_score: 0,
+              comment_count: 0,
+              image_url: '',
+              created_at: new Date().toISOString(),
+              user_vote: null,
+              author: username,
+              url: '',
+              is_self: false
+            };
+          }
+        }),
         is_following: isFollowing
       };
+      
+      // Final validation
+      if (!transformedResponse.user.id || !transformedResponse.user.username) {
+        throw new Error('Invalid user data received from server');
+      }
+      
+      return transformedResponse;
+      
     } catch (error) {
+      // Don't wrap abort errors - let them bubble up as-is
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted in getUserProfile');
+        throw error;
+      }
+      
       // Add specific context for profile errors
       if (error.message.includes('404') || error.message.includes('not found')) {
         throw new Error(`User "${username}" not found`);
+      }
+      
+      if (error.message.includes('400')) {
+        throw new Error(`Invalid request for user "${username}". Please check the username.`);
       }
       
       if (error.message.includes('500')) {
         throw new Error(`Unable to load profile for "${username}". Please try again later.`);
       }
       
+      if (error.message.includes('Network error') || error.message.includes('fetch')) {
+        throw new Error(`Network error while loading profile for "${username}". Please check your connection.`);
+      }
+      
+      if (error.message.includes('timeout')) {
+        throw new Error(`Request timeout while loading profile for "${username}". Please try again.`);
+      }
+      
+      // Re-throw with original message if it's already a meaningful error
       throw error;
     }
   }
@@ -444,6 +549,56 @@ class APIService {
       return await response.json();
     } catch (error) {
       console.error('Create post error:', error);
+      throw error;
+    }
+  }
+  async updateUserProfile(username, profileData) {
+    if (!username) {
+      throw new Error('Username is required for updating profile');
+    }
+    
+    // profileData should be an instance of FormData
+    const isForm = profileData instanceof FormData;
+    
+    if (!isForm) {
+      throw new Error('profileData must be an instance of FormData');
+    }
+
+    // Ensure CSRF token is available
+    let csrfToken = this.getCSRFToken();
+    if (!csrfToken) {
+      csrfToken = await this.initCSRF();
+      if (!csrfToken) throw new Error('Could not get CSRF token');
+    }
+
+    const headers = {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': csrfToken,
+    };
+    // Don't set 'Content-Type' for FormData, the browser will do it with the correct boundary
+
+    try {
+      const response = await fetch(`${this.baseURL}/api/profiles/${username}/`, {
+        method: 'PATCH', // Use PATCH for partial updates
+        credentials: 'include',
+        headers,
+        body: profileData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          // Flatten errors for easier display
+          const flatErrors = Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('; ');
+          errorMessage = flatErrors || errorMessage;
+        } catch (e) { /* Ignore parsing error */ }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Update profile error:', error);
       throw error;
     }
   }
