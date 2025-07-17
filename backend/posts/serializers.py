@@ -281,36 +281,31 @@ class FollowSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    """Serializer cho Notification model"""
+    """
+    Serializer cho Notification model - SIMPLIFIED AND SAFER VERSION
+    - Trả về dữ liệu thô để frontend xử lý việc hiển thị.
+    - Đổi tên 'notification_type' thành 'type' để tương thích với frontend.
+    - Cung cấp 'post_id' để frontend tự tạo URL.
+    """
     sender = UserBasicSerializer(read_only=True)
-    recipient = UserBasicSerializer(read_only=True)
-    post = serializers.StringRelatedField(read_only=True)
-    comment = serializers.StringRelatedField(read_only=True)
-    notification_icon = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
-    notification_color = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
-    action_url = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
     
+    # Lấy 'id' của bài post liên quan một cách an toàn
+    post_id = serializers.IntegerField(source='post.id', read_only=True, allow_null=True)
+    
+    # Đổi tên field 'notification_type' thành 'type' cho tiện ở frontend
+    type = serializers.CharField(source='notification_type', read_only=True)
+
     class Meta:
         model = Notification
+        # Chỉ lấy những trường thực sự cần thiết
         fields = [
-            'id', 'recipient', 'sender', 'notification_type', 'message',
-            'post', 'comment', 'is_read', 'created_at', 'read_at',
-            'notification_icon', 'notification_color', 'action_url'
+            'id', 
+            'sender', 
+            'type',  # 'comment', 'vote', 'follow'
+            'post_id', 
+            'is_read', 
+            'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'read_at']
-    
-    def get_notification_icon(self, obj):
-        """Sử dụng method từ model"""
-        return obj.get_notification_icon()
-    
-    def get_notification_color(self, obj):
-        """Sử dụng method từ model"""
-        return obj.get_notification_color()
-    
-    def get_action_url(self, obj):
-        """Sử dụng method từ model"""
-        return obj.get_action_url()
-
 
 # Serializers để thống kê
 class CommunityStatsSerializer(serializers.ModelSerializer):

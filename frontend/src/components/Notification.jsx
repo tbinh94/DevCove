@@ -8,36 +8,34 @@ const NotificationManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
 
-  const updateInterval = 30000; // 30 seconds
-  const countUrl = '/notifications/count/';
-  const markAllReadUrl = '/notifications/mark-all-read/';
+  const updateInterval = 30000;
+  const countUrl = '/api/notifications/count/';
+  const markAllReadUrl = '/api/notifications/mark-all-read/';
 
-  // Get CSRF token
   const getCSRFToken = () => {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
   };
 
-  // Fetch notification count
   const updateNotificationCount = async () => {
     try {
       const response = await fetch(countUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setUnreadCount(data.count);
       
-      // Only update dropdown if it's open
       if (isDropdownOpen) {
         setNotifications(data.notifications);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Error fetching notification count:', error);
     }
   };
 
-  // Fetch notifications for dropdown
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(countUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setNotifications(data.notifications);
       setUnreadCount(data.count);
@@ -48,8 +46,7 @@ const NotificationManager = () => {
       setIsLoading(false);
     }
   };
-
-  // Mark all as read
+  
   const markAllAsRead = async () => {
     try {
       const response = await fetch(markAllReadUrl, {
@@ -63,23 +60,24 @@ const NotificationManager = () => {
       
       if (data.success) {
         setUnreadCount(0);
-        setNotifications([]);
-        setIsDropdownOpen(false);
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setTimeout(() => setIsDropdownOpen(false), 500);
       }
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
-  // Toggle dropdown
   const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-    if (!isDropdownOpen) {
+    const newIsOpen = !isDropdownOpen;
+    setIsDropdownOpen(newIsOpen);
+    if (newIsOpen) {
       fetchNotifications();
     }
   };
 
-  // Helper functions
+  // --- CÁC HÀM HELPER ---
+
   const getNotificationIcon = (type) => {
     const icons = { 'comment': '💬', 'vote': '👍', 'follow': '➕' };
     return icons[type] || '🔔';
@@ -105,24 +103,36 @@ const NotificationManager = () => {
     return date.toLocaleDateString();
   };
 
-  // Auto-update notifications
+  // ✅ ĐÃ SỬA: Hàm tạo URL động từ dữ liệu notification
+  const getNotificationUrl = (notification) => {
+    switch (notification.type) {
+      case 'comment':
+      case 'vote':
+        // Sửa ở đây: Đổi '/posts/' thành '/post/'
+        return notification.post_id ? `/post/${notification.post_id}/` : '/';
+      case 'follow':
+        return notification.sender ? `/profile/${notification.sender.username}/` : '/';
+      default:
+        return '#';
+    }
+  };
+
   useEffect(() => {
     updateNotificationCount();
     const interval = setInterval(updateNotificationCount, updateInterval);
     return () => clearInterval(interval);
   }, []);
 
-  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
       }
     };
-
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
 
   return (
     <div ref={dropdownRef} className={styles.notificationContainer}>
@@ -158,13 +168,13 @@ const NotificationManager = () => {
                 No new notifications
               </li>
             ) : (
-              notifications.map((notification, index) => (
-                <li key={index}>
+              notifications.map((notification) => (
+                <li key={notification.id}>
                   <a 
                     className={`${styles.dropdownItem} ${styles.notificationItem} ${
                       !notification.is_read ? styles.notificationUnread : ''
                     }`}
-                    href={notification.action_url}
+                    href={getNotificationUrl(notification)}
                   >
                     <div className={`${styles.dFlex} ${styles.alignItemsCenter}`}>
                       <div className={`${styles.flexShrink0} ${styles.me3}`}>
@@ -174,7 +184,7 @@ const NotificationManager = () => {
                       </div>
                       <div className={styles.flexGrow1}>
                         <p className={`${styles.mb0} ${styles.small}`}>
-                          <strong>{notification.sender}</strong>{' '}
+                          <strong>{notification.sender?.username || 'Someone'}</strong>{' '}
                           {getNotificationText(notification.type)}
                         </p>
                         <small className={styles.textMuted}>

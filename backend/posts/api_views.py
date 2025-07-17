@@ -612,49 +612,64 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for notifications (read-only)
+    ViewSet for notifications (read-only) - OPTIMIZED
     """
-    queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
-    ordering = ['-created_at']
 
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user)
+        """
+        Return notifications for the current authenticated user.
+        """
+        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
 
-    @action(detail=False, methods=['get'])
-    def unread_count(self, request):
-        """Get count of unread notifications"""
-        count = self.get_queryset().filter(is_read=False).count()
-        return Response({'unread_count': count})
+    @action(detail=False, methods=['get'], url_path='count', url_name='count_and_recent')
+    def count_and_recent(self, request):
+        """
+        Returns the unread notification count and a list of recent notifications.
+        This single endpoint is more efficient for the frontend dropdown.
+        """
+        user_notifications = self.get_queryset()
+        
+        unread_count = user_notifications.filter(is_read=False).count()
+        
+        # Get the 10 most recent notifications for the dropdown
+        recent_notifications = user_notifications[:10]
+        
+        serializer = self.get_serializer(recent_notifications, many=True)
+        
+        return Response({
+            'count': unread_count,
+            'notifications': serializer.data
+        })
 
-    @action(detail=False, methods=['get'])
-    def recent(self, request):
-        """Get recent notifications (last 5)"""
-        notifications = self.get_queryset()[:5]
-        serializer = self.get_serializer(notifications, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['post']) # Changed from PATCH to POST to match frontend
     def mark_read(self, request, pk=None):
         """Mark a notification as read"""
         notification = self.get_object()
-        notification.mark_as_read()
+        if notification.recipient != request.user:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save()
         return Response({'message': 'Notification marked as read'})
 
-    @action(detail=False, methods=['patch'])
-    def mark_all_read(self, request):
+    @action(detail=False, methods=['post'], url_path='mark-all-read') # Changed from PATCH to POST and added url_path
+    def mark_all_as_read(self, request):
         """Mark all notifications as read"""
-        count = self.get_queryset().filter(is_read=False).update(is_read=True)
-        return Response({'message': f'Marked {count} notifications as read'})
+        updated_count = self.get_queryset().filter(is_read=False).update(is_read=True, read_at=timezone.now())
+        return Response({
+            'success': True,
+            'message': f'Marked {updated_count} notifications as read'
+        })
 
-    @action(detail=False, methods=['delete'])
+    @action(detail=False, methods=['post']) # Changed from DELETE to POST for CSRF simplicity
     def clear_all(self, request):
         """Clear all notifications"""
-        count = self.get_queryset().count()
-        self.get_queryset().delete()
+        count, _ = self.get_queryset().delete()
         return Response({'message': f'Cleared {count} notifications'})
+
 
 
 # Authentication views
