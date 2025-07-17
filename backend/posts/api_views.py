@@ -470,7 +470,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticatedOrReadOnly])
     def profile(self, request, username=None):
         """
-        Get user profile with posts
+        Get user profile with posts - FIXED for avatar URL
         """
         try:
             user = get_object_or_404(User, username=username)
@@ -496,6 +496,26 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             # Serialize posts with context
             posts_serializer = PostSerializer(posts, many=True, context={'request': request})
 
+            # FIXED: Create avatar_url with better error handling
+            avatar_url = None
+            if profile.avatar:
+                try:
+                    # Build the full URL using request.build_absolute_uri
+                    avatar_url = request.build_absolute_uri(profile.avatar.url)
+                    print(f"DEBUG: Built avatar URL: {avatar_url}")  # Debug log
+                except (ValueError, AttributeError, Exception) as e:
+                    print(f"DEBUG: Error building avatar URL: {e}")  # Debug log
+                    avatar_url = None
+
+            # FIXED: Also try using the ProfileSerializer to get avatar_url
+            profile_serializer = ProfileSerializer(profile, context={'request': request})
+            serialized_avatar_url = profile_serializer.data.get('avatar_url')
+            
+            print(f"DEBUG: Serializer avatar_url: {serialized_avatar_url}")  # Debug log
+            
+            # Use serializer's avatar_url if available, otherwise use manual one
+            final_avatar_url = serialized_avatar_url or avatar_url
+
             return Response({
                 'user': {
                     'id': user.id,
@@ -509,7 +529,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 },
                 'profile': {
                     'bio': profile.bio,
-                    'avatar_url': profile.avatar.url if profile.avatar else None,
+                    'avatar_url': final_avatar_url,  # FIXED: Use the processed avatar URL
                     'joined_date': user.date_joined,
                 },
                 'posts': posts_serializer.data,
@@ -522,11 +542,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            print(f"DEBUG: Error in profile view: {e}")  # Debug log
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """
@@ -586,6 +606,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
         # để trả về dữ liệu user hoàn chỉnh, bao gồm cả profile đã cập nhật.
         updated_user_data = UserSerializer(instance.user, context={'request': request}).data
         return Response(updated_user_data)
+    
+
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

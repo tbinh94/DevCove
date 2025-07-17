@@ -180,12 +180,12 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    """Serializer cho Profile model"""
+    """Serializer cho Profile model - FIXED for avatar URL"""
     user = UserBasicSerializer(read_only=True)
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
-    # Thêm avatar_url để trả về đường dẫn đầy đủ
+    # FIXED: Better avatar_url handling
     avatar_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -194,10 +194,36 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user']
 
     def get_avatar_url(self, obj):
-        request = self.context.get('request')
-        if obj.avatar and hasattr(obj.avatar, 'url'):
-            return request.build_absolute_uri(obj.avatar.url)
-        return None
+        """FIXED: Better avatar URL handling with comprehensive error checking"""
+        print(f"DEBUG: Getting avatar URL for user {obj.user.username}")  # Debug log
+        
+        if not obj.avatar:
+            print(f"DEBUG: No avatar file for user {obj.user.username}")  # Debug log
+            return None
+        
+        try:
+            # Check if avatar file exists
+            if not obj.avatar.name:
+                print(f"DEBUG: Avatar has no name for user {obj.user.username}")  # Debug log
+                return None
+            
+            # Try to get the URL
+            avatar_url = obj.avatar.url
+            print(f"DEBUG: Raw avatar URL: {avatar_url}")  # Debug log
+            
+            # Get request from context
+            request = self.context.get('request')
+            if request is not None:
+                full_url = request.build_absolute_uri(avatar_url)
+                print(f"DEBUG: Full avatar URL: {full_url}")  # Debug log
+                return full_url
+            else:
+                print(f"DEBUG: No request in context, returning raw URL")  # Debug log
+                return avatar_url
+                
+        except (ValueError, AttributeError, Exception) as e:
+            print(f"DEBUG: Error getting avatar URL for user {obj.user.username}: {e}")  # Debug log
+            return None
 
     def get_followers_count(self, obj):
         return obj.user.follower_set.count()

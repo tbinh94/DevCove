@@ -1,4 +1,4 @@
-// UserProfile.jsx - Fixed version
+// UserProfile.jsx - Updated with enhanced avatar display above username
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
@@ -69,6 +69,13 @@ const UserProfile = () => {
       }
       
       console.log('Profile data received:', response);
+      
+      // Debug avatar data
+      if (response.profile && response.profile.avatar_url) {
+        console.log('Avatar URL received:', response.profile.avatar_url);
+      } else {
+        console.log('No avatar URL in response');
+      }
       
       // More robust response validation
       if (!response) {
@@ -330,31 +337,38 @@ const UserProfile = () => {
     <div className={styles.profileContainer}>
       <div className={`${styles.profileHeader} ${styles.fadeInUp}`}>
         <div className={styles.profileInfo}>
-          <div className={styles.avatar}>
-            {profile?.avatar_url ? (
-              <img 
-                src={profile.avatar_url} 
-                alt={`${user.username}'s avatar`}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            <div 
-              className={styles.defaultAvatar}
-              style={profile?.avatar_url ? { display: 'none' } : {}}
-            >
-              {user.username?.charAt(0)?.toUpperCase() || '?'}
+          {/* Enhanced avatar display above username */}
+          <div className={styles.avatarContainer}>
+            <div className={styles.avatar}>
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={`${user.username}'s avatar`}
+                  onError={(e) => {
+                    console.log('Avatar image failed to load:', profile.avatar_url);
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div 
+                className={styles.defaultAvatar}
+                style={profile?.avatar_url ? { display: 'none' } : {}}
+              >
+                {user.username?.charAt(0)?.toUpperCase() || '?'}
+              </div>
             </div>
           </div>
           
-          <h2>{user.username}</h2>
+          {/* Username centered below avatar */}
+          <h2 className={styles.username}>{user.username}</h2>
           
+          {/* Bio if available */}
           {profile?.bio && (
             <p className={styles.bio}>{profile.bio}</p>
           )}
           
+          {/* Profile statistics */}
           <div className={styles.profileStats}>
             <div className={styles.stat}>
               <span className={styles.statNumber}>{posts?.length || 0}</span>
@@ -370,6 +384,7 @@ const UserProfile = () => {
             </div>
           </div>
           
+          {/* Join date */}
           {profile?.joined_date && (
             <div className={styles.joinedDate}>
               <Calendar size={16} />
@@ -377,6 +392,7 @@ const UserProfile = () => {
             </div>
           )}
           
+          {/* Follow button for other users */}
           {isAuthenticated && currentUser && user.id !== currentUser.id && (
             <button 
               onClick={handleFollowToggle} 
@@ -398,6 +414,7 @@ const UserProfile = () => {
         </div>
       </div>
 
+      {/* Posts section */}
       <div className={styles.postsSection}>
         <div className={styles.postsSectionHeader}>
           <h3>Posts by {user.username}</h3>

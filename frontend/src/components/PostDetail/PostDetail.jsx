@@ -1,24 +1,23 @@
-// PostDetail.jsx - Refactored to use apiService
+// PostDetail.jsx - Modern Blue Theme Design with Image Modal
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn } from 'lucide-react';
 import styles from './PostDetail.module.css';
-// FIX 1: Import the centralized apiService
 import apiService from '../../services/api'; 
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth to check login status
+import { useAuth } from '../../contexts/AuthContext';
 
 const PostDetail = () => {
     const { postId } = useParams();
-    const { isAuthenticated } = useAuth(); // Get authentication status
+    const { isAuthenticated } = useAuth();
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // FIX 2: Remove the local getCSRFToken function, as apiService handles it.
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     useEffect(() => {
         console.log('PostDetail mounted with postId:', postId);
@@ -27,16 +26,14 @@ const PostDetail = () => {
             setLoading(true);
             setError(null);
             try {
-                // FIX 3: Use apiService to fetch both post and comments data
-                // This runs API calls in parallel for better performance
-                console.log('Fetching post:', postId); // Add this
+                console.log('Fetching post:', postId);
 
                 const [postData, commentsData] = await Promise.all([
                     apiService.getPost(postId),
                     apiService.getCommentsForPost(postId) 
                 ]);
-                console.log('Post data:', postData); // Add this
-                console.log('Comments data:', commentsData); // Add this
+                console.log('Post data:', postData);
+                console.log('Comments data:', commentsData);
                 setPost(postData);
                 setComments(Array.isArray(commentsData) ? commentsData : commentsData.results || []);
 
@@ -48,7 +45,26 @@ const PostDetail = () => {
             }
         };
         fetchData();
-    }, [postId]); // Dependency array is correct
+    }, [postId]);
+
+    // Handle modal close on ESC key
+    useEffect(() => {
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && isImageModalOpen) {
+                setIsImageModalOpen(false);
+            }
+        };
+        
+        if (isImageModalOpen) {
+            document.addEventListener('keydown', handleEscKey);
+            document.body.style.overflow = 'hidden'; // Prevent body scroll
+        }
+        
+        return () => {
+            document.removeEventListener('keydown', handleEscKey);
+            document.body.style.overflow = 'unset';
+        };
+    }, [isImageModalOpen]);
 
     const handleVote = async (voteType) => {
         if (!isAuthenticated) {
@@ -56,10 +72,8 @@ const PostDetail = () => {
             return;
         }
         try {
-            // FIX 4: Use apiService.vote for consistency
             const data = await apiService.vote(post.id, voteType);
             
-            // Update the post state immediately for better UX
             setPost(prevPost => ({
                 ...prevPost,
                 calculated_score: data.score,
@@ -79,21 +93,35 @@ const PostDetail = () => {
         }
         setIsSubmitting(true);
         try {
-            // FIX 5: Use apiService.createComment
             const commentData = await apiService.createComment({
-                post: postId, // Ensure the backend gets the post ID
+                post: postId,
                 text: newComment 
             });
 
-            // Add new comment to the top of the list
             setComments(prevComments => [commentData, ...prevComments]);
-            setNewComment(''); // Clear the textarea
+            setNewComment('');
         } catch (err) {
             console.error('Comment error:', err);
             alert(err.message || "Failed to post comment.");
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleBookmark = () => {
+        if (!isAuthenticated) {
+            alert("You must be logged in to bookmark.");
+            return;
+        }
+        setIsBookmarked(!isBookmarked);
+    };
+
+    const openImageModal = () => {
+        setIsImageModalOpen(true);
+    };
+
+    const closeImageModal = () => {
+        setIsImageModalOpen(false);
     };
 
     const formatTimeAgo = (dateString) => {
@@ -110,111 +138,238 @@ const PostDetail = () => {
         return `${months}mo ago`;
     };
 
-    if (loading) return <div className={styles.loading}>Loading...</div>;
-    if (error) return <div className={styles.loading}>Error: {error}</div>;
-    if (!post) return <div className={styles.loading}>Post not found.</div>;
+    if (loading) {
+        return (
+            <div className={styles.loadingContainer}>
+                <div className={styles.loadingSpinner}></div>
+                <p className={styles.loadingText}>Loading post...</p>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+            <div className={styles.errorContainer}>
+                <div className={styles.errorIcon}>⚠️</div>
+                <h3 className={styles.errorTitle}>Something went wrong</h3>
+                <p className={styles.errorMessage}>{error}</p>
+            </div>
+        );
+    }
+    
+    if (!post) {
+        return (
+            <div className={styles.errorContainer}>
+                <div className={styles.errorIcon}>🔍</div>
+                <h3 className={styles.errorTitle}>Post not found</h3>
+                <p className={styles.errorMessage}>The post you're looking for doesn't exist.</p>
+            </div>
+        );
+    }
 
     return (
-        // JSX content remains the same
         <div className={styles.container}>
             <div className={styles.maxWidth}>
+                {/* Main Post Card */}
                 <div className={styles.postCard}>
-                    {/* Post Header, Meta, Tags, Image, Content */}
+                    {/* Post Header */}
                     <div className={styles.postHeader}>
-                        <h1 className={styles.postTitle}>{post.title}</h1>
-                    </div>
-                    <div className={styles.postMeta}>
-                        <span className={styles.author}>u/{post.author?.username || 'Unknown'}</span>
-                        <span className={styles.separator}>•</span>
-                        <span className={styles.time}>{formatTimeAgo(post.created_at)}</span>
-                    </div>
-                     {post.image_url && (
-                        <div className={styles.postImageContainer}>
-                            <img src={post.image_url} alt={post.title} className={styles.postImage} />
+                        <div className={styles.postHeaderContent}>
+                            <h1 className={styles.postTitle}>{post.title}</h1>
+                            <div className={styles.postMeta}>
+                                <div className={styles.authorInfo}>
+                                    <div className={styles.authorAvatar}>
+                                        {post.author?.username?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                    <div className={styles.authorDetails}>
+                                        <span className={styles.authorName}>
+                                            {post.author?.username || 'Unknown'}
+                                        </span>
+                                        <div className={styles.postStats}>
+                                            <span className={styles.statItem}>
+                                                <Clock size={12} />
+                                                {formatTimeAgo(post.created_at)}
+                                            </span>
+                                            <span className={styles.statItem}>
+                                                <Eye size={12} />
+                                                {post.views || 0} views
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    {post.content && (
-                        <div className={styles.postContent}>
-                            {post.content}
+                    </div>
+
+                    {/* Post Image */}
+                    {post.image_url && (
+                        <div className={styles.postImageContainer}>
+                            <div className={styles.postImageWrapper} onClick={openImageModal}>
+                                <img src={post.image_url} alt={post.title} className={styles.postImage} />
+                                <div className={styles.imageOverlay}>
+                                    <div className={styles.zoomIcon}>
+                                        <ZoomIn size={24} />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Post footer with voting and actions */}
-                    <div className={styles.postFooter}>
-                        <div className={styles.voteSection}>
-                            <button 
-                                onClick={() => handleVote('up')} 
-                                className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`}
-                            >
-                                <ChevronUp size={20} />
-                            </button>
-                            <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-                            <button 
-                                onClick={() => handleVote('down')} 
-                                className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
-                            >
-                                <ChevronDown size={20} />
-                            </button>
+                    {/* Post Content */}
+                    {post.content && (
+                        <div className={styles.postContent}>
+                            <div className={styles.contentText}>
+                                {post.content}
+                            </div>
                         </div>
-                        <div className={styles.actionButtons}>
+                    )}
+
+                    {/* Post Actions */}
+                    <div className={styles.postActions}>
+                        <div className={styles.leftActions}>
+                            <div className={styles.voteSection}>
+                                <button 
+                                    onClick={() => handleVote('up')} 
+                                    className={`${styles.voteButton} ${styles.upvote} ${post.user_vote === 'up' ? styles.active : ''}`}
+                                >
+                                    <ChevronUp size={18} />
+                                </button>
+                                <span className={styles.voteScore}>{post.calculated_score || 0}</span>
+                                <button 
+                                    onClick={() => handleVote('down')} 
+                                    className={`${styles.voteButton} ${styles.downvote} ${post.user_vote === 'down' ? styles.active : ''}`}
+                                >
+                                    <ChevronDown size={18} />
+                                </button>
+                            </div>
+                            
                             <button className={styles.actionButton}>
                                 <MessageCircle size={16} />
-                                <span>{comments.length} Comments</span>
+                                <span>{comments.length}</span>
+                            </button>
+                        </div>
+                        
+                        <div className={styles.rightActions}>
+                            <button 
+                                onClick={handleBookmark}
+                                className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
+                            >
+                                <Bookmark size={16} />
+                            </button>
+                            <button className={styles.actionButton}>
+                                <Share2 size={16} />
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Comments section */}
+                {/* Comments Section */}
                 <div className={styles.commentsSection}>
-                    <h2 className={styles.commentsTitle}>Comments ({comments.length})</h2>
+                    <div className={styles.commentsHeader}>
+                        <h2 className={styles.commentsTitle}>
+                            Comments ({comments.length})
+                        </h2>
+                    </div>
                     
+                    {/* Comment Form */}
                     {isAuthenticated ? (
-                        <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
-                            <textarea 
-                                value={newComment} 
-                                onChange={(e) => setNewComment(e.target.value)} 
-                                placeholder="What are your thoughts?" 
-                                className={styles.commentTextarea} 
-                                required 
-                            />
-                            <button 
-                                type="submit" 
-                                className={styles.commentSubmitButton} 
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? 'Posting...' : 'Post Comment'}
-                            </button>
-                        </form>
+                        <div className={styles.commentFormContainer}>
+                            <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
+                                <div className={styles.commentInputWrapper}>
+                                    <textarea 
+                                        value={newComment} 
+                                        onChange={(e) => setNewComment(e.target.value)} 
+                                        placeholder="Share your thoughts..." 
+                                        className={styles.commentTextarea} 
+                                        required 
+                                    />
+                                    <div className={styles.commentFormActions}>
+                                        <button 
+                                            type="submit" 
+                                            className={styles.commentSubmitButton} 
+                                            disabled={isSubmitting || !newComment.trim()}
+                                        >
+                                            {isSubmitting ? (
+                                                <div className={styles.buttonSpinner}></div>
+                                            ) : (
+                                                'Post Comment'
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
                     ) : (
                         <div className={styles.loginPrompt}>
-                            <Link to="/login">Log in</Link> or <Link to="/register">sign up</Link> to leave a comment.
+                            <p>
+                                <Link to="/login" className={styles.loginLink}>Sign in</Link> to join the conversation
+                            </p>
                         </div>
                     )}
                     
+                    {/* Comments List */}
                     <div className={styles.commentsList}>
                         {comments.length > 0 ? (
                             comments.map((comment) => (
                                 <div key={comment.id} className={styles.commentItem}>
                                     <div className={styles.commentHeader}>
-                                        <span className={styles.commentAuthor}>
-                                            u/{comment.author?.username || 'Unknown'}
-                                        </span>
-                                        <span className={styles.commentTime}>
-                                            {formatTimeAgo(comment.created_at)}
-                                        </span>
+                                        <div className={styles.commentAuthor}>
+                                            <div className={styles.commentAvatar}>
+                                                {comment.author?.username?.[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                            <div className={styles.commentAuthorInfo}>
+                                                <span className={styles.commentAuthorName}>
+                                                    {comment.author?.username || 'Unknown'}
+                                                </span>
+                                                <span className={styles.commentTime}>
+                                                    {formatTimeAgo(comment.created_at)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className={styles.commentText}>
-                                        {comment.text}
+                                    <div className={styles.commentContent}>
+                                        <p className={styles.commentText}>{comment.text}</p>
+                                        <div className={styles.commentActions}>
+                                            <button className={styles.commentActionButton}>
+                                                <Heart size={12} />
+                                                <span>Like</span>
+                                            </button>
+                                            <button className={styles.commentActionButton}>
+                                                <MessageCircle size={12} />
+                                                <span>Reply</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className={styles.noComments}>No comments yet.</div>
+                            <div className={styles.noComments}>
+                                <div className={styles.noCommentsIcon}>💬</div>
+                                <h3 className={styles.noCommentsTitle}>No comments yet</h3>
+                                <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Image Modal */}
+            {isImageModalOpen && post.image_url && (
+                <div className={styles.imageModal} onClick={closeImageModal}>
+                    <div className={styles.imageModalContent} onClick={(e) => e.stopPropagation()}>
+                        <button className={styles.closeButton} onClick={closeImageModal}>
+                            <X size={24} />
+                        </button>
+                        <div className={styles.imageModalWrapper}>
+                            <img 
+                                src={post.image_url} 
+                                alt={post.title} 
+                                className={styles.modalImage} 
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
