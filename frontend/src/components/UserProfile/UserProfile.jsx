@@ -1,87 +1,206 @@
-// UserProfile.jsx
-
-import React, { useState, useEffect } from 'react';
+// UserProfile.jsx - Updated with enhanced avatar display above username
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api'; 
 import styles from './UserProfile.module.css';
 
 const UserProfile = () => {
   const { username } = useParams();
+  const { user: currentUser, isAuthenticated } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
-  // Giả định currentUser được truyền từ context hoặc App state
-  const [currentUser] = useState({ id: 1, isAuthenticated: true });
+  // Ref to prevent multiple simultaneous requests
+  const fetchingRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
-  // Get CSRF token
-  const getCSRFToken = () => {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-  };
+  // Memoized fetchProfile function to prevent useEffect dependency issues
+  const fetchProfile = useCallback(async (showLoading = true) => {
+    if (!username) {
+      setError('Invalid username');
+      setLoading(false);
+      return;
+    }
 
-  // Fetch user profile data
-  const fetchProfile = async () => {
-    if (!username) return;
-    setLoading(true);
+    // Prevent multiple simultaneous requests
+    if (fetchingRef.current) {
+      console.log('Request already in progress, skipping...');
+      return;
+    }
+
+    // Cancel previous request if exists
+    if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+      console.log('Canceling previous request...');
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    fetchingRef.current = true;
+
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
-      const response = await fetch(`/api/users/${username}/profile/`);
+      console.log(`Fetching profile for user: ${username}`);
       
-      if (!response.ok) {
-        throw new Error(`Could not find user: ${username}`);
+      // Check if already aborted before making request
+      if (abortControllerRef.current.signal.aborted) {
+        console.log('Request aborted before starting');
+        return;
       }
       
-      const data = await response.json();
-      setProfileData(data);
-      setIsFollowing(data.is_following);
+      // Use the new getUserProfile method with abort signal
+      const response = await apiService.getUserProfile(username, {
+        signal: abortControllerRef.current.signal
+      });
+      
+      // Check if aborted after request
+      if (abortControllerRef.current.signal.aborted) {
+        console.log('Request was aborted after completion');
+        return;
+      }
+      
+      console.log('Profile data received:', response);
+      
+      // Debug avatar data
+      if (response.profile && response.profile.avatar_url) {
+        console.log('Avatar URL received:', response.profile.avatar_url);
+      } else {
+        console.log('No avatar URL in response');
+      }
+      
+      // More robust response validation
+      if (!response) {
+        throw new Error('No response received from server');
+      }
+      
+      if (!response.user) {
+        throw new Error('Invalid profile data: missing user information');
+      }
+      
+      // Validate required user fields
+      if (!response.user.username || !response.user.id) {
+        throw new Error('Invalid user data received');
+      }
+      
+      setProfileData(response);
+      setIsFollowing(response.is_following || false);
+      setRetryCount(0); // Reset retry count on success
+      
     } catch (err) {
-      setError(err.message || `Could not find user: ${username}`);
+      // Don't set error if request was aborted or component unmounted
+      if (err.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+        console.log('Request was aborted, not setting error');
+        return;
+      }
+      
+      console.error('Error fetching profile:', err);
+      
+      // Enhanced error handling with more specific messages
+      let errorMessage = 'Failed to load profile';
+      
+      if (err.message.includes('not found') || err.message.includes('404')) {
+        errorMessage = `User "${username}" not found`;
+      } else if (err.message.includes('400')) {
+        errorMessage = 'Invalid request. Please check the username and try again.';
+      } else if (err.message.includes('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.message.includes('Network error') || err.message.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (err.message.includes('timeout')) {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Only set error if component is still mounted and not aborted
+      if (!abortControllerRef.current?.signal.aborted) {
+        setError(errorMessage);
+      }
     } finally {
-      setLoading(false);
+      // Only update loading state if not aborted
+      if (!abortControllerRef.current?.signal.aborted) {
+        setLoading(false);
+      }
+      fetchingRef.current = false;
     }
-  };
+  }, [username]); // Only username as dependency
 
+  // Retry function for failed requests
+  const retryFetch = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+    fetchProfile(true);
+  }, [fetchProfile]);
+
+  // Effect with proper cleanup
   useEffect(() => {
-    fetchProfile();
-  }, [username]);
+    // Clear any existing state
+    setProfileData(null);
+    setError(null);
+    setIsFollowing(false);
+    setRetryCount(0);
+    
+    // Small delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      fetchProfile();
+    }, 50);
+    
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId);
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        console.log('Cleanup: Aborting request due to effect cleanup');
+        abortControllerRef.current.abort();
+      }
+      fetchingRef.current = false;
+    };
+  }, [username]); // Only depend on username, not fetchProfile
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log('Component unmounting, cleaning up...');
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current.abort();
+      }
+      fetchingRef.current = false;
+    };
+  }, []);
 
   const handleVote = async (postId, voteType) => {
-    if (!currentUser.isAuthenticated) {
+    if (!isAuthenticated) {
       alert('Please login to vote');
       return;
     }
 
     try {
-      const response = await fetch(`/api/posts/${postId}/vote/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ vote_type: voteType })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to vote');
-      }
-
-      const data = await response.json();
+      const data = await apiService.vote(postId, voteType);
       
-      // Update post data in profileData
-      setProfileData(prev => ({
-        ...prev,
-        posts: prev.posts.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                vote_score: data.vote_score,
-                user_vote: data.user_vote
-              }
-            : post
-        )
-      }));
+      // Update post data in profileData with error handling
+      setProfileData(prev => {
+        if (!prev || !prev.posts) return prev;
+        
+        return {
+          ...prev,
+          posts: prev.posts.map(post => 
+            post.id === postId 
+              ? { 
+                  ...post, 
+                  vote_score: data.vote_score ?? post.vote_score,
+                  user_vote: data.user_vote ?? post.user_vote
+                }
+              : post
+          )
+        };
+      });
     } catch (err) {
       console.error('Error voting:', err);
       alert(err.message || "Failed to vote");
@@ -89,36 +208,29 @@ const UserProfile = () => {
   };
 
   const handleFollowToggle = async () => {
-    if (!currentUser.isAuthenticated) {
+    if (!isAuthenticated) {
       alert('Please login to follow users');
       return;
     }
     
     try {
-      const response = await fetch(`/api/users/${username}/follow/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json'
-        }
-      });
+      const data = await apiService.followUser(username);
 
-      if (!response.ok) {
-        throw new Error('Failed to update follow status');
-      }
-
-      const data = await response.json();
       setIsFollowing(data.following);
       
       // Update follower count if provided by API
       if (data.follower_count !== undefined) {
-        setProfileData(prev => ({
-          ...prev,
-          user: {
-            ...prev.user,
-            follower_count: data.follower_count
-          }
-        }));
+        setProfileData(prev => {
+          if (!prev || !prev.user) return prev;
+          
+          return {
+            ...prev,
+            user: {
+              ...prev.user,
+              follower_count: data.follower_count
+            }
+          };
+        });
       }
     } catch (err) {
       console.error('Error following user:', err);
@@ -127,19 +239,97 @@ const UserProfile = () => {
   };
 
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
-    
-    if (diff < 60000) return 'just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return date.toLocaleDateString();
+    try {
+      if (!timestamp) return 'Unknown time';
+      
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'Unknown time';
+    }
   };
 
-  if (loading) return <div className={styles.loading}>Loading profile...</div>;
-  if (error) return <div className={styles.error}>{error}</div>;
-  if (!profileData) return <div className={styles.error}>User not found.</div>;
+  // Loading state
+  if (loading) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.loading}>
+          <div className={styles.spinner}></div>
+          <p>Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state with retry option
+  if (error) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>
+            <AlertCircle size={48} />
+          </div>
+          <h2 className={styles.errorTitle}>Oops! Something went wrong</h2>
+          <p className={styles.errorMessage}>{error}</p>
+          
+          {retryCount < 3 && (
+            <div className={styles.errorActions}>
+              <button 
+                onClick={retryFetch} 
+                className={styles.retryButton}
+                disabled={loading}
+              >
+                <RefreshCw size={16} />
+                Try Again
+              </button>
+            </div>
+          )}
+          
+          {retryCount >= 3 && (
+            <div className={styles.errorActions}>
+              <p className={styles.retryLimitMessage}>
+                Multiple attempts failed. Please try again later or contact support.
+              </p>
+              <Link to="/" className={styles.homeButton}>
+                Go to Home
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // No profile data
+  if (!profileData || !profileData.user) {
+    return (
+      <div className={styles.profileContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>
+            <AlertCircle size={48} />
+          </div>
+          <h2 className={styles.errorTitle}>Profile not found</h2>
+          <p className={styles.errorMessage}>
+            The user "{username}" could not be found.
+          </p>
+          <Link to="/" className={styles.homeButton}>
+            Go to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const { user, profile, posts } = profileData;
 
@@ -147,25 +337,41 @@ const UserProfile = () => {
     <div className={styles.profileContainer}>
       <div className={`${styles.profileHeader} ${styles.fadeInUp}`}>
         <div className={styles.profileInfo}>
-          <div className={styles.avatar}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={`${user.username}'s avatar`} />
-            ) : (
-              <div className={styles.defaultAvatar}>
-                {user.username.charAt(0).toUpperCase()}
+          {/* Enhanced avatar display above username */}
+          <div className={styles.avatarContainer}>
+            <div className={styles.avatar}>
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={`${user.username}'s avatar`}
+                  onError={(e) => {
+                    console.log('Avatar image failed to load:', profile.avatar_url);
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div 
+                className={styles.defaultAvatar}
+                style={profile?.avatar_url ? { display: 'none' } : {}}
+              >
+                {user.username?.charAt(0)?.toUpperCase() || '?'}
               </div>
-            )}
+            </div>
           </div>
           
-          <h2>{user.username}</h2>
+          {/* Username centered below avatar */}
+          <h2 className={styles.username}>{user.username}</h2>
           
+          {/* Bio if available */}
           {profile?.bio && (
             <p className={styles.bio}>{profile.bio}</p>
           )}
           
+          {/* Profile statistics */}
           <div className={styles.profileStats}>
             <div className={styles.stat}>
-              <span className={styles.statNumber}>{posts.length}</span>
+              <span className={styles.statNumber}>{posts?.length || 0}</span>
               <span className={styles.statLabel}>Posts</span>
             </div>
             <div className={styles.stat}>
@@ -178,6 +384,7 @@ const UserProfile = () => {
             </div>
           </div>
           
+          {/* Join date */}
           {profile?.joined_date && (
             <div className={styles.joinedDate}>
               <Calendar size={16} />
@@ -185,7 +392,8 @@ const UserProfile = () => {
             </div>
           )}
           
-          {currentUser.isAuthenticated && user.id !== currentUser.id && (
+          {/* Follow button for other users */}
+          {isAuthenticated && currentUser && user.id !== currentUser.id && (
             <button 
               onClick={handleFollowToggle} 
               className={`${styles.followBtn} ${isFollowing ? styles.unfollow : ''}`}
@@ -206,12 +414,13 @@ const UserProfile = () => {
         </div>
       </div>
 
+      {/* Posts section */}
       <div className={styles.postsSection}>
         <div className={styles.postsSectionHeader}>
           <h3>Posts by {user.username}</h3>
         </div>
         <div className={styles.postsList}>
-          {posts.length > 0 ? (
+          {posts && posts.length > 0 ? (
             posts.map((post, index) => (
               <div key={post.id} className={`${styles.postCard} ${styles.fadeInUp}`}>
                 <div className={styles.postHeader}>
@@ -238,7 +447,13 @@ const UserProfile = () => {
                   
                   {post.image_url && (
                     <div className={styles.postImage}>
-                      <img src={post.image_url} alt="Post content" />
+                      <img 
+                        src={post.image_url} 
+                        alt="Post content"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -248,6 +463,7 @@ const UserProfile = () => {
                     <button 
                       className={`${styles.voteBtn} ${post.user_vote === 'up' ? styles.upvoted : ''}`}
                       onClick={() => handleVote(post.id, 'up')}
+                      disabled={!isAuthenticated}
                     >
                       <ArrowUp size={16} />
                     </button>
@@ -255,6 +471,7 @@ const UserProfile = () => {
                     <button 
                       className={`${styles.voteBtn} ${post.user_vote === 'down' ? styles.downvoted : ''}`}
                       onClick={() => handleVote(post.id, 'down')}
+                      disabled={!isAuthenticated}
                     >
                       <ArrowDown size={16} />
                     </button>
@@ -280,6 +497,11 @@ const UserProfile = () => {
           ) : (
             <div className={styles.emptyState}>
               <p>No posts yet.</p>
+              {isAuthenticated && currentUser && user.id === currentUser.id && (
+                <Link to="/create-post" className={styles.createFirstPost}>
+                  Create your first post
+                </Link>
+              )}
             </div>
           )}
         </div>

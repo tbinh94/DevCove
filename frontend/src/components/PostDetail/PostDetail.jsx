@@ -1,62 +1,42 @@
-// PostDetail.jsx
+// PostDetail.jsx - Modern Blue Theme Design with Image Modal
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn } from 'lucide-react';
 import styles from './PostDetail.module.css';
+import apiService from '../../services/api'; 
+import { useAuth } from '../../contexts/AuthContext';
 
 const PostDetail = () => {
-    const { postId } = useParams(); // Lấy ID từ URL
+    const { postId } = useParams();
+    const { isAuthenticated } = useAuth();
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Get CSRF token (giống notification)
-    const getCSRFToken = () => {
-        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    };
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     useEffect(() => {
+        console.log('PostDetail mounted with postId:', postId);
         const fetchData = async () => {
             if (!postId) return;
             setLoading(true);
             setError(null);
             try {
-                // Fetch post data
-                const postResponse = await fetch(`/api/posts/${postId}/`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                    },
-                });
+                console.log('Fetching post:', postId);
 
-                if (!postResponse.ok) {
-                    throw new Error(`Failed to fetch post: ${postResponse.status}`);
-                }
-
-                const postData = await postResponse.json();
-
-                // Fetch comments data
-                const commentsResponse = await fetch(`/api/posts/${postId}/comments/`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                    },
-                });
-
-                if (!commentsResponse.ok) {
-                    throw new Error(`Failed to fetch comments: ${commentsResponse.status}`);
-                }
-
-                const commentsData = await commentsResponse.json();
-
+                const [postData, commentsData] = await Promise.all([
+                    apiService.getPost(postId),
+                    apiService.getCommentsForPost(postId) 
+                ]);
+                console.log('Post data:', postData);
+                console.log('Comments data:', commentsData);
                 setPost(postData);
                 setComments(Array.isArray(commentsData) ? commentsData : commentsData.results || []);
+
             } catch (err) {
                 console.error('Error fetching post details:', err);
                 setError(err.message || 'Failed to load post details.');
@@ -67,52 +47,57 @@ const PostDetail = () => {
         fetchData();
     }, [postId]);
 
-    const handleVote = async (voteType) => {
-        try {
-            const response = await fetch(`/api/posts/${post.id}/vote/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken(),
-                },
-                body: JSON.stringify({ vote_type: voteType }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Vote failed');
+    // Handle modal close on ESC key
+    useEffect(() => {
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && isImageModalOpen) {
+                setIsImageModalOpen(false);
             }
+        };
+        
+        if (isImageModalOpen) {
+            document.addEventListener('keydown', handleEscKey);
+            document.body.style.overflow = 'hidden'; // Prevent body scroll
+        }
+        
+        return () => {
+            document.removeEventListener('keydown', handleEscKey);
+            document.body.style.overflow = 'unset';
+        };
+    }, [isImageModalOpen]);
 
-            const data = await response.json();
+    const handleVote = async (voteType) => {
+        if (!isAuthenticated) {
+            alert("You must be logged in to vote.");
+            return;
+        }
+        try {
+            const data = await apiService.vote(post.id, voteType);
+            
             setPost(prevPost => ({
                 ...prevPost,
                 calculated_score: data.score,
-                user_vote: data.action === 'removed' ? null : voteType
+                user_vote: data.user_vote 
             }));
         } catch (err) {
             console.error('Vote error:', err);
-            alert(err.message || "You must be logged in to vote.");
+            alert(err.message || "An error occurred while voting.");
         }
     };
     
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
+        if (!newComment.trim() || !isAuthenticated) {
+            if (!isAuthenticated) alert("Please log in to comment.");
+            return;
+        }
         setIsSubmitting(true);
         try {
-            const response = await fetch(`/api/posts/${postId}/comments/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken(),
-                },
-                body: JSON.stringify({ content: newComment }),
+            const commentData = await apiService.createComment({
+                post: postId,
+                text: newComment 
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to post comment');
-            }
-
-            const commentData = await response.json();
             setComments(prevComments => [commentData, ...prevComments]);
             setNewComment('');
         } catch (err) {
@@ -123,7 +108,24 @@ const PostDetail = () => {
         }
     };
 
+    const handleBookmark = () => {
+        if (!isAuthenticated) {
+            alert("You must be logged in to bookmark.");
+            return;
+        }
+        setIsBookmarked(!isBookmarked);
+    };
+
+    const openImageModal = () => {
+        setIsImageModalOpen(true);
+    };
+
+    const closeImageModal = () => {
+        setIsImageModalOpen(false);
+    };
+
     const formatTimeAgo = (dateString) => {
+        if (!dateString) return '';
         const now = new Date();
         const past = new Date(dateString);
         const diffInHours = Math.floor((now - past) / (1000 * 60 * 60));
@@ -136,143 +138,238 @@ const PostDetail = () => {
         return `${months}mo ago`;
     };
 
-    if (loading) return <div className={styles.loading}>Loading...</div>;
-    if (error) return <div className={styles.loading}>{error}</div>;
-    if (!post) return <div className={styles.loading}>Post not found.</div>;
+    if (loading) {
+        return (
+            <div className={styles.loadingContainer}>
+                <div className={styles.loadingSpinner}></div>
+                <p className={styles.loadingText}>Loading post...</p>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+            <div className={styles.errorContainer}>
+                <div className={styles.errorIcon}>⚠️</div>
+                <h3 className={styles.errorTitle}>Something went wrong</h3>
+                <p className={styles.errorMessage}>{error}</p>
+            </div>
+        );
+    }
+    
+    if (!post) {
+        return (
+            <div className={styles.errorContainer}>
+                <div className={styles.errorIcon}>🔍</div>
+                <h3 className={styles.errorTitle}>Post not found</h3>
+                <p className={styles.errorMessage}>The post you're looking for doesn't exist.</p>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.container}>
             <div className={styles.maxWidth}>
+                {/* Main Post Card */}
                 <div className={styles.postCard}>
+                    {/* Post Header */}
                     <div className={styles.postHeader}>
-                        <h1 className={styles.postTitle}>{post.title}</h1>
-                    </div>
-                    
-                    {/* Post meta info */}
-                    <div className={styles.postMeta}>
-                        <span className={styles.author}>u/{post.author?.username || 'Unknown'}</span>
-                        <span className={styles.separator}>•</span>
-                        <span className={styles.time}>{formatTimeAgo(post.created_at)}</span>
-                        {post.community && (
-                            <>
-                                <span className={styles.separator}>•</span>
-                                <Link to={`/r/${post.community.slug}`} className={styles.communityBadge}>
-                                    r/{post.community.name}
-                                </Link>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Post tags */}
-                    {post.tags && post.tags.length > 0 && (
-                        <div className={styles.postTags}>
-                            {post.tags.map(tag => (
-                                <span 
-                                    key={tag.slug} 
-                                    className={styles.tagBadge} 
-                                    style={{ backgroundColor: tag.color }}
-                                >
-                                    {tag.name}
-                                </span>
-                            ))}
+                        <div className={styles.postHeaderContent}>
+                            <h1 className={styles.postTitle}>{post.title}</h1>
+                            <div className={styles.postMeta}>
+                                <div className={styles.authorInfo}>
+                                    <div className={styles.authorAvatar}>
+                                        {post.author?.username?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                    <div className={styles.authorDetails}>
+                                        <span className={styles.authorName}>
+                                            {post.author?.username || 'Unknown'}
+                                        </span>
+                                        <div className={styles.postStats}>
+                                            <span className={styles.statItem}>
+                                                <Clock size={12} />
+                                                {formatTimeAgo(post.created_at)}
+                                            </span>
+                                            <span className={styles.statItem}>
+                                                <Eye size={12} />
+                                                {post.views || 0} views
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Post image */}
+                    {/* Post Image */}
                     {post.image_url && (
                         <div className={styles.postImageContainer}>
-                            <img src={post.image_url} alt={post.title} className={styles.postImage} />
+                            <div className={styles.postImageWrapper} onClick={openImageModal}>
+                                <img src={post.image_url} alt={post.title} className={styles.postImage} />
+                                <div className={styles.imageOverlay}>
+                                    <div className={styles.zoomIcon}>
+                                        <ZoomIn size={24} />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Post content */}
+                    {/* Post Content */}
                     {post.content && (
                         <div className={styles.postContent}>
-                            {post.content}
+                            <div className={styles.contentText}>
+                                {post.content}
+                            </div>
                         </div>
                     )}
 
-                    {/* Post footer with voting and actions */}
-                    <div className={styles.postFooter}>
-                        <div className={styles.voteSection}>
-                            <button 
-                                onClick={() => handleVote('up')} 
-                                className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.active : ''}`}
-                            >
-                                <ChevronUp size={20} />
-                            </button>
-                            <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-                            <button 
-                                onClick={() => handleVote('down')} 
-                                className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.active : ''}`}
-                            >
-                                <ChevronDown size={20} />
+                    {/* Post Actions */}
+                    <div className={styles.postActions}>
+                        <div className={styles.leftActions}>
+                            <div className={styles.voteSection}>
+                                <button 
+                                    onClick={() => handleVote('up')} 
+                                    className={`${styles.voteButton} ${styles.upvote} ${post.user_vote === 'up' ? styles.active : ''}`}
+                                >
+                                    <ChevronUp size={18} />
+                                </button>
+                                <span className={styles.voteScore}>{post.calculated_score || 0}</span>
+                                <button 
+                                    onClick={() => handleVote('down')} 
+                                    className={`${styles.voteButton} ${styles.downvote} ${post.user_vote === 'down' ? styles.active : ''}`}
+                                >
+                                    <ChevronDown size={18} />
+                                </button>
+                            </div>
+                            
+                            <button className={styles.actionButton}>
+                                <MessageCircle size={16} />
+                                <span>{comments.length}</span>
                             </button>
                         </div>
                         
-                        <div className={styles.actionButtons}>
-                            <button className={styles.actionButton}>
-                                <MessageCircle size={16} />
-                                <span>{comments.length} comments</span>
+                        <div className={styles.rightActions}>
+                            <button 
+                                onClick={handleBookmark}
+                                className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
+                            >
+                                <Bookmark size={16} />
                             </button>
                             <button className={styles.actionButton}>
                                 <Share2 size={16} />
-                                <span>Share</span>
-                            </button>
-                            <button className={styles.actionButton}>
-                                <Bookmark size={16} />
-                                <span>Save</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Comments section */}
+                {/* Comments Section */}
                 <div className={styles.commentsSection}>
-                    <h2 className={styles.commentsTitle}>Comments ({comments.length})</h2>
+                    <div className={styles.commentsHeader}>
+                        <h2 className={styles.commentsTitle}>
+                            Comments ({comments.length})
+                        </h2>
+                    </div>
                     
-                    {/* Comment form */}
-                    <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
-                        <textarea 
-                            value={newComment} 
-                            onChange={(e) => setNewComment(e.target.value)} 
-                            placeholder="What are your thoughts?" 
-                            className={styles.commentTextarea} 
-                            required 
-                        />
-                        <button 
-                            type="submit" 
-                            className={styles.commentSubmitButton} 
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? 'Posting...' : 'Post Comment'}
-                        </button>
-                    </form>
+                    {/* Comment Form */}
+                    {isAuthenticated ? (
+                        <div className={styles.commentFormContainer}>
+                            <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
+                                <div className={styles.commentInputWrapper}>
+                                    <textarea 
+                                        value={newComment} 
+                                        onChange={(e) => setNewComment(e.target.value)} 
+                                        placeholder="Share your thoughts..." 
+                                        className={styles.commentTextarea} 
+                                        required 
+                                    />
+                                    <div className={styles.commentFormActions}>
+                                        <button 
+                                            type="submit" 
+                                            className={styles.commentSubmitButton} 
+                                            disabled={isSubmitting || !newComment.trim()}
+                                        >
+                                            {isSubmitting ? (
+                                                <div className={styles.buttonSpinner}></div>
+                                            ) : (
+                                                'Post Comment'
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    ) : (
+                        <div className={styles.loginPrompt}>
+                            <p>
+                                <Link to="/login" className={styles.loginLink}>Sign in</Link> to join the conversation
+                            </p>
+                        </div>
+                    )}
                     
-                    {/* Comments list */}
+                    {/* Comments List */}
                     <div className={styles.commentsList}>
-                        {comments.length === 0 ? (
-                            <div className={styles.noComments}>No comments yet. Be the first to comment!</div>
-                        ) : (
+                        {comments.length > 0 ? (
                             comments.map((comment) => (
                                 <div key={comment.id} className={styles.commentItem}>
                                     <div className={styles.commentHeader}>
-                                        <span className={styles.commentAuthor}>
-                                            u/{comment.author?.username || 'Unknown'}
-                                        </span>
-                                        <span className={styles.commentTime}>
-                                            {formatTimeAgo(comment.created_at)}
-                                        </span>
+                                        <div className={styles.commentAuthor}>
+                                            <div className={styles.commentAvatar}>
+                                                {comment.author?.username?.[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                            <div className={styles.commentAuthorInfo}>
+                                                <span className={styles.commentAuthorName}>
+                                                    {comment.author?.username || 'Unknown'}
+                                                </span>
+                                                <span className={styles.commentTime}>
+                                                    {formatTimeAgo(comment.created_at)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className={styles.commentText}>
-                                        {comment.content}
+                                    <div className={styles.commentContent}>
+                                        <p className={styles.commentText}>{comment.text}</p>
+                                        <div className={styles.commentActions}>
+                                            <button className={styles.commentActionButton}>
+                                                <Heart size={12} />
+                                                <span>Like</span>
+                                            </button>
+                                            <button className={styles.commentActionButton}>
+                                                <MessageCircle size={12} />
+                                                <span>Reply</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))
+                        ) : (
+                            <div className={styles.noComments}>
+                                <div className={styles.noCommentsIcon}>💬</div>
+                                <h3 className={styles.noCommentsTitle}>No comments yet</h3>
+                                <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Image Modal */}
+            {isImageModalOpen && post.image_url && (
+                <div className={styles.imageModal} onClick={closeImageModal}>
+                    <div className={styles.imageModalContent} onClick={(e) => e.stopPropagation()}>
+                        <button className={styles.closeButton} onClick={closeImageModal}>
+                            <X size={24} />
+                        </button>
+                        <div className={styles.imageModalWrapper}>
+                            <img 
+                                src={post.image_url} 
+                                alt={post.title} 
+                                className={styles.modalImage} 
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,50 +1,36 @@
-// PostList.jsx - Đã cập nhật
-
+// Fixed PostList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // 1. Import Link để điều hướng
-import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react'; // 2. Import icons cho UI
-import styles from './PostList.module.css'; // 3. Import CSS module để tạo kiểu
+import { Link } from 'react-router-dom';
+import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
+import styles from './PostList.module.css';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api'; // Assuming you have an apiService for API calls
 
-const PostList = () => {
+const PostList = ({ filter = 'hot', showAllTags = false }) => {
+  const { user, isAuthenticated } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const getCSRFToken = () => {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage] = useState(10); // Set posts per page to 10, as requested
+  const [totalPosts, setTotalPosts] = useState(0); // To store total number of posts for pagination
 
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/posts/', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
-          },
-        });
+        // Use apiService.getPosts for a consistent API-calling approach.
+        const params = {
+          page: currentPage,
+          page_size: postsPerPage,
+          // You can add other filters here if needed, e.g., filter: filter
+        };
+        const data = await apiService.getPosts(params);
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        // Giả sử API trả về một object có key 'results' khi phân trang
+        // Assuming your API returns an object with 'results' (the posts) and 'count' (total posts)
         const postData = Array.isArray(data) ? data : data.results || [];
-        
-        // Lấy thông tin vote của user cho từng post
-        const postsWithUserVote = await Promise.all(postData.map(async (post) => {
-            const voteResponse = await fetch(`/api/posts/${post.id}/user_vote/`);
-            if(voteResponse.ok) {
-                const voteData = await voteResponse.json();
-                return { ...post, user_vote: voteData.user_vote };
-            }
-            return { ...post, user_vote: null };
-        }));
-
-        setPosts(postsWithUserVote);
+        setPosts(postData);
+        setTotalPosts(data.count || postData.length); // Update total posts based on API response
 
       } catch (err) {
         console.error('Error fetching posts:', err);
@@ -55,55 +41,104 @@ const PostList = () => {
     };
 
     fetchPosts();
-  }, []);
+  }, [isAuthenticated, currentPage, postsPerPage, filter]); // Re-fetch when dependencies change
 
-  const handleVote = async (postId, voteType) => {
-    try {
-      const response = await fetch(`/api/posts/${postId}/vote/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(),
-        },
-        body: JSON.stringify({ vote_type: voteType }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        // Hiển thị lỗi cụ thể hơn nếu có, ví dụ "You must be logged in..."
-        throw new Error(errorData.detail || 'Vote failed');
-      }
-
-      const data = await response.json();
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.id === postId
-            ? { 
-                ...post, 
-                calculated_score: data.score, 
-                // Cập nhật trạng thái vote của user
-                user_vote: data.action === 'removed' ? null : voteType 
-              }
-            : post
-        )
-      );
-    } catch (err) {
-      // Thông báo lỗi cho người dùng
-      alert(err.message || "An error occurred while voting.");
+  async function handleVote(postId, type) {
+    // Ensure the user is authenticated before allowing a vote
+    if (!isAuthenticated) {
+      // You can redirect to login or show a message
+      console.log("User must be logged in to vote.");
+      // Optionally, trigger a login modal or redirect
+      return;
     }
+
+    try {
+      const updatedPost = await apiService.vote(postId, type);
+      // Update the specific post in the list with the new score and vote status
+      setPosts(posts.map(post =>
+        post.id === postId
+          ? { ...post, calculated_score: updatedPost.score, user_vote: updatedPost.user_vote }
+          : post
+      ));
+    } catch (err) {
+      console.error('Error voting:', err);
+      // Handle error, e.g., show a notification to the user
+    }
+  }
+
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber < 1 || pageNumber > totalPages) return;
+    setCurrentPage(pageNumber);
+    window.scrollTo(0, 0);
+  };
+
+  const renderPaginationButtons = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push('...');
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push('...');
+      pageNumbers.push(totalPages);
+    }
+
+    return (
+      <div className={styles.pagination}>
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={styles.pageBtn}
+        >
+          Previous
+        </button>
+        {pageNumbers.map((num, index) =>
+          num === '...' ? (
+            <span key={index} className={styles.pageInfo}>...</span>
+          ) : (
+            <button
+              key={index}
+              onClick={() => handlePageChange(num)}
+              className={`${styles.pageBtn} ${currentPage === num ? styles.activePage : ''}`}
+            >
+              {num}
+            </button>
+          )
+        )}
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={styles.pageBtn}
+        >
+          Next
+        </button>
+      </div>
+    );
   };
 
   if (loading) return <div className={styles.message}>Loading posts...</div>;
   if (error) return <div className={styles.message}>Error: {error}</div>;
-  if (posts.length === 0) return <div className={styles.message}>No posts found.</div>;
-
+  if (posts.length === 0 && !loading) return <div className={styles.message}>No posts found.</div>;
 
   return (
     <div className={styles.postListContainer}>
       {posts.map(post => (
-        // 4. Bọc mỗi bài post trong một card
         <div key={post.id} className={styles.postCard}>
-          {/* 5. Tích hợp hệ thống vote ở bên trái */}
           <div className={styles.voteSection}>
             <button
               onClick={() => handleVote(post.id, 'up')}
@@ -111,7 +146,7 @@ const PostList = () => {
             >
               <ChevronUp size={22} />
             </button>
-            <span className={styles.voteScore}>{post.calculated_score}</span>
+            <span className={styles.voteScore}>{post.calculated_score || 0}</span>
             <button
               onClick={() => handleVote(post.id, 'down')}
               className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
@@ -119,16 +154,14 @@ const PostList = () => {
               <ChevronDown size={22} />
             </button>
           </div>
-          
-          {/* 6. Phần nội dung chính của post có thể click được */}
+
           <div className={styles.postContentArea}>
-            <Link to={`/posts/${post.id}`} className={styles.postLink}>
+            <Link to={`/post/${post.id}`} className={styles.postLink}>
                 <div className={styles.postMeta}>
                     <span>Posted by u/{post.author?.username || 'Unknown'}</span>
                 </div>
                 <h3 className={styles.postTitle}>{post.title}</h3>
-                
-                {/* 7. Hiển thị ảnh nếu có */}
+
                 {post.image_url && (
                     <div className={styles.imageContainer}>
                         <img src={post.image_url} alt={post.title} className={styles.postImage} />
@@ -136,16 +169,16 @@ const PostList = () => {
                 )}
             </Link>
 
-            {/* 8. Footer cho các hành động như bình luận */}
             <div className={styles.postFooter}>
-                <Link to={`/posts/${post.id}`} className={styles.actionButton}>
+                <Link to={`/post/${post.id}`} className={styles.actionButton}>
                     <MessageCircle size={16} />
-                    <span>{post.num_comments || 0} Comments</span>
+                    <span>{post.comment_count || 0} Comments</span>
                 </Link>
             </div>
           </div>
         </div>
       ))}
+      {totalPosts > postsPerPage && renderPaginationButtons()}
     </div>
   );
 };

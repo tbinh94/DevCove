@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'your-secret-key'
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'localhost:3000']
 
 
 INSTALLED_APPS = [
@@ -52,12 +52,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",  # Backup port
 ]
-# CSRF settings cho API
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Các headers được phép
@@ -84,9 +79,24 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # CSRF configuration
+# ... (các cấu hình khác)
+
+# CSRF settings
+# CSRF settings
 CSRF_COOKIE_HTTPONLY = False  # Important for frontend access
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000']  # Add your frontend URLs
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",  # Frontend của bạn
+    "http://127.0.0.1:3000",  # Frontend của bạn
+    "http://localhost:8000",  # Backend
+    "http://127.0.0.1:8000",  # Backend
+]
+
+# Thêm setting này để bypass CSRF cho development
+CSRF_COOKIE_SECURE = False  # Cho HTTP trong development
+CSRF_USE_SESSIONS = False   # Sử dụng cookie thay vì session
+
+# ... (các cấu hình khác)
 
 
 ROOT_URLCONF = 'reddit_clone.urls'

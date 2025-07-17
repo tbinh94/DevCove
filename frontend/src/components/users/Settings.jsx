@@ -1,83 +1,121 @@
-import React, { useState } from 'react';
-//import './Settings.css';
+import React, { useState, useEffect } from 'react'; 
+import apiService from '../../services/api'; 
+import { useAuthContext } from '../../contexts/AuthContext'; 
+import DefaultAvatar from '../../assets/imgs/avatar-default.png';
+import styles from './Settings.module.css'; // Đảm bảo dòng này đã có
 
 const Settings = () => {
+  const { user, updateUser } = useAuthContext(); 
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
-    avatar: null
+    bio: '',
+    avatar: null,
   });
-  
-  const [avatarPreview, setAvatarPreview] = useState('/imgs/avatar-default.png');
+  const [avatarPreview, setAvatarPreview] = useState(DefaultAvatar);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        bio: user.profile?.bio || '',
+        avatar: null,
+      });
+      setAvatarPreview(user.profile?.avatar_url || DefaultAvatar);
+    }
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData(prev => ({
-        ...prev,
-        avatar: file
-      }));
-      
+      setFormData((prev) => ({ ...prev, avatar: file }));
       const reader = new FileReader();
-      reader.onload = (evt) => {
-        setAvatarPreview(evt.target.result);
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    setLoading(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    const data = new FormData();
+    data.append('first_name', formData.first_name);
+    data.append('last_name', formData.last_name);
+    data.append('email', formData.email);
+    data.append('bio', formData.bio);
+    if (formData.avatar) {
+      data.append('avatar', formData.avatar);
+    }
+
+    try {
+      const updatedUserData = await apiService.updateUserProfile(user.username, data);
+      updateUser(updatedUserData); 
+      setSuccessMessage('Profile updated successfully!');    
+    } catch (error) {
+      const errorData = error.response?.data || {};
+      setErrors(errorData);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="settings-container fade-in-up">
-      <form onSubmit={handleSubmit} encType="multipart/form-data" className="auth-form">
-        <div className="form-header">
+    <div className={`${styles.settingsContainer} ${styles.fadeInUp}`}>
+      <form onSubmit={handleSubmit} encType="multipart/form-data" className={styles.authForm}>
+        <div className={styles.formHeader}>
           <h2>⚙️ Account Settings</h2>
-          <p className="form-subtitle">Customize your profile and preferences</p>
+          <p className={styles.formSubtitle}>Customize your profile and preferences</p>
         </div>
 
-        {/* USER INFO */}
-        <div className="form-group">
-          <label htmlFor="firstName">First Name:</label>
+        {successMessage && <div className={`${styles.alert} ${styles.alertSuccess}`}>{successMessage}</div>}
+
+        {/* First Name */}
+        <div className={styles.formGroup}>
+          <label htmlFor="first_name">First Name:</label>
           <input
             type="text"
-            id="firstName"
-            name="firstName"
-            value={formData.firstName}
+            id="first_name"
+            name="first_name"
+            value={formData.first_name}
             onChange={handleInputChange}
-            className="form-input"
+            className={styles.formInput} // Sử dụng styles.formInput
           />
-          {errors.firstName && <div className="error">{errors.firstName}</div>}
+          {errors.first_name && <div className={styles.error}>{errors.first_name}</div>} {/* Sử dụng styles.error */}
         </div>
-
-        <div className="form-group">
-          <label htmlFor="lastName">Last Name:</label>
+        
+        {/* Last Name */}
+        <div className={styles.formGroup}>
+          <label htmlFor="last_name">Last Name:</label>
           <input
             type="text"
-            id="lastName"
-            name="lastName"
-            value={formData.lastName}
+            id="last_name"
+            name="last_name"
+            value={formData.last_name}
             onChange={handleInputChange}
-            className="form-input"
+            className={styles.formInput} // Sử dụng styles.formInput
           />
-          {errors.lastName && <div className="error">{errors.lastName}</div>}
+          {errors.last_name && <div className={styles.error}>{errors.last_name}</div>} {/* Sử dụng styles.error */}
         </div>
 
-        <div className="form-group">
+        {/* Email */}
+        <div className={styles.formGroup}> {/* Sử dụng styles.formGroup */}
           <label htmlFor="email">Email:</label>
           <input
             type="email"
@@ -85,21 +123,30 @@ const Settings = () => {
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className="form-input"
+            className={styles.formInput} // Sử dụng styles.formInput
           />
-          {errors.email && <div className="error">{errors.email}</div>}
+          {errors.email && <div className={styles.error}>{errors.email}</div>} {/* Sử dụng styles.error */}
         </div>
 
-        {/* AVATAR */}
-        <div className="form-group avatar-group">
+        {/* Bio */}
+        <div className={styles.formGroup}> {/* Sử dụng styles.formGroup */}
+            <label htmlFor="bio">Bio:</label>
+            <textarea
+                id="bio"
+                name="bio"
+                value={formData.bio}
+                onChange={handleInputChange}
+                className={styles.formInput} // Sử dụng styles.formInput
+                rows="3"
+            ></textarea>
+            {errors.bio && <div className={styles.error}>{errors.bio}</div>} {/* Sử dụng styles.error */}
+        </div>
+
+        {/* Avatar */}
+        <div className={`${styles.formGroup} ${styles.avatarGroup}`}> {/* Sử dụng styles.formGroup và styles.avatarGroup */}
           <label htmlFor="avatar">Avatar:</label>
-          <div className="avatar-wrapper">
-            <img
-              id="avatarPreview"
-              src={avatarPreview}
-              className="avatar-preview"
-              alt="User avatar"
-            />
+          <div className={styles.avatarWrapper}> {/* Sử dụng styles.avatarWrapper */}
+            <img src={avatarPreview} className={styles.avatarPreview} alt="User avatar" /> {/* Sử dụng styles.avatarPreview */}
           </div>
           <input
             type="file"
@@ -107,24 +154,16 @@ const Settings = () => {
             name="avatar"
             accept="image/*"
             onChange={handleAvatarChange}
-            className="form-input"
+            className={styles.formInput} // Sử dụng styles.formInput
           />
-          {errors.avatar && <div className="error">{errors.avatar}</div>}
+          {errors.avatar && <div className={styles.error}>{errors.avatar}</div>} {/* Sử dụng styles.error */}
         </div>
 
-        <button type="submit" className="btn btn-primary save-btn">
-          <span className="btn-icon">💾</span>
-          <span>Save Changes</span>
+        <button type="submit" className={`${styles.btn} ${styles.btnPrimary} ${styles.saveBtn}`} disabled={loading}>
+          <span className={styles.btnIcon}>💾</span> {/* Sử dụng styles.btnIcon */}
+          <span>{loading ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </form>
-
-      <div className="settings-links">
-        <a href="/password_change" className="settings-link">
-          <span className="link-icon">🔒</span>
-          <span>Change Password</span>
-          <span className="link-arrow">→</span>
-        </a>
-      </div>
     </div>
   );
 };

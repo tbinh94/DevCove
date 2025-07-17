@@ -1,8 +1,7 @@
 // LoginPage.jsx
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import style from './LoginPage.module.css'; 
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -12,7 +11,7 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuthContext(); // Sử dụng login từ AuthContext
+    const { login } = useAuth();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -27,14 +26,13 @@ const LoginPage = () => {
         try {
             console.log('Attempting login with credentials:', { username: credentials.username });
             
-            // Sử dụng login từ AuthContext
             const result = await login(credentials);
             
             console.log('Login result:', result);
             
             if (result.success) {
                 console.log('Login successful, navigating to home');
-                navigate('/'); // Chuyển hướng về trang chủ sau khi thành công
+                navigate('/');
             } else {
                 console.log('Login failed:', result.error);
                 setError(result.error || 'Login failed. Please check your credentials.');
