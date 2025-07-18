@@ -39,7 +39,7 @@
     width: 100%;
 }
 
-/* Tags */
+/* Tags (from original fullContent - for sidebar/filter, not conflicting with Post tags) */
 .tagsSection {
     background: #fff;
     border: 1px solid #ccc;
@@ -144,24 +144,6 @@
     font-size: 14px;
     color: #7c7c83;
     font-weight: 600;
-}
-
-.filterItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 12px;
-    flex-wrap: wrap;
-}
-
-.filterValue {
-    background: #0079d3;
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
 }
 
 .clearFilter {
@@ -270,7 +252,7 @@
     transform: translateY(-1px);
 }
 
-/* Posts */
+/* Posts (general container from original fullContent) */
 .postsContainer {
     background: #fff;
     border: 1px solid #ccc;
@@ -280,23 +262,308 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+/* Styles from the "Đoạn code muốn tích hợp" block, taking precedence for common elements */
+
+.postListContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 16px;
+}
+
 .postCard {
-    display: flex;
-    padding: 10px;
-    border-bottom: 1px solid #f6f7f8;
-    background: #fff;
-    transition: all 0.2s;
-    position: relative;
+  display: flex;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
 }
 
 .postCard:hover {
-    background: #f8f9fa;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.postCard:last-child {
-    border-bottom: none;
+.voteSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 12px;
+  padding: 8px;
+  min-width: 50px;
 }
 
+.voteButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.voteButton:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.voteButton.activeUp {
+  color: #ff4500;
+  background-color: #fff2e6;
+}
+
+.voteButton.activeDown {
+  color: #7193ff;
+  background-color: #e6f2ff;
+}
+
+.voteScore {
+  font-weight: bold;
+  font-size: 14px;
+  margin: 4px 0;
+  color: #333;
+}
+
+.postContentArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.postLink {
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+}
+
+.postLink:hover {
+  text-decoration: none;
+}
+
+/* This .postMeta and .postTitle will be overridden by more specific definitions below */
+.postMeta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.postTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.postTitle:hover {
+  color: #ff4500;
+}
+
+/* Tags styling (from "Đoạn code muốn tích hợp") */
+.tagsContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.tagIcon {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.moreTagsCount {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  padding: 2px 6px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+}
+
+.imageContainer {
+  margin: 12px 0;
+}
+
+.postImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.postContentPreview {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+  margin: 8px 0;
+}
+
+.postFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background-color: #f5f5f5;
+  color: #333;
+  text-decoration: none;
+}
+
+/* Pagination (from "Đoạn code muốn tích hợp") */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 40px;
+  padding: 20px 0;
+}
+
+.pageBtn {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  border-color: #ccc;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageBtn.activePage {
+  background-color: #ff4500;
+  color: white;
+  border-color: #ff4500;
+}
+
+.pageInfo {
+  padding: 8px 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Responsive design (from "Đoạn code muốn tích hợp") */
+@media (max-width: 768px) {
+  .postListContainer {
+    padding: 10px;
+  }
+  
+  .postCard {
+    padding: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .voteSection {
+    margin-right: 8px;
+    min-width: 40px;
+  }
+  
+  .postTitle {
+    font-size: 16px;
+  }
+  
+  .tagsContainer {
+    gap: 4px;
+  }
+  
+  .tag {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+  
+  .pagination {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  
+  .pageBtn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .postCard {
+    flex-direction: column;
+  }
+  
+  .voteSection {
+    flex-direction: row;
+    justify-content: center;
+    margin-right: 0;
+    margin-bottom: 8px;
+    min-width: auto;
+  }
+  
+  .voteButton {
+    margin: 0 8px;
+  }
+  
+  .postTitle {
+    font-size: 15px;
+  }
+  
+  .tagsContainer {
+    justify-content: flex-start;
+  }
+}
+
+/* Remaining Post and Vote styles from original fullContent (unique or more specific) */
 .postCard::before {
     content: '';
     position: absolute;
@@ -313,17 +580,86 @@
     opacity: 1;
 }
 
-/* Vote */
-.voteSection {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 40px;
-    margin-right: 12px;
-    padding-top: 4px;
+/* Post Content (more specific overrides for postMeta and postTitle from fullContent) */
+.postBody {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
-.voteBtn {
+.postMeta { /* This overrides the earlier .postMeta for its additional flex properties */
+    font-size: 12px;
+    color: #787c7e;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.communityBadge {
+    color: #1a1a1b;
+    font-weight: 700;
+    text-decoration: none;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.communityBadge:hover {
+    background: #f6f7f8;
+    text-decoration: none;
+}
+
+.separator {
+    margin: 0 6px;
+    color: #ccc;
+}
+
+.author,
+.time {
+    color: #787c7e;
+    white-space: nowrap;
+}
+
+.postTitle { /* This overrides the earlier .postTitle for its `a` selector */
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.postTitle a {
+    color: #1a1a1b;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.postTitle a:hover {
+    color: #0079d3;
+}
+
+.postContent {
+    font-size: 14px;
+    color: #1a1a1b;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.postImage img { /* Specific rule for img inside .postImage */
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s;
+}
+
+.postImage:hover img {
+    transform: scale(1.02);
+}
+
+/* Original Vote detailed styles (assuming they apply to internal parts or are more specific) */
+.voteBtn { /* This style is specific to original fullContent's voting mechanism */
     background: none;
     border: none;
     cursor: pointer;
@@ -407,92 +743,8 @@
     border: 2px solid #ff5722 !important;
 }
 
-/* Post Content */
-.postBody {
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: break-word;
-}
 
-.postMeta {
-    font-size: 12px;
-    color: #787c7e;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.communityBadge {
-    color: #1a1a1b;
-    font-weight: 700;
-    text-decoration: none;
-    padding: 2px 4px;
-    border-radius: 3px;
-    transition: background 0.2s;
-}
-
-.communityBadge:hover {
-    background: #f6f7f8;
-    text-decoration: none;
-}
-
-.separator {
-    margin: 0 6px;
-    color: #ccc;
-}
-
-.author,
-.time {
-    color: #787c7e;
-    white-space: nowrap;
-}
-
-.postTitle {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-    font-weight: 500;
-    line-height: 1.3;
-}
-
-.postTitle a {
-    color: #1a1a1b;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.postTitle a:hover {
-    color: #0079d3;
-}
-
-.postContent {
-    font-size: 14px;
-    color: #1a1a1b;
-    margin-bottom: 10px;
-    line-height: 1.5;
-}
-
-.postImage {
-    margin: 10px 0;
-    border-radius: 4px;
-    overflow: hidden;
-    max-width: 100%;
-}
-
-.postImage img {
-    max-width: 100%;
-    max-height: 400px;
-    object-fit: cover;
-    display: block;
-    transition: transform 0.2s;
-}
-
-.postImage:hover img {
-    transform: scale(1.02);
-}
-
-/* Actions */
+/* Actions (more detailed from original fullContent) */
 .postActions {
     display: flex;
     gap: 4px;
@@ -531,249 +783,6 @@
     background: #e8f5e8;
 }
 
-/* Pagination */
-.pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px; /* Reduced gap for better fit */
-    margin-top: 20px;
-    padding: 20px 0;
-    flex-wrap: wrap;
-}
-
-.pageBtn {
-    padding: 8px 16px; /* Slightly smaller padding */
-    background: #0079d3;
-    color: #fff;
-    text-decoration: none;
-    border-radius: 20px;
-    font-size: 13px; /* Slightly smaller font size */
-    font-weight: 600;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0, 121, 211, 0.3);
-    border: none; /* Ensure no default button border */
-    cursor: pointer; /* Indicate clickable */
-}
-
-.pageBtn:hover {
-    background: #0066cc;
-    color: #fff;
-    text-decoration: none;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 121, 211, 0.4);
-}
-
-.pageBtn:disabled {
-    background: #cccccc;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-}
-
-.pageBtn.activePage {
-    background: #ff4500; /* Distinct color for active page */
-    border-color: #ff4500;
-    box-shadow: 0 2px 4px rgba(255, 69, 0, 0.3);
-}
-
-.pageInfo {
-    color: #787c7e;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 12px; /* Add some padding for consistency */
-}
-
-/* Responsive adjustments for pagination */
-@media (max-width: 480px) {
-    .pagination {
-        gap: 5px; /* Even smaller gap on small screens */
-        padding: 15px 0;
-    }
-
-    .pageBtn {
-        padding: 6px 12px;
-        font-size: 12px;
-    }
-
-    .pageInfo {
-        font-size: 12px;
-        padding: 6px 8px;
-    }
-}
-
-/* Empty State */
-.emptyState {
-    text-align: center;
-    padding: 80px 20px;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.emptyIcon {
-    font-size: 72px;
-    margin-bottom: 20px;
-    opacity: 0.6;
-}
-
-.emptyState h3 {
-    color: #1a1a1b;
-    margin-bottom: 10px;
-    font-size: 24px;
-    font-weight: 600;
-}
-
-.emptyState p {
-    color: #787c7e;
-    margin-bottom: 24px;
-    font-size: 16px;
-}
-
-.btn {
-    padding: 12px 24px;
-    background: #0079d3;
-    color: #fff;
-    text-decoration: none;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    display: inline-block;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0, 121, 211, 0.3);
-}
-
-.btn:hover {
-    background: #0066cc;
-    text-decoration: none;
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 121, 211, 0.4);
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-    .mainContainer {
-        flex-direction: column;
-        padding: 12px;
-        gap: 12px;
-    }
-
-    .sidebar {
-        width: 100%;
-        min-width: auto;
-        max-width: none;
-        order: 2;
-        position: static;
-        max-height: none;
-        overflow-y: visible;
-    }
-
-    .mainContent {
-        order: 1;
-        width: 100%;
-    }
-
-    .postMeta {
-        font-size: 11px;
-    }
-
-    .separator {
-        margin: 0 4px;
-    }
-}
-
-@media (max-width: 768px) {
-    .postCard {
-        padding: 12px 8px;
-    }
-
-    .voteSection {
-        width: 36px;
-        margin-right: 8px;
-    }
-
-    .postTitle {
-        font-size: 16px;
-    }
-
-    .postContent {
-        font-size: 13px;
-    }
-
-    .createPostInput input {
-        padding: 10px 14px;
-        font-size: 13px;
-    }
-
-    .userAvatar {
-        width: 32px;
-        height: 32px;
-    }
-
-    .avatarIcon {
-        font-size: 16px;
-    }
-
-    .createPostActions {
-        gap: 6px;
-    }
-}
-
-@media (max-width: 480px) {
-    .mainContainer {
-        padding: 8px;
-    }
-
-    .postCard {
-        padding: 8px;
-    }
-
-    .createPostCard {
-        padding: 8px 12px;
-        gap: 8px;
-    }
-
-    .postTitle {
-        font-size: 15px;
-    }
-
-    .voteSection {
-        width: 32px;
-        margin-right: 6px;
-    }
-
-    .voteBtn {
-        width: 24px;
-        height: 24px;
-        padding: 4px;
-    }
-
-    .voteArrow {
-        font-size: 12px;
-    }
-
-    .score {
-        font-size: 11px;
-    }
-
-    .postMeta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-    }
-
-    .postMeta .separator {
-        display: none;
-    }
-
-    .actionBtn {
-        padding: 4px 6px;
-        font-size: 11px;
-    }
-}
-
 /* Scrollbar */
 .sidebar::-webkit-scrollbar {
     width: 6px;
@@ -809,6 +818,7 @@
     outline-offset: 2px;
 }
 
+/* Sort */
 .sortSection {
     background: white;
     border-radius: 8px;
@@ -1047,129 +1057,133 @@
     }
 }
 
-/* PostList.module.css */
-
-.message {
+/* Empty State */
+.emptyState {
     text-align: center;
-    padding: 2rem;
-    color: #888;
-}
-
-.postListContainer {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.postCard {
-    display: flex;
-    background-color: #ffffff;
-    border: 1px solid #ddd;
+    padding: 80px 20px;
+    background: #fff;
+    border: 1px solid #ccc;
     border-radius: 4px;
-    transition: border-color 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.postCard:hover {
-    border-color: #999;
+.emptyIcon {
+    font-size: 72px;
+    margin-bottom: 20px;
+    opacity: 0.6;
 }
 
-.voteSection {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.5rem;
-    background-color: #f8f9fa;
-    border-right: 1px solid #ddd;
+.emptyState h3 {
+    color: #1a1a1b;
+    margin-bottom: 10px;
+    font-size: 24px;
+    font-weight: 600;
 }
 
-.voteButton {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #888;
-    padding: 0.25rem;
+.emptyState p {
+    color: #787c7e;
+    margin-bottom: 24px;
+    font-size: 16px;
 }
 
-.voteButton:hover {
-    background-color: #e9e9e9;
-    border-radius: 4px;
-}
-
-.voteButton.activeUp {
-    color: #ff4500; /* Orange-red for upvote */
-}
-
-.voteButton.activeDown {
-    color: #7193ff; /* Blue for downvote */
-}
-
-.voteScore {
-    font-weight: bold;
-    font-size: 1rem;
-    padding: 0.5rem 0;
-}
-
-.postContentArea {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.postLink {
+.btn {
+    padding: 12px 24px;
+    background: #0079d3;
+    color: #fff;
     text-decoration: none;
-    color: inherit;
-    padding: 1rem;
-    display: block;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-block;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 121, 211, 0.3);
 }
 
-.postMeta {
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 0.5rem;
-}
-
-.postTitle {
-    font-size: 1.25rem;
-    margin: 0 0 1rem 0;
-}
-
-.imageContainer {
-    max-height: 500px;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #f0f0f0;
-    margin-bottom: 1rem;
-}
-
-.postImage {
-    max-width: 100%;
-    height: auto;
-    display: block;
-}
-
-.postFooter {
-    display: flex;
-    padding: 0.5rem 1rem;
-    border-top: 1px solid #eee;
-}
-
-.actionButton {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-color: transparent;
-    border: none;
-    color: #888;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
+.btn:hover {
+    background: #0066cc;
     text-decoration: none;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 121, 211, 0.4);
 }
 
-.actionButton:hover {
-    background-color: #f0f0f0;
+/* Responsive (general layout from original fullContent - combined with PostList.module.css specific responsive rules above) */
+@media (max-width: 900px) {
+    .mainContainer {
+        flex-direction: column;
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: auto;
+        max-width: none;
+        order: 2;
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    .mainContent {
+        order: 1;
+        width: 100%;
+    }
+
+    .postMeta {
+        font-size: 11px;
+    }
+
+    .separator {
+        margin: 0 4px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Rules for .postCard, .voteSection, .postTitle, tags and pagination within this breakpoint are handled by the new code block above */
+
+    .createPostInput input {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    .userAvatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .avatarIcon {
+        font-size: 16px;
+    }
+
+    .createPostActions {
+        gap: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Rules for .postCard, .voteSection, .postTitle, tags and pagination within this breakpoint are handled by the new code block above */
+    .mainContainer {
+        padding: 8px;
+    }
+
+    .createPostCard {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .postMeta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .postMeta .separator {
+        display: none;
+    }
+
+    .actionBtn {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
 }

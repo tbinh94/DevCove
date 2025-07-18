@@ -1,10 +1,10 @@
-// Fixed PostList.jsx
+// Fixed PostList.jsx with improved Tags Display and Debugging
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
+import { ChevronUp, ChevronDown, MessageCircle, Tag } from 'lucide-react';
 import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
-import apiService from '../../services/api'; // Assuming you have an apiService for API calls
+import apiService from '../../services/api';
 
 const PostList = ({ filter = 'hot', showAllTags = false }) => {
   const { user, isAuthenticated } = useAuth();
@@ -12,25 +12,36 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [postsPerPage] = useState(10); // Set posts per page to 10, as requested
-  const [totalPosts, setTotalPosts] = useState(0); // To store total number of posts for pagination
+  const [postsPerPage] = useState(10);
+  const [totalPosts, setTotalPosts] = useState(0);
 
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        // Use apiService.getPosts for a consistent API-calling approach.
         const params = {
           page: currentPage,
           page_size: postsPerPage,
-          // You can add other filters here if needed, e.g., filter: filter
+          // Add ordering if needed
+          ordering: filter === 'hot' ? '-calculated_score' : '-created_at'
         };
+        
+        console.log('Fetching posts with params:', params);
         const data = await apiService.getPosts(params);
+        console.log('Raw posts data received:', data);
 
-        // Assuming your API returns an object with 'results' (the posts) and 'count' (total posts)
+        // Handle different API response formats
         const postData = Array.isArray(data) ? data : data.results || [];
+        console.log('Processed posts data:', postData);
+        
+        // Debug: Log the first post to check tags structure
+        if (postData.length > 0) {
+          console.log('First post structure:', postData[0]);
+          console.log('First post tags:', postData[0].tags);
+        }
+
         setPosts(postData);
-        setTotalPosts(data.count || postData.length); // Update total posts based on API response
+        setTotalPosts(data.count || postData.length);
 
       } catch (err) {
         console.error('Error fetching posts:', err);
@@ -41,20 +52,16 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
     };
 
     fetchPosts();
-  }, [isAuthenticated, currentPage, postsPerPage, filter]); // Re-fetch when dependencies change
+  }, [isAuthenticated, currentPage, postsPerPage, filter]);
 
   async function handleVote(postId, type) {
-    // Ensure the user is authenticated before allowing a vote
     if (!isAuthenticated) {
-      // You can redirect to login or show a message
       console.log("User must be logged in to vote.");
-      // Optionally, trigger a login modal or redirect
       return;
     }
 
     try {
       const updatedPost = await apiService.vote(postId, type);
-      // Update the specific post in the list with the new score and vote status
       setPosts(posts.map(post =>
         post.id === postId
           ? { ...post, calculated_score: updatedPost.score, user_vote: updatedPost.user_vote }
@@ -62,9 +69,67 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
       ));
     } catch (err) {
       console.error('Error voting:', err);
-      // Handle error, e.g., show a notification to the user
     }
   }
+
+  // IMPROVED: Helper function to render tags with better error handling
+  const renderTags = (tags) => {
+    // Debug logging
+    console.log('renderTags called with:', tags);
+    
+    if (!tags) {
+      console.log('Tags is null or undefined');
+      return null;
+    }
+
+    if (!Array.isArray(tags)) {
+      console.log('Tags is not an array:', typeof tags, tags);
+      return null;
+    }
+
+    if (tags.length === 0) {
+      console.log('Tags array is empty');
+      return null;
+    }
+
+    const tagsToShow = showAllTags ? tags : tags.slice(0, 3);
+    const remainingCount = tags.length - tagsToShow.length;
+
+    console.log('Rendering tags:', tagsToShow);
+
+    return (
+      <div className={styles.tagsContainer}>
+        <Tag size={14} className={styles.tagIcon} />
+        {tagsToShow.map((tag, index) => {
+          // Handle different tag formats
+          const tagId = tag.id || tag.pk || index;
+          const tagName = tag.name || tag.title || tag;
+          const tagColor = tag.color || '#ccc';
+          
+          console.log('Rendering tag:', { tagId, tagName, tagColor });
+          
+          return (
+            <span 
+              key={tagId} 
+              className={styles.tag}
+              style={{ 
+                backgroundColor: tagColor ? `${tagColor}20` : '#f0f0f0',
+                borderColor: tagColor || '#ccc',
+                color: tagColor || '#333'
+              }}
+            >
+              {tagName}
+            </span>
+          );
+        })}
+        {remainingCount > 0 && (
+          <span className={styles.moreTagsCount}>
+            +{remainingCount} more
+          </span>
+        )}
+      </div>
+    );
+  };
 
   const totalPages = Math.ceil(totalPosts / postsPerPage);
 
@@ -137,47 +202,82 @@ const PostList = ({ filter = 'hot', showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      {posts.map(post => (
-        <div key={post.id} className={styles.postCard}>
-          <div className={styles.voteSection}>
-            <button
-              onClick={() => handleVote(post.id, 'up')}
-              className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`}
-            >
-              <ChevronUp size={22} />
-            </button>
-            <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-            <button
-              onClick={() => handleVote(post.id, 'down')}
-              className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
-            >
-              <ChevronDown size={22} />
-            </button>
-          </div>
+      {/* DEBUG: Show total posts count */}
+      <div className={styles.debugInfo} style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+        Debug: Showing {posts.length} posts out of {totalPosts} total
+      </div>
 
-          <div className={styles.postContentArea}>
-            <Link to={`/post/${post.id}`} className={styles.postLink}>
+      {posts.map(post => {
+        // Debug logging for each post
+        console.log(`Post ${post.id} tags:`, post.tags);
+        
+        return (
+          <div key={post.id} className={styles.postCard}>
+            <div className={styles.voteSection}>
+              <button
+                onClick={() => handleVote(post.id, 'up')}
+                className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`}
+              >
+                <ChevronUp size={22} />
+              </button>
+              <span className={styles.voteScore}>{post.calculated_score || 0}</span>
+              <button
+                onClick={() => handleVote(post.id, 'down')}
+                className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
+              >
+                <ChevronDown size={22} />
+              </button>
+            </div>
+
+            <div className={styles.postContentArea}>
+              <Link to={`/post/${post.id}`} className={styles.postLink}>
                 <div className={styles.postMeta}>
-                    <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+                  <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+                  {post.community && (
+                    <span> in r/{post.community.name}</span>
+                  )}
                 </div>
                 <h3 className={styles.postTitle}>{post.title}</h3>
 
-                {post.image_url && (
-                    <div className={styles.imageContainer}>
-                        <img src={post.image_url} alt={post.title} className={styles.postImage} />
-                    </div>
-                )}
-            </Link>
+                {/* IMPROVED: Display tags with debugging */}
+                <div className={styles.tagsDebug}>
+                  {/* Debug info - remove in production */}
+                  <small style={{ color: '#999', fontSize: '10px' }}>
+                    Debug: Tags data - {JSON.stringify(post.tags)}
+                  </small>
+                  
+                  {/* Actual tags display */}
+                  {renderTags(post.tags)}
+                </div>
 
-            <div className={styles.postFooter}>
+                {post.image_url && (
+                  <div className={styles.imageContainer}>
+                    <img src={post.image_url} alt={post.title} className={styles.postImage} />
+                  </div>
+                )}
+
+                {/* Show content preview for text posts */}
+                {post.content && (
+                  <p className={styles.postContentPreview}>
+                    {post.content.length > 200 
+                      ? `${post.content.substring(0, 200)}...` 
+                      : post.content
+                    }
+                  </p>
+                )}
+              </Link>
+
+              <div className={styles.postFooter}>
                 <Link to={`/post/${post.id}`} className={styles.actionButton}>
-                    <MessageCircle size={16} />
-                    <span>{post.comment_count || 0} Comments</span>
+                  <MessageCircle size={16} />
+                  <span>{post.comment_count || 0} Comments</span>
                 </Link>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
+      
       {totalPosts > postsPerPage && renderPaginationButtons()}
     </div>
   );

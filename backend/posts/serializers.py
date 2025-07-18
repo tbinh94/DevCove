@@ -158,11 +158,8 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tag_ids = validated_data.pop('tag_ids', [])
         post = Post.objects.create(**validated_data)
-        
         if tag_ids:
-            tags = Tag.objects.filter(id__in=tag_ids)
-            post.tags.set(tags)
-        
+            post.tags.set(Tag.objects.filter(id__in=tag_ids))
         return post
     
     def update(self, instance, validated_data):
