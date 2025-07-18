@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './Sidebar.module.css';
+import AllTags from '../../pages/AllTags';
 
 const Sidebar = ({ 
-  popularTags = [], 
   selectedTags = [], 
   searchQuery = '', 
   onTagToggle,
@@ -11,6 +11,71 @@ const Sidebar = ({
   onClearSearch,
   user = null 
 }) => {
+  const [popularTags, setPopularTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAllTags, setShowAllTags] = useState(false);
+
+  // Fetch popular tags from backend
+  useEffect(() => {
+    const fetchPopularTags = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Gọi API để lấy popular tags
+        const response = await fetch('/api/tags/popular/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Thêm CSRF token nếu cần
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Transform data để match với format cần thiết
+        const transformedTags = data.map(tag => ({
+          id: tag.id,
+          name: tag.name,
+          slug: tag.slug,
+          color: tag.color,
+          post_count: tag.posts_count || 0
+        }));
+
+        setPopularTags(transformedTags);
+      } catch (err) {
+        console.error('Error fetching popular tags:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPopularTags();
+  }, []);
+
+  // Helper function to get CSRF token
+  const getCookie = (name) => {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  };
+
   const handleTagToggle = (tagSlug) => {
     if (onTagToggle) {
       onTagToggle(tagSlug);
@@ -35,33 +100,78 @@ const Sidebar = ({
     }
   };
 
+  const handleViewAllTags = (e) => {
+    e.preventDefault();
+    setShowAllTags(true);
+  };
+
+  const handleAllTagsClose = () => {
+    setShowAllTags(false);
+  };
+
+  const handleTagSelectFromModal = (tag) => {
+    handleTagToggle(tag.slug);
+    setShowAllTags(false);
+  };
+
   return (
     <div className={styles.sidebar}>
       {/* Tags Section */}
       <div className={styles.tagsSection}>
         <h3>Popular Tags</h3>
-        <div className={styles.tagsList}>
-          {popularTags.map((tag) => (
-            <a
-              key={tag.slug}
-              href="#"
-              className={`${styles.tagBadge} ${styles.tagToggle} ${
-                selectedTags.some(selectedTag => selectedTag.slug === tag.slug) ? styles.active : ''
-              }`}
-              onClick={(e) => {
-                e.preventDefault();
-                handleTagToggle(tag.slug);
-              }}
-              style={{ backgroundColor: tag.color }}
+        
+        {loading && (
+          <div className={styles.loading}>
+            <p>Loading tags...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className={styles.error}>
+            <p>Error loading tags: {error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className={styles.retryButton}
             >
-              {tag.name}
-              <span className={styles.tagCount}>{tag.post_count}</span>
-            </a>
-          ))}
-          <a href="/tags" className={styles.viewAllTags}>
-            View all tags →
-          </a>
-        </div>
+              Retry
+            </button>
+          </div>
+        )}
+        
+        {!loading && !error && (
+          <div className={styles.tagsList}>
+            {popularTags.length > 0 ? (
+              <>
+                {popularTags.map((tag) => (
+                  <a
+                    key={tag.slug}
+                    href="#"
+                    className={`${styles.tagBadge} ${styles.tagToggle} ${
+                      selectedTags.some(selectedTag => selectedTag.slug === tag.slug) ? styles.active : ''
+                    }`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleTagToggle(tag.slug);
+                    }}
+                    style={{ backgroundColor: tag.color }}
+                  >
+                    {tag.name}
+                    <span className={styles.tagCount}>{tag.post_count}</span>
+                  </a>
+                ))}
+                <a 
+                  href="/tags" 
+                  className={styles.viewAllTags}
+                  onClick={handleViewAllTags}
+                >
+                  View all tags →
+                </a>
+              </>
+            ) : (
+              <p className={styles.noTags}>No popular tags found</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Active Filters */}
@@ -118,6 +228,14 @@ const Sidebar = ({
             Clear all filters
           </a>
         </div>
+      )}
+      
+      {/* All Tags Modal */}
+      {showAllTags && (
+        <AllTags
+          onTagSelect={handleTagSelectFromModal}
+          onClose={handleAllTagsClose}
+        />
       )}
     </div>
   );

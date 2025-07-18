@@ -59,7 +59,18 @@ class APIService {
     
     return null;
   }
-
+  
+  async getTags() {
+    // we don’t need CSRF for GET
+    const data = await this.request('/api/tags/', {
+      method: 'GET',
+      headers: this.getHeaders(false),
+    });
+    // if you’re using DRF’s pagination you’ll get { results: [...] }
+    // otherwise it’s just [...]
+    return Array.isArray(data) ? data : data.results;
+  }
+  
   // Get default headers
   getHeaders(includeCSRF = true, contentType = 'application/json') {
     const headers = {

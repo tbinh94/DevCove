@@ -286,9 +286,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for tags (read-only)
     """
-    queryset = Tag.objects.annotate(
-        post_count=Count('posts')
-    ).filter(post_count__gt=0).order_by('-post_count')
+    queryset = Tag.objects.all().order_by('name')
     serializer_class = TagSerializer
     pagination_class = StandardResultsSetPagination
     filter_backends = [SearchFilter]

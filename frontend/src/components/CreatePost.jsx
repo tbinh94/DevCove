@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import styles from './CreatePost.module.css';
 
-const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPostCreated prop
+const CreatePost = ({ isAuthenticated = true, onPostCreated }) => {
   const navigate = useNavigate();
 
-  const [postType, setPostType] = useState('text'); // 'text', 'image', 'link', 'poll'
+  const [postType, setPostType] = useState('text');
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState(''); // For text posts
-  const [image, setImage] = useState(null); // For image posts
-  const [imageUrl, setImageUrl] = useState(''); // For link posts
-  const [pollOptions, setPollOptions] = useState(['', '']); // For poll posts
+  const [content, setContent] = useState('');
+  const [image, setImage] = useState(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [tagsOptions, setTagsOptions] = useState([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,7 +22,30 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
   const formRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Helper to get CSRF token (copied from Header.jsx/VoteSystem.jsx)
+  // Fetch tags on mount
+  useEffect(() => {
+    async function loadTags() {
+      try {
+        const tags = await apiService.getTags();
+        console.log('Loaded tags:', tags);
+        setTagsOptions(tags);
+      } catch (err) {
+        console.error('Failed to load tags', err);
+      }
+    }
+    loadTags();
+  }, []);
+
+  // Toggle a tag in selectedTags
+  const handleTagToggle = (tagId) => {
+    setSelectedTags(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
+  // Helper to get CSRF token
   const getCookie = (name) => {
     let value = null;
     document.cookie.split(';').forEach(c => {
@@ -31,7 +57,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
     return value;
   };
 
-  // Debounce function (from create_post.js)
+  // Debounce function
   const debounce = (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -44,7 +70,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
     };
   };
 
-  // Update textarea height (from create_post.js)
+  // Update textarea height
   const handleTextareaResize = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -53,14 +79,12 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
   }, []);
 
   useEffect(() => {
-    // Initial resize for textarea
     handleTextareaResize();
   }, [content, handleTextareaResize]);
 
   // Handle tab click events
   const handleTabClick = (type) => {
     setPostType(type);
-    // Reset relevant fields when changing tab
     setError('');
     if (type !== 'text') setContent('');
     if (type !== 'image') setImage(null);
@@ -68,7 +92,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
     if (type !== 'poll') setPollOptions(['', '']);
   };
 
-  // Validate files (from create_post.js)
+  // Validate files
   const validateFiles = (files) => {
     const maxSize = 10 * 1024 * 1024; // 10MB
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -93,9 +117,9 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
     if (files.length > 0) {
       if (validateFiles(files)) {
         setImage(files[0]);
-        setError(''); // Clear any previous error
+        setError('');
       } else {
-        setImage(null); // Clear invalid file
+        setImage(null);
       }
     } else {
       setImage(null);
@@ -110,7 +134,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
   };
 
   const addPollOption = () => {
-    if (pollOptions.length < 10) { // Limit to 10 options
+    if (pollOptions.length < 10) {
       setPollOptions([...pollOptions, '']);
     }
   };
@@ -120,7 +144,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
     setPollOptions(newOptions);
   };
 
-  // Form validation (from create_post.js, adapted for React state)
+  // Form validation
   const validateForm = () => {
     if (!title.trim()) {
       setError('Title is required.');
@@ -130,46 +154,35 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
       setError('Title must be less than 300 characters.');
       return false;
     }
-
     if (postType === 'text' && !content.trim()) {
       setError('Text content is required for text posts.');
       return false;
     }
-
     if (postType === 'image' && !image) {
       setError('An image is required for image posts.');
       return false;
     }
-
     if (postType === 'link' && (!imageUrl.trim() || !/^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/i.test(imageUrl.trim()))) {
       setError('A valid URL is required for link posts.');
       return false;
     }
-
-    if (postType === 'poll') {
-      if (pollOptions.filter(option => option.trim() !== '').length < 2) {
-        setError('A poll must have at least two non-empty options.');
-        return false;
-      }
-      if (pollOptions.some(option => option.length > 100)) { // Example limit for poll option length
-        setError('Poll options must be less than 100 characters.');
-        return false;
-      }
+    if (postType === 'poll' && pollOptions.filter(o => o.trim()).length < 2) {
+      setError('A poll must have at least two options.');
+      return false;
     }
-
-    setError(''); // Clear any existing errors if validation passes
+    setError('');
     return true;
   };
 
-  // Handle form submission
+  // FIXED: Handle form submission with proper tag handling
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading) return;
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setError(''); // Clear any previous errors
-    setSuccess(''); // Clear any previous success messages
+    setError('');
+    setSuccess('');
 
     try {
       const formData = new FormData();
@@ -183,69 +196,131 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
       } else if (postType === 'link') {
         formData.append('link_url', imageUrl);
       } else if (postType === 'poll') {
-        const validPollOptions = pollOptions.filter(o => o.trim() !== '');
-        formData.append('poll_options', JSON.stringify(validPollOptions));
+        formData.append('poll_options', JSON.stringify(pollOptions.filter(o => o.trim())));
       }
 
-      await apiService.createPost(formData); //
-      
-      setSuccess('Post created successfully!'); //
-      if (onPostCreated) {
-        onPostCreated(); // Call callback to close modal
+      // FIXED: Multiple approaches for sending tags
+      if (selectedTags.length > 0) {
+        // Method 1: Send each tag ID as separate 'tags' field (most common Django approach)
+        selectedTags.forEach(tagId => {
+          formData.append('tags', tagId);
+        });
+        
+        // Method 2: Also send as JSON array (backup approach)
+        formData.append('tag_ids', JSON.stringify(selectedTags));
+        
+        // Method 3: Send as comma-separated string (another common approach)
+        formData.append('tags_string', selectedTags.join(','));
       }
+
+      // Debug logging
+      console.log('Submitting post with data:');
+      console.log('- title:', title);
+      console.log('- post_type:', postType);
+      console.log('- selectedTags:', selectedTags);
       
-      // Navigate to the home page and force a refresh
+      // Log all FormData entries
+      for (let pair of formData.entries()) {
+        console.log(`- ${pair[0]}:`, pair[1]);
+      }
+
+      const response = await apiService.createPost(formData);
+      console.log('Create post response:', response);
+
+      setSuccess('Post created successfully!');
+      
+      // Clear form
+      setTitle('');
+      setContent('');
+      setImage(null);
+      setImageUrl('');
+      setPollOptions(['', '']);
+      setSelectedTags([]);
+      
+      if (onPostCreated) onPostCreated();
+      
+      // Navigate after a short delay to show success message
       setTimeout(() => {
-        navigate('/'); // Navigate to home page
-        window.location.reload(); // Force a full page reload
+        navigate('/');
+        // Force refresh to show the new post
+        window.location.reload();
       }, 1500);
 
     } catch (err) {
-      console.error('Post creation error:', err); //
-      // Handle network errors or errors from the server (e.g., 403, 400)
-      setSuccess(''); // Ensure success message is cleared if there's an error
-      if (err.message && err.message.includes('403')) {
-        setError('Authentication failed. Please log in again.'); //
-      } else if (err.message && err.message.includes('400')) {
-        setError('Invalid data provided. Please check your inputs.'); //
-      } else {
-        setError(err.message || 'An unexpected error occurred. Please try again.'); //
+      console.error('Create post error:', err);
+      
+      let errorMessage = 'An unexpected error occurred.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+        
+        // Try to parse validation errors if it's a 400 error
+        if (err.message.includes('400')) {
+          try {
+            const jsonMatch = err.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              const errorData = JSON.parse(jsonMatch[0]);
+              console.log('Parsed error data:', errorData);
+              
+              // Format validation errors
+              const validationErrors = Object.entries(errorData)
+                .map(([field, errors]) => {
+                  const errorText = Array.isArray(errors) ? errors.join(', ') : errors;
+                  return `${field}: ${errorText}`;
+                })
+                .join('; ');
+              
+              errorMessage = `Validation errors: ${validationErrors}`;
+            }
+          } catch (parseError) {
+            console.log('Could not parse error details:', parseError);
+          }
+        }
       }
+      
+      setError(errorMessage);
     } finally {
-      setIsLoading(false); //
+      setIsLoading(false);
     }
   };
 
   // Auto-hide error/success messages
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(''), 5000); //
-      return () => clearTimeout(timer); //
+      const timer = setTimeout(() => setError(''), 8000);
+      return () => clearTimeout(timer);
     }
   }, [error]);
 
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(() => setSuccess(''), 5000); //
-      return () => clearTimeout(timer); //
+      const timer = setTimeout(() => setSuccess(''), 5000);
+      return () => clearTimeout(timer);
     }
   }, [success]);
 
-  // Handle keyboard shortcut for submission (Ctrl/Cmd + Enter)
+  // Handle keyboard shortcut for submission
   const handleKeyDown = useCallback(debounce((e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault(); //
-      // Trigger form submission programmatically
+      e.preventDefault();
       if (formRef.current) {
-        formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); //
+        formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
       }
     }
-  }, 100), []); // Debounce for keyboard events
+  }, 100), []);
 
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown); //
-    return () => document.removeEventListener('keydown', handleKeyDown); //
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Get selected tag names for preview
+  const getSelectedTagNames = () => {
+    return selectedTags.map(tagId => {
+      const tag = tagsOptions.find(t => t.id === tagId);
+      return tag ? tag.name : '';
+    }).filter(name => name);
+  };
 
   return (
     <div className={styles.createPostContainer}>
@@ -314,6 +389,34 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
           </div>
         )}
 
+        {/* IMPROVED: Tags Selection with better UI */}
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Tags {selectedTags.length > 0 && `(${selectedTags.length} selected)`}
+          </label>
+          <div className={styles.tagsContainer}>
+            {tagsOptions.map(tag => (
+              <label key={tag.id} className={styles.tagOption}>
+                <input
+                  type="checkbox"
+                  value={tag.id}
+                  checked={selectedTags.includes(tag.id)}
+                  onChange={() => handleTagToggle(tag.id)}
+                  disabled={isLoading}
+                />
+                <span className={styles.tagLabel}>{tag.name}</span>
+              </label>
+            ))}
+            {tagsOptions.length === 0 && <p>No tags available.</p>}
+          </div>
+          {/* Show selected tags preview */}
+          {selectedTags.length > 0 && (
+            <div className={styles.selectedTagsPreview}>
+              <small>Selected tags: {getSelectedTagNames().join(', ')}</small>
+            </div>
+          )}
+        </div>
+
         {postType === 'image' && (
           <div id="imageContent" className={styles.formGroup}>
             <label htmlFor="image" className={styles.label}>Upload Image</label>
@@ -364,7 +467,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
                   maxLength={100}
                   disabled={isLoading}
                 />
-                {pollOptions.length > 2 && ( // Allow removing if more than 2 options
+                {pollOptions.length > 2 && (
                   <button
                     type="button"
                     onClick={() => removePollOption(index)}
@@ -394,6 +497,20 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
           <h3 className={styles.previewTitle} id="previewTitle">
             Preview: {title || 'Your Post Title Will Appear Here'}
           </h3>
+          
+          {/* IMPROVED: Show selected tags in preview */}
+          {selectedTags.length > 0 && (
+            <div className={styles.previewTags}>
+              <strong>Tags: </strong>
+              {getSelectedTagNames().map((tagName, index) => (
+                <span key={index} className={styles.previewTag}>
+                  {tagName}
+                  {index < getSelectedTagNames().length - 1 && ', '}
+                </span>
+              ))}
+            </div>
+          )}
+          
           {postType === 'text' && (
             <p className={styles.previewContent} id="previewContent">
               {content || 'No additional text for preview'}
@@ -417,7 +534,7 @@ const CreatePost = ({ isAuthenticated = true, onPostCreated }) => { // Add onPos
         </div>
 
         <button type="submit" className={styles.submitBtn} id="submitBtn" disabled={isLoading}>
-          {isLoading ? 'Posting...' : 'Create Post'}
+          {isLoading ? 'Creating Post...' : 'Create Post'}
         </button>
       </form>
 

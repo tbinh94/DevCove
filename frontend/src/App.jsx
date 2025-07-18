@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import SearchResults from './components/common/SearchResults.jsx';
-import CreatePostPage from './components/posts/CreatePostPage.jsx';
+import CreatePost from './components/CreatePost';
 import PostDetail from './components/PostDetail';
 import PostList from './components/PostList';
 import UserProfile from './components/UserProfile';
@@ -55,7 +55,7 @@ const App = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/post/:postId" element={<PostDetail />} />
-          <Route path="/create-post" element={<CreatePostPage />} />
+          <Route path="/create-post" element={<CreatePost />} />
           
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />
