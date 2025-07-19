@@ -99,7 +99,7 @@ CSRF_USE_SESSIONS = False   # Sử dụng cookie thay vì session
 # ... (các cấu hình khác)
 
 
-ROOT_URLCONF = 'reddit_clone.urls'
+ROOT_URLCONF = 'devcove.urls'
 
 TEMPLATES = [
     {
@@ -117,7 +117,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'reddit_clone.wsgi.application'
+WSGI_APPLICATION = 'devcove.wsgi.application'
 
 DATABASES = {
     'default': {

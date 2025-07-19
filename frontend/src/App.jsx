@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Thêm useEffect
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-
+import apiService from './services/api';
 // Import components
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
@@ -17,6 +17,11 @@ import AuthTest from './AuthTest';
 
 // Main App Component
 const App = () => {
+  useEffect(() => {
+    // Tự động khởi tạo CSRF token khi ứng dụng được tải
+    // Điều này đảm bảo mọi request POST/PUT/DELETE sau này đều sẽ có token
+    apiService.utils.initCSRF();
+  }, [])
   return (
   <AuthProvider>
     <Router>

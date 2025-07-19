@@ -19,6 +19,7 @@ import re
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny # Allow anyone to register
 from rest_framework.views import APIView
+import json
 
 from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
 from .serializers import (
@@ -33,7 +34,7 @@ import logging
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-
+from django.utils.text import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +58,9 @@ class PostViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing posts
     """
-    queryset = Post.objects.all()
+    queryset = Post.objects.all().order_by('-created_at')
     serializer_class = PostSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly] 
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['community', 'author']
@@ -68,80 +69,44 @@ class PostViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        # Cập nhật hàm này
-        queryset = Post.objects.annotate(
-            num_comments=Count('comments'),  # <-- THÊM DÒNG NÀY
-            calculated_score=Coalesce(Sum(Case(
-                When(votes__is_upvote=True, then=1),
-                When(votes__is_upvote=False, then=-1),
-                default=0,
-                output_field=IntegerField()
-            )), 0)
-        ).select_related('author', 'community').prefetch_related('tags', 'comments')
-
-        # Apply filters
-        tag_slugs = self.request.query_params.getlist('tag')
-        if tag_slugs:
-            for tag_slug in tag_slugs:
-                queryset = queryset.filter(tags__slug=tag_slug)
-            queryset = queryset.distinct()
-
-        # Apply sorting
-        sort_by = self.request.query_params.get('sort', 'new')
-        time_filter = self.request.query_params.get('time', 'all')
-
-        if sort_by == 'top' and time_filter != 'all':
-            now = timezone.now()
-            time_threshold = None
-            if time_filter == 'day':
-                time_threshold = now - timedelta(days=1)
-            elif time_filter == 'week':
-                time_threshold = now - timedelta(weeks=1)
-            elif time_filter == 'month':
-                time_threshold = now - timedelta(days=30)
-            elif time_filter == 'year':
-                time_threshold = now - timedelta(days=365)
-
-            if time_threshold:
-                queryset = queryset.filter(created_at__gte=time_threshold)
-
-        if sort_by == 'hot':
-            # Hot algorithm - you can implement your own logic here
-            queryset = queryset.order_by('-calculated_score', '-created_at')
-        elif sort_by == 'top':
-            queryset = queryset.order_by('-calculated_score', '-created_at')
-        else:  # Default to 'new'
-            queryset = queryset.order_by('-created_at')
-
-        # Filter by author username for the posts_list_api functionality
-        author_username = self.request.query_params.get('author')
-        if author_username:
-            queryset = queryset.filter(author__username=author_username)
-
-        author_username_alt = self.request.query_params.get('author_username')
-        if author_username_alt:
-            queryset = queryset.filter(author__username=author_username_alt)
-
-        user_param = self.request.query_params.get('user')
-        if user_param:
-            queryset = queryset.filter(author__username=user_param)
-
-        created_by = self.request.query_params.get('created_by')
-        if created_by:
-            queryset = queryset.filter(author__username=created_by)
-
-
-        return queryset
+        return Post.objects.select_related('author').prefetch_related('tags').all().order_by('-created_at')
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        # Sử dụng serializer mới khi create/update
+        if self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
-        elif self.action == 'retrieve':
-            return PostDetailSerializer
+        if self.action == 'retrieve':
+            return PostDetailSerializer # Trả về chi tiết hơn khi get 1 post
         return PostSerializer
 
     def perform_create(self, serializer):
+        # Hàm này sẽ được gọi sau khi serializer.is_valid()
+        # Logic gán author và tags đã được chuyển vào serializer
         serializer.save(author=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Ghi đè hàm create để xử lý trường hợp tag_ids được gửi dưới dạng chuỗi JSON
+        từ FormData (khi upload ảnh).
+        """
+        data = request.data.copy()
+
+        # Nếu request là multipart/form-data, tag_ids có thể là một chuỗi JSON
+        # Cần phải parse nó thành list.
+        if 'tag_ids' in data and isinstance(data['tag_ids'], str):
+            try:
+                # Chuyển chuỗi JSON thành list Python
+                tag_ids_list = json.loads(data['tag_ids'])
+                # Cập nhật lại data để serializer có thể xử lý
+                data.setlist('tag_ids', [str(tid) for tid in tag_ids_list])
+            except json.JSONDecodeError:
+                return Response({'error': 'Invalid format for tag_ids.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_update(self, serializer):
         # Only allow author to update their own posts
@@ -291,6 +256,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = StandardResultsSetPagination
     filter_backends = [SearchFilter]
     search_fields = ['name']
+    lookup_field = 'slug'
 
     @action(detail=True, methods=['get'])
     def posts(self, request, pk=None):
@@ -928,6 +894,21 @@ def popular_tags(request):
     serializer = TagSerializer(tags, many=True)
     return Response(serializer.data)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_tag(request):
+    """Create a new tag if it doesn't exist"""
+    tag_name = request.data.get('name', '').strip().lower()
+    if not tag_name:
+        return Response({'error': 'Tag name is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Kiểm tra xem tag đã tồn tại chưa
+    tag, created = Tag.objects.get_or_create(
+        name=tag_name,
+        defaults={'slug': slugify(tag_name)}
+    )
+    serializer = TagSerializer(tag)
+    return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -981,3 +962,25 @@ def get_user_vote_data_for_posts(user, posts):
             downvoted_posts.add(vote['post_id'])
 
     return upvoted_posts, downvoted_posts
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_tag(request):
+    """
+    Tạo một tag mới nếu nó chưa tồn tại.
+    API này được gọi từ frontend khi người dùng nhập một tag mới.
+    """
+    tag_name = request.data.get('name', '').strip()
+    if not tag_name:
+        return Response({'error': 'Tag name is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # get_or_create an toàn và hiệu quả, trả về (object, created_boolean)
+    tag, created = Tag.objects.get_or_create(
+        name__iexact=tag_name,  # Tìm kiếm không phân biệt hoa thường
+        defaults={'name': tag_name, 'slug': slugify(tag_name)}
+    )
+    
+    serializer = TagSerializer(tag)
+    # Trả về 201 nếu tag mới được tạo, 200 nếu nó đã tồn tại
+    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return Response(serializer.data, status=response_status)

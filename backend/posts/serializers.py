@@ -1,8 +1,8 @@
-# serializers.py
+# serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification
-
+from django.utils.text import slugify
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer cho User model"""
@@ -42,7 +42,7 @@ class CommunityBasicSerializer(serializers.ModelSerializer):
 
 class TagSerializer(serializers.ModelSerializer):
     """Serializer cho Tag model"""
-    posts_count = serializers.SerializerMethodField()  # Sửa: Đổi từ ReadOnlyField thành SerializerMethodField
+    posts_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Tag
@@ -50,7 +50,6 @@ class TagSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'slug', 'created_at']
     
     def get_posts_count(self, obj):
-        """Sử dụng method từ model"""
         return obj.posts_count()
 
 
@@ -82,20 +81,13 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    """
-    Serializer cho Post model (ĐÃ SỬA LỖI)
-    - Sửa lỗi không hiển thị ảnh bằng cách tạo image_url đầy đủ.
-    - Tối ưu user_vote để trả về dữ liệu đơn giản hơn.
-    """
+    """Serializer cho Post model"""
     author = UserBasicSerializer(read_only=True)
     community = CommunityBasicSerializer(read_only=True)
-    tags = TagBasicSerializer(many=True, read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
     
-    # Sửa: Sử dụng property từ model
     calculated_score = serializers.IntegerField(source='score', read_only=True)
-    comment_count = serializers.SerializerMethodField()  # Sửa: Đổi thành SerializerMethodField
-    
-    # Thay thế 'image' bằng 'image_url'
+    comment_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     
@@ -111,22 +103,17 @@ class PostSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
     
     def get_image_url(self, post):
-        """
-        Tạo URL đầy đủ cho ảnh nếu nó tồn tại.
-        """
+        """Tạo URL đầy đủ cho ảnh nếu nó tồn tại."""
         request = self.context.get('request')
         if post.image and hasattr(post.image, 'url'):
-            return request.build_absolute_uri(post.image.url)
+            return request.build_absolute_uri(post.image.url) if request else post.image.url
         return None
     
     def get_comment_count(self, post):
-        """Sử dụng property từ model"""
         return post.comment_count
     
     def get_user_vote(self, post):
-        """
-        Tối ưu: Lấy vote của user và trả về 'up', 'down', hoặc null.
-        """
+        """Lấy vote của user và trả về 'up', 'down', hoặc null."""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             vote = post.votes.filter(user=request.user).first()
@@ -144,45 +131,70 @@ class PostDetailSerializer(PostSerializer):
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer cho việc tạo/cập nhật Post"""
-    tag_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False
-    )
+    """
+    FIXED: Serializer cho việc tạo/cập nhật Post.
+    Sử dụng PrimaryKeyRelatedField để xử lý `tag_ids` một cách chuẩn xác.
+    """
+    author = serializers.HiddenField(default=serializers.CurrentUserDefault())
     
+    # Chấp nhận một danh sách các ID của Tag.
+    # `source='tags'` map trường này tới field `tags` của model Post.
+    # `queryset` được dùng để DRF xác thực các ID được gửi lên.
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        many=True, 
+        queryset=Tag.objects.all(),
+        source='tags', 
+        write_only=True,
+        required=False # Cho phép tạo bài viết không có tag
+    )
+
     class Meta:
         model = Post
-        fields = ['title', 'content', 'image', 'community', 'tag_ids']
-    
+        # Thêm 'tag_ids' vào fields để nó được xử lý khi tạo/cập nhật
+        fields = ['title', 'content', 'image', 'community', 'author', 'tag_ids']
+
     def create(self, validated_data):
-        tag_ids = validated_data.pop('tag_ids', [])
+        """Ghi đè hàm create để xử lý quan hệ Many-to-Many."""
+        # Tách dữ liệu tags ra khỏi validated_data.
+        # `PrimaryKeyRelatedField` đã chuyển đổi list ID thành list object Tag.
+        tags_data = validated_data.pop('tags', []) 
+        
+        # Tạo đối tượng Post với các trường còn lại.
         post = Post.objects.create(**validated_data)
-        if tag_ids:
-            post.tags.set(Tag.objects.filter(id__in=tag_ids))
+        
+        # Gán các tags cho bài viết vừa tạo.
+        if tags_data:
+            post.tags.set(tags_data)
+            
         return post
-    
+
     def update(self, instance, validated_data):
-        tag_ids = validated_data.pop('tag_ids', None)
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        if tag_ids is not None:
-            tags = Tag.objects.filter(id__in=tag_ids)
-            instance.tags.set(tags)
+        """Ghi đè hàm update để xử lý quan hệ Many-to-Many."""
+        tags_data = validated_data.pop('tags', None)
+
+        # Cập nhật các trường thông thường của Post
+        instance = super().update(instance, validated_data)
+
+        # Nếu có dữ liệu tag mới được gửi lên, cập nhật chúng.
+        if tags_data is not None:
+            instance.tags.set(tags_data)
         
         return instance
 
+    def to_representation(self, instance):
+        """
+        Khi tạo/cập nhật xong, trả về dữ liệu theo định dạng của PostSerializer.
+        Điều này đảm bảo response trả về có đầy đủ thông tin (tên author, chi tiết tags, ...).
+        """
+        return PostSerializer(instance, context=self.context).data
+
 
 class ProfileSerializer(serializers.ModelSerializer):
-    """Serializer cho Profile model - FIXED for avatar URL"""
+    """Serializer cho Profile model"""
     user = UserBasicSerializer(read_only=True)
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
-    # FIXED: Better avatar_url handling
     avatar_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -191,35 +203,17 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user']
 
     def get_avatar_url(self, obj):
-        """FIXED: Better avatar URL handling with comprehensive error checking"""
-        print(f"DEBUG: Getting avatar URL for user {obj.user.username}")  # Debug log
-        
+        """Better avatar URL handling"""
         if not obj.avatar:
-            print(f"DEBUG: No avatar file for user {obj.user.username}")  # Debug log
             return None
         
         try:
-            # Check if avatar file exists
-            if not obj.avatar.name:
-                print(f"DEBUG: Avatar has no name for user {obj.user.username}")  # Debug log
-                return None
-            
-            # Try to get the URL
             avatar_url = obj.avatar.url
-            print(f"DEBUG: Raw avatar URL: {avatar_url}")  # Debug log
-            
-            # Get request from context
             request = self.context.get('request')
             if request is not None:
-                full_url = request.build_absolute_uri(avatar_url)
-                print(f"DEBUG: Full avatar URL: {full_url}")  # Debug log
-                return full_url
-            else:
-                print(f"DEBUG: No request in context, returning raw URL")  # Debug log
-                return avatar_url
-                
-        except (ValueError, AttributeError, Exception) as e:
-            print(f"DEBUG: Error getting avatar URL for user {obj.user.username}: {e}")  # Debug log
+                return request.build_absolute_uri(avatar_url)
+            return avatar_url
+        except (ValueError, AttributeError, Exception):
             return None
 
     def get_followers_count(self, obj):
@@ -234,6 +228,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             return obj.user.follower_set.filter(follower=request.user).exists()
         return False
     
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer để cập nhật Profile và thông tin User liên quan."""
     first_name = serializers.CharField(source='user.first_name', max_length=30, required=False)
@@ -245,17 +240,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         fields = ['bio', 'avatar', 'first_name', 'last_name', 'email']
 
     def update(self, instance, validated_data):
-        # Lấy dữ liệu của user từ validated_data
         user_data = validated_data.pop('user', {})
         
-        # Cập nhật các trường của Profile
         instance.bio = validated_data.get('bio', instance.bio)
         if 'avatar' in validated_data:
-             instance.avatar = validated_data.get('avatar', instance.avatar)
+            instance.avatar = validated_data.get('avatar', instance.avatar)
         
         instance.save()
 
-        # Cập nhật các trường của User
         user = instance.user
         if user_data:
             user.first_name = user_data.get('first_name', user.first_name)
@@ -273,38 +265,22 @@ class FollowSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Follow
-        fields = ['id', 'follower', 'following', 'created_at']  # Sửa: Đổi field names cho đúng
+        fields = ['id', 'follower', 'following', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    """
-    Serializer cho Notification model - SIMPLIFIED AND SAFER VERSION
-    - Trả về dữ liệu thô để frontend xử lý việc hiển thị.
-    - Đổi tên 'notification_type' thành 'type' để tương thích với frontend.
-    - Cung cấp 'post_id' để frontend tự tạo URL.
-    """
+    """Serializer cho Notification model"""
     sender = UserBasicSerializer(read_only=True)
-    
-    # Lấy 'id' của bài post liên quan một cách an toàn
     post_id = serializers.IntegerField(source='post.id', read_only=True, allow_null=True)
-    
-    # Đổi tên field 'notification_type' thành 'type' cho tiện ở frontend
     type = serializers.CharField(source='notification_type', read_only=True)
 
     class Meta:
         model = Notification
-        # Chỉ lấy những trường thực sự cần thiết
-        fields = [
-            'id', 
-            'sender', 
-            'type',  # 'comment', 'vote', 'follow'
-            'post_id', 
-            'is_read', 
-            'created_at'
-        ]
+        fields = ['id', 'sender', 'type', 'post_id', 'is_read', 'created_at']
 
-# Serializers để thống kê
+
+# Serializers thống kê
 class CommunityStatsSerializer(serializers.ModelSerializer):
     """Serializer thống kê cho Community"""
     posts_count = serializers.SerializerMethodField()
@@ -363,9 +339,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         
-        # Tự động tạo profile
         Profile.objects.create(user=user)
-        
         return user
 
 

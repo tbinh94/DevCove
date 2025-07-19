@@ -415,3 +415,77 @@
   font-size: 14px;
   color: var(--color-text-primary);
 }
+/* --- BỔ SUNG CSS CHO TAGS DROPDOWN --- */
+
+.tagsDropdownContainer {
+  position: relative;
+}
+
+.tagsDropdownButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 15px;
+  text-align: left;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  cursor: pointer;
+}
+
+.tagsDropdownButton:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+  outline: none;
+}
+
+.tagsDropdown {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-default);
+  z-index: 10;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.tagsContainer {
+  display: flex;
+  flex-direction: column; /* Thay đổi để hiển thị theo chiều dọc trong dropdown */
+}
+
+.tagOption {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tagOption input {
+  margin-right: 10px; /* Tăng khoảng cách */
+  cursor: pointer;
+}
+
+.tagOption:hover {
+  background-color: var(--color-primary-light);
+}
+
+.tagLabel {
+  font-size: 15px;
+  color: var(--color-text-primary);
+}
+
+.noTags {
+    padding: 10px 12px;
+    color: var(--color-text-secondary);
+}

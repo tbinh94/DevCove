@@ -34,6 +34,8 @@ api_urlpatterns = [
     # Tag utilities
     path('tags/popular/',  api_views.popular_tags,      name='api_popular_tags'),
     path('tags/toggle/',   api_views.toggle_tag_filter, name='api_toggle_tag_filter'),
+    
+    path('tags/create/', api_views.create_tag, name='create-tag'),
 
     # Tất cả các ViewSet đã đăng ký
     path('', include(router.urls)),
@@ -80,6 +82,7 @@ urlpatterns = [
 
     # -- Include tất cả API endpoints --
     path('api/', include((api_urlpatterns, 'api'), namespace='api')),
+    
 ]
 
 # Static media
