@@ -2,16 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn } from 'lucide-react';
+import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
-
 const PostDetail = () => {
     const { postId } = useParams();
-    const { isAuthenticated } = useAuth();
+    const {user, isAuthenticated } = useAuth();
     const [post, setPost] = useState(null);
-    const [comments, setComments] = useState([]);
+    // const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newComment, setNewComment] = useState('');
@@ -20,23 +19,20 @@ const PostDetail = () => {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     useEffect(() => {
-        console.log('PostDetail mounted with postId:', postId);
         const fetchData = async () => {
             if (!postId) return;
             setLoading(true);
             setError(null);
             try {
-                console.log('Fetching post:', postId);
-
-                const [postData, commentsData] = await Promise.all([
-                    apiService.getPost(postId),
-                    apiService.getCommentsForPost(postId) 
-                ]);
-                console.log('Post data:', postData);
-                console.log('Comments data:', commentsData);
+                // CHỈ CẦN 1 API CALL DUY NHẤT
+                const postData = await apiService.getPost(postId);
+                
+                // Sắp xếp comment theo thứ tự mới nhất trước
+                if (postData.comments) {
+                    postData.comments.sort((a, b) => new Date(b.created) - new Date(a.created));
+                }
+                
                 setPost(postData);
-                setComments(Array.isArray(commentsData) ? commentsData : commentsData.results || []);
-
             } catch (err) {
                 console.error('Error fetching post details:', err);
                 setError(err.message || 'Failed to load post details.');
@@ -50,16 +46,12 @@ const PostDetail = () => {
     // Handle modal close on ESC key
     useEffect(() => {
         const handleEscKey = (e) => {
-            if (e.key === 'Escape' && isImageModalOpen) {
-                setIsImageModalOpen(false);
-            }
+            if (e.key === 'Escape') setIsImageModalOpen(false);
         };
-        
         if (isImageModalOpen) {
             document.addEventListener('keydown', handleEscKey);
-            document.body.style.overflow = 'hidden'; // Prevent body scroll
+            document.body.style.overflow = 'hidden';
         }
-        
         return () => {
             document.removeEventListener('keydown', handleEscKey);
             document.body.style.overflow = 'unset';
@@ -68,18 +60,38 @@ const PostDetail = () => {
 
     const handleVote = async (voteType) => {
         if (!isAuthenticated) {
+            // Có thể chuyển hướng đến trang login
             alert("You must be logged in to vote.");
             return;
         }
+        const originalVote = post.user_vote;
+        const originalScore = post.calculated_score;
+
+        // Optimistic update
+        let newVoteStatus = voteType;
+        let newScore = originalScore;
+        if (originalVote === voteType) { // Un-voting
+            newVoteStatus = null;
+            newScore += (voteType === 'up' ? -1 : 1);
+        } else if (originalVote) { // Changing vote
+            newScore += (voteType === 'up' ? 2 : -2);
+        } else { // New vote
+            newScore += (voteType === 'up' ? 1 : -1);
+        }
+        setPost(p => ({...p, user_vote: newVoteStatus, calculated_score: newScore}));
+
         try {
+            // API call trả về score chính xác từ server
             const data = await apiService.vote(post.id, voteType);
-            
             setPost(prevPost => ({
                 ...prevPost,
-                calculated_score: data.score,
-                user_vote: data.user_vote 
+                calculated_score: data.score, // Cập nhật score từ server
+                // Cập nhật lại vote status dựa trên action trả về
+                user_vote: data.action === 'removed' ? null : voteType,
             }));
         } catch (err) {
+            // Rollback on error
+            setPost(p => ({...p, user_vote: originalVote, calculated_score: originalScore}));
             console.error('Vote error:', err);
             alert(err.message || "An error occurred while voting.");
         }
@@ -87,18 +99,20 @@ const PostDetail = () => {
     
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !isAuthenticated) {
-            if (!isAuthenticated) alert("Please log in to comment.");
-            return;
-        }
+        if (!newComment.trim() || !isAuthenticated) return;
+        
         setIsSubmitting(true);
         try {
-            const commentData = await apiService.createComment({
+            const newCommentData = await apiService.createComment({
                 post: postId,
                 text: newComment 
             });
 
-            setComments(prevComments => [commentData, ...prevComments]);
+            // Cập nhật lại state post để thêm comment mới
+            setPost(prevPost => ({
+                ...prevPost,
+                comments: [newCommentData, ...prevPost.comments]
+            }));
             setNewComment('');
         } catch (err) {
             console.error('Comment error:', err);
@@ -109,11 +123,9 @@ const PostDetail = () => {
     };
 
     const handleBookmark = () => {
-        if (!isAuthenticated) {
-            alert("You must be logged in to bookmark.");
-            return;
-        }
+        // TODO: Implement API call to save bookmark on the server
         setIsBookmarked(!isBookmarked);
+        alert("Bookmark feature is in development!");
     };
 
     const openImageModal = () => {
@@ -128,14 +140,15 @@ const PostDetail = () => {
         if (!dateString) return '';
         const now = new Date();
         const past = new Date(dateString);
-        const diffInHours = Math.floor((now - past) / (1000 * 60 * 60));
+        const diffInSeconds = Math.floor((now - past) / 1000);
         
-        if (diffInHours < 1) return "just now";
+        if (diffInSeconds < 60) return "just now";
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        const diffInHours = Math.floor(diffInMinutes / 60);
         if (diffInHours < 24) return `${diffInHours}h ago`;
         const days = Math.floor(diffInHours / 24);
-        if (days < 30) return `${days}d ago`;
-        const months = Math.floor(days / 30);
-        return `${months}mo ago`;
+        return `${days}d ago`;
     };
 
     if (loading) {
@@ -166,6 +179,8 @@ const PostDetail = () => {
             </div>
         );
     }
+
+    const comments = post.comments || [];
 
     return (
         <div className={styles.container}>
@@ -223,6 +238,18 @@ const PostDetail = () => {
                             </div>
                         </div>
                     )}
+                    
+                    {/* Post Tags */}
+                    {post.tags && post.tags.length > 0 && (
+                        <div className={styles.tagsContainer}>
+                            <Tag size={16} className={styles.tagIcon} />
+                            {post.tags.map(tag => (
+                                <Link to={`/tags/${tag.slug}`} key={tag.id} className={styles.tagItem}>
+                                    {tag.name}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Post Actions */}
                     <div className={styles.postActions}>
@@ -267,7 +294,7 @@ const PostDetail = () => {
                 <div className={styles.commentsSection}>
                     <div className={styles.commentsHeader}>
                         <h2 className={styles.commentsTitle}>
-                            Comments ({comments.length})
+                            Comments ({post.comments?.length || 0})
                         </h2>
                     </div>
                     

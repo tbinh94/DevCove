@@ -72,11 +72,11 @@ class PostViewSet(viewsets.ModelViewSet):
         return Post.objects.select_related('author').prefetch_related('tags').all().order_by('-created_at')
 
     def get_serializer_class(self):
-        # Sử dụng serializer mới khi create/update
         if self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
+        # KHI LẤY CHI TIẾT 1 BÀI VIẾT (retrieve), DÙNG PostDetailSerializer
         if self.action == 'retrieve':
-            return PostDetailSerializer # Trả về chi tiết hơn khi get 1 post
+            return PostDetailSerializer 
         return PostSerializer
 
     def perform_create(self, serializer):
@@ -897,18 +897,42 @@ def popular_tags(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_tag(request):
-    """Create a new tag if it doesn't exist"""
-    tag_name = request.data.get('name', '').strip().lower()
-    if not tag_name:
+    """
+    Tạo một tag mới nếu nó chưa tồn tại, với logic chuẩn hóa đầu vào.
+    API này được gọi từ frontend khi người dùng nhập một tag mới.
+    """
+    original_name = request.data.get('name', '').strip()
+    if not original_name:
         return Response({'error': 'Tag name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Kiểm tra xem tag đã tồn tại chưa
+    if len(original_name) > 50: # Giới hạn độ dài từ model
+         return Response({'error': 'Tag name cannot exceed 50 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- LOGIC CHUẨN HÓA ---
+    # 1. Chuyển thành chữ thường
+    # 2. Thay thế nhiều khoảng trắng bằng một gạch ngang
+    # 3. Slugify để loại bỏ các ký tự đặc biệt không mong muốn
+    normalized_name = slugify(original_name, allow_unicode=False)
+    
+    # Kiểm tra lại sau khi chuẩn hóa
+    if not normalized_name:
+        return Response({'error': 'Invalid tag name after normalization.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # Sử dụng `get_or_create` để tránh trùng lặp, tìm kiếm trên slug đã chuẩn hóa
+    # `defaults` sẽ chỉ được sử dụng khi tạo mới một đối tượng
     tag, created = Tag.objects.get_or_create(
-        name=tag_name,
-        defaults={'slug': slugify(tag_name)}
+        slug=normalized_name,
+        defaults={
+            'name': original_name, # Giữ lại tên gốc để hiển thị nếu bạn muốn
+            'slug': normalized_name
+        }
     )
+    
     serializer = TagSerializer(tag)
-    return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+    
+    # Trả về 201 nếu tag mới được tạo, 200 nếu nó đã tồn tại
+    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return Response(serializer.data, status=response_status)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

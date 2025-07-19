@@ -124,10 +124,13 @@ class PostSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(PostSerializer):
     """Serializer chi tiết cho Post (bao gồm comments)"""
-    comments = CommentSerializer(many=True, read_only=True)
+    # related_name='comments' trong model Comment cho phép ta gọi thế này
+    comments = CommentSerializer(many=True, read_only=True) 
     
     class Meta(PostSerializer.Meta):
+        # Thêm 'comments' vào danh sách các trường được trả về
         fields = PostSerializer.Meta.fields + ['comments']
+
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
