@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-import AllTags from '../../pages/AllTags';
-
+// import AllTags from '../../pages/AllTags';
+import TagsModal from '../../pages/TagsModal';
 const Sidebar = ({ 
-  selectedTags = [], 
-  searchQuery = '', 
-  onTagToggle,
-  onTagRemove,
-  onClearAllFilters,
-  onClearSearch,
   user = null 
 }) => {
   const [popularTags, setPopularTags] = useState([]);
+  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAllTags, setShowAllTags] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Get current filters from URL
+  const getCurrentFilters = () => {
+    const urlTags = searchParams.get('tags');
+    return {
+      selectedTags: urlTags ? urlTags.split(',').map(slug => ({
+        slug,
+        name: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      })) : [],
+    };
+  };
+
+  const { selectedTags, searchQuery } = getCurrentFilters();
 
   // Fetch popular tags from backend
   useEffect(() => {
@@ -23,12 +34,10 @@ const Sidebar = ({
         setLoading(true);
         setError(null);
         
-        // Gọi API để lấy popular tags
         const response = await fetch('/api/tags/popular/', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            // Thêm CSRF token nếu cần
             'X-CSRFToken': getCookie('csrftoken'),
           },
         });
@@ -39,7 +48,6 @@ const Sidebar = ({
 
         const data = await response.json();
         
-        // Transform data để match với format cần thiết
         const transformedTags = data.map(tag => ({
           id: tag.id,
           name: tag.name,
@@ -76,28 +84,43 @@ const Sidebar = ({
     return cookieValue;
   };
 
-  const handleTagToggle = (tagSlug) => {
-    if (onTagToggle) {
-      onTagToggle(tagSlug);
+  const updateUrlParams = (newTags, newSearch = null) => {
+    const params = new URLSearchParams(searchParams);
+    
+    if (newTags && newTags.length > 0) {
+      params.set('tags', newTags.join(','));
+    } else {
+      params.delete('tags');
     }
+    navigate(params.toString() ? `/?${params.toString()}` : '/');
+  };
+
+  const handleTagToggle = (tagSlug) => {
+    const currentTagSlugs = selectedTags.map(tag => tag.slug);
+    let newTagSlugs;
+    if (currentTagSlugs.includes(tagSlug)) {
+      newTagSlugs = currentTagSlugs.filter(slug => slug !== tagSlug);
+    } else {
+      newTagSlugs = [...currentTagSlugs, tagSlug];
+    }
+    updateUrlParams(newTagSlugs);
   };
 
   const handleTagRemove = (tagSlug) => {
-    if (onTagRemove) {
-      onTagRemove(tagSlug);
-    }
+    const newTagSlugs = selectedTags
+      .map(tag => tag.slug)
+      .filter(slug => slug !== tagSlug);
+    
+    updateUrlParams(newTagSlugs);
   };
 
   const handleClearAllFilters = () => {
-    if (onClearAllFilters) {
-      onClearAllFilters();
-    }
+    navigate('/');
   };
 
   const handleClearSearch = () => {
-    if (onClearSearch) {
-      onClearSearch();
-    }
+    const currentTagSlugs = selectedTags.map(tag => tag.slug);
+    updateUrlParams(currentTagSlugs, '');
   };
 
   const handleViewAllTags = (e) => {
@@ -114,6 +137,15 @@ const Sidebar = ({
     setShowAllTags(false);
   };
 
+  const isTagSelected = (tagSlug) => {
+    return selectedTags.some(selectedTag => selectedTag.slug === tagSlug);
+  };
+
+  const getTagDisplayInfo = (tag) => {
+    const selected = selectedTags.find(selectedTag => selectedTag.slug === tag.slug);
+    return selected || tag;
+  };
+
   return (
     <div className={styles.sidebar}>
       {/* Tags Section */}
@@ -122,6 +154,7 @@ const Sidebar = ({
         
         {loading && (
           <div className={styles.loading}>
+            <div className={styles.spinner}></div>
             <p>Loading tags...</p>
           </div>
         )}
@@ -142,30 +175,36 @@ const Sidebar = ({
           <div className={styles.tagsList}>
             {popularTags.length > 0 ? (
               <>
-                {popularTags.map((tag) => (
-                  <a
-                    key={tag.slug}
-                    href="#"
-                    className={`${styles.tagBadge} ${styles.tagToggle} ${
-                      selectedTags.some(selectedTag => selectedTag.slug === tag.slug) ? styles.active : ''
-                    }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleTagToggle(tag.slug);
-                    }}
-                    style={{ backgroundColor: tag.color }}
-                  >
-                    {tag.name}
-                    <span className={styles.tagCount}>{tag.post_count}</span>
-                  </a>
-                ))}
-                <a 
-                  href="/tags" 
-                  className={styles.viewAllTags}
-                  onClick={handleViewAllTags}
+                {popularTags.map((tag) => {
+                  const selected = isTagSelected(tag.slug);
+                  const displayTag = getTagDisplayInfo(tag);
+                  
+                  return (
+                    <button
+                      key={tag.slug}
+                      className={`${styles.tagBadge} ${styles.tagToggle} ${
+                        selected ? styles.active : ''
+                      }`}
+                      onClick={() => handleTagToggle(tag.slug)}
+                      style={{ 
+                        backgroundColor: tag.color,
+                        opacity: selected ? 0.9 : 1,
+                        fontWeight: selected ? 'bold' : 'normal'
+                      }}
+                    >
+                      {displayTag.name}
+                      <span className={styles.tagCount}>{tag.post_count}</span>
+                      {selected && <span className={styles.selectedIndicator}>✓</span>}
+                    </button>
+                  );
+                })}
+                
+                <button 
+                    className={styles.viewAllButton} 
+                    onClick={() => setIsTagsModalOpen(true)}
                 >
-                  View all tags →
-                </a>
+                    View all tags →
+                </button>
               </>
             ) : (
               <p className={styles.noTags}>No popular tags found</p>
@@ -177,39 +216,59 @@ const Sidebar = ({
       {/* Active Filters */}
       {(selectedTags.length > 0 || searchQuery) && (
         <div className={styles.filterStatus}>
-          <h4>Active Filters:</h4>
+          <div className={styles.filterHeader}>
+            <h4>Active Filters</h4>
+            <button
+              className={styles.clearAllBtn}
+              onClick={handleClearAllFilters}
+            >
+              Clear All
+            </button>
+          </div>
           
           {selectedTags.length > 0 && (
             <div className={styles.filterItem}>
-              <span>Tags:</span>
+              <div className={styles.filterLabel}>
+                <strong>Tags:</strong>
+              </div>
               <div className={styles.selectedTags}>
-                {selectedTags.map((tag) => (
-                  <span
-                    key={tag.slug}
-                    className={styles.filterValue}
-                    style={{ backgroundColor: tag.color }}
-                  >
-                    {tag.name}
-                    <button
-                      className={`${styles.clearFilter} ${styles.tagRemove}`}
-                      onClick={() => handleTagRemove(tag.slug)}
+                {selectedTags.map((tag) => {
+                  // Find the tag in popularTags to get the color
+                  const popularTag = popularTags.find(pt => pt.slug === tag.slug);
+                  const tagColor = popularTag?.color || '#6B7280';
+                  
+                  return (
+                    <span
+                      key={tag.slug}
+                      className={styles.filterValue}
+                      style={{ backgroundColor: tagColor }}
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      {tag.name}
+                      <button
+                        className={`${styles.clearFilter} ${styles.tagRemove}`}
+                        onClick={() => handleTagRemove(tag.slug)}
+                        title={`Remove ${tag.name} filter`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
           
           {searchQuery && (
             <div className={styles.filterItem}>
-              <span>Search:</span>
+              <div className={styles.filterLabel}>
+                <strong>Search:</strong>
+              </div>
               <span className={styles.filterValue}>
-                {searchQuery}
+                "{searchQuery}"
                 <button
                   className={styles.clearFilter}
                   onClick={handleClearSearch}
+                  title="Clear search filter"
                 >
                   ×
                 </button>
@@ -217,25 +276,40 @@ const Sidebar = ({
             </div>
           )}
           
-          <a
-            href="#"
-            className={styles.clearAllFilters}
-            onClick={(e) => {
-              e.preventDefault();
-              handleClearAllFilters();
-            }}
-          >
-            Clear all filters
-          </a>
+          <div className={styles.filterStats}>
+            Filtering {selectedTags.length > 0 ? `by ${selectedTags.length} tag${selectedTags.length > 1 ? 's' : ''}` : ''}
+            {selectedTags.length > 0 && searchQuery ? ' and ' : ''}
+            {searchQuery ? 'search term' : ''}
+          </div>
+        </div>
+      )}
+
+      {/* User Section - if authenticated */}
+      {user && (
+        <div className={styles.userSection}>
+          <h3>Quick Actions</h3>
+          <div className={styles.userActions}>
+            <button className={styles.actionBtn} onClick={() => navigate('/create-post')}>
+              Create Post
+            </button>
+            <button className={styles.actionBtn} onClick={() => navigate('/profile')}>
+              My Profile
+            </button>
+          </div>
         </div>
       )}
       
-      {/* All Tags Modal */}
-      {showAllTags && (
-        <AllTags
-          onTagSelect={handleTagSelectFromModal}
-          onClose={handleAllTagsClose}
-        />
+      
+
+      {/* Render Modal có điều kiện VÀ TRUYỀN PROPS VÀO */}
+      {isTagsModalOpen && (
+          <TagsModal 
+            onClose={() => setIsTagsModalOpen(false)} 
+            // Truyền hàm xử lý filter vào modal
+            onTagSelect={handleTagToggle}
+            // Truyền các tag đang được chọn để modal có thể highlight chúng
+            selectedTags={selectedTags}
+          />
       )}
     </div>
   );

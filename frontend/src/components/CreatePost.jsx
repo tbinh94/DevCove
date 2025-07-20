@@ -138,7 +138,7 @@ const CreatePost = ({ onPostCreated }) => {
                 onPostCreated(newPost);
             }
 
-            setTimeout(() => navigate(`/posts/${newPost.id}`), 1500);
+            setTimeout(() => navigate(`/post/${newPost.id}`), 1500);
 
         } catch (err) {
             console.error('Create post error:', err);

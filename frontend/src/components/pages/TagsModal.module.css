@@ -1,0 +1,458 @@
+/* src/components/TagsModal/TagsModal.module.css - ĐÃ SỬA ĐỔI */
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999; /* Tăng rất cao z-index */
+    padding: 20px;
+    backdrop-filter: blur(4px);
+    /* Force stacking context */
+    isolation: isolate;
+}
+
+.modalContent {
+    background: #1a1a1b;
+    border: 1px solid #343536;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    color: #d7dadc;
+    animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* HEADER */
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #343536;
+    background: #1a1a1b;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #d7dadc;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818384;
+    transition: all 0.2s;
+}
+
+.closeButton:hover {
+    background-color: #343536;
+    color: #d7dadc;
+}
+
+.closeButton:focus {
+    outline: 2px solid #0079d3;
+    outline-offset: 2px;
+}
+
+/* CONTROLS */
+.controls {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #343536;
+    flex-wrap: wrap;
+    background: #1a1a1b;
+}
+
+.searchWrapper {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 10px 16px 10px 40px;
+    border-radius: 8px;
+    border: 1px solid #343536;
+    font-size: 14px;
+    background: #272729;
+    color: #d7dadc;
+    transition: border-color 0.2s;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: #0079d3;
+    box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.2);
+}
+
+.searchInput::placeholder {
+    color: #818384;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #818384;
+    pointer-events: none;
+}
+
+.sortWrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #d7dadc;
+}
+
+.sortWrapper label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #d7dadc;
+}
+
+.sortSelect {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #343536;
+    font-size: 14px;
+    background: #272729;
+    color: #d7dadc;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.sortSelect:focus {
+    outline: none;
+    border-color: #0079d3;
+    box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.2);
+}
+
+/* BODY */
+.modalBody {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex-grow: 1;
+    background: #1a1a1b;
+}
+
+.tagsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+}
+
+.tagItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background-color: #272729;
+    border: 1px solid #343536;
+    color: #d7dadc;
+    transition: all 0.2s;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+}
+
+.tagItem:hover {
+    background-color: #343536;
+    border-color: #474748;
+    transform: translateY(-1px);
+}
+
+.tagItem:focus {
+    outline: 2px solid #0079d3;
+    outline-offset: 2px;
+}
+
+.tagItem.selected {
+    background-color: #0079d3;
+    border-color: #0066cc;
+    color: white;
+    font-weight: 500;
+}
+
+.tagItem.selected:hover {
+    background-color: #0066cc;
+    border-color: #0052a3;
+}
+
+.tagName {
+    font-weight: 500;
+    font-size: 14px;
+    flex: 1;
+    margin-right: 12px;
+}
+
+.tagCount {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #d7dadc;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    min-width: 30px;
+    text-align: center;
+}
+
+.tagItem.selected .tagCount {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.checkIcon {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid #1a1a1b;
+}
+
+/* STATUS INDICATORS */
+.statusIndicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: #818384;
+}
+
+.statusIndicator p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.errorMessage {
+    color: #f5455c;
+    margin-bottom: 16px !important;
+    font-weight: 500;
+}
+
+.retryButton {
+    background-color: #0079d3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.retryButton:hover {
+    background-color: #0066cc;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+    color: #0079d3;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* FOOTER */
+.modalFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px 20px;
+    border-top: 1px solid #343536;
+    background: #1a1a1b;
+}
+
+.footerText {
+    margin: 0;
+    font-size: 14px;
+    color: #818384;
+    font-weight: 500;
+}
+
+.doneButton {
+    background-color: #0079d3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.doneButton:hover {
+    background-color: #0066cc;
+    transform: translateY(-1px);
+}
+
+.doneButton:focus {
+    outline: 2px solid #8cc8ff;
+    outline-offset: 2px;
+}
+
+/* SCROLLBAR */
+.modalBody::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modalBody::-webkit-scrollbar-track {
+    background: #272729;
+    border-radius: 4px;
+}
+
+.modalBody::-webkit-scrollbar-thumb {
+    background: #474748;
+    border-radius: 4px;
+}
+
+.modalBody::-webkit-scrollbar-thumb:hover {
+    background: #5a5a5b;
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+    .modalOverlay {
+        padding: 10px;
+    }
+    
+    .modalContent {
+        max-height: 95vh;
+        border-radius: 8px;
+    }
+    
+    .modalHeader {
+        padding: 16px 20px 12px;
+    }
+    
+    .modalHeader h2 {
+        font-size: 18px;
+    }
+    
+    .controls {
+        padding: 12px 20px;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .searchWrapper {
+        min-width: auto;
+    }
+    
+    .modalBody {
+        padding: 16px 20px;
+    }
+    
+    .tagsList {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .tagItem {
+        padding: 10px 14px;
+    }
+    
+    .modalFooter {
+        padding: 12px 20px 16px;
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    .doneButton {
+        width: 100%;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modalOverlay {
+        padding: 5px;
+    }
+    
+    .modalContent {
+        border-radius: 6px;
+    }
+    
+    .modalHeader {
+        padding: 12px 16px;
+    }
+    
+    .controls {
+        padding: 12px 16px;
+    }
+    
+    .modalBody {
+        padding: 12px 16px;
+    }
+    
+    .modalFooter {
+        padding: 12px 16px;
+    }
+    
+    .tagItem {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .tagName {
+        font-size: 13px;
+    }
+    
+    .tagCount {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}

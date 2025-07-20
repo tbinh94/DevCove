@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom'; // 1. Import useSearchParams
 import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
 import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,16 +13,28 @@ const PostList = ({ showAllTags = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [postsPerPage] = useState(10);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [searchParams] = useSearchParams(); // 2. Lấy searchParams từ URL
 
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
+        const tags = searchParams.get('tags'); // 3. Lấy giá trị của param 'tags'
+        const searchQuery = searchParams.get('search'); // Lấy luôn cả search query để lọc toàn diện
+
         const params = {
           page: currentPage,
           page_size: postsPerPage,
-          sort: 'new', // filter new posts
+          sort: 'new',
         };
+
+        // 4. Thêm tags và search vào params nếu chúng tồn tại
+        if (tags) {
+          params.tags = tags;
+        }
+        if (searchQuery) {
+          params.search = searchQuery;
+        }
 
         console.log('Fetching posts with params:', params);
         const data = await apiService.getPosts(params);
@@ -39,7 +51,8 @@ const PostList = ({ showAllTags = false }) => {
     };
 
     fetchPosts();
-  }, [isAuthenticated, currentPage, postsPerPage]);
+    // 5. Thêm searchParams vào dependency array để component re-render khi URL thay đổi
+  }, [isAuthenticated, currentPage, postsPerPage, searchParams]);
 
   const handleVote = async (postId, type) => {
     if (!isAuthenticated) return;
@@ -83,9 +96,9 @@ const PostList = ({ showAllTags = false }) => {
     return (
       <div className={styles.postTags}>
         {normalizedTags.map((tag, index) => (
-          <Link 
-            to={`/tags/${tag.slug}`} 
-            key={tag.id || index} 
+          <Link
+            to={`/?tags=${tag.slug}`} // Cập nhật link để filter khi click vào tag
+            key={tag.id || index}
             className={styles.tagItem}
           >
             {tag.name}
@@ -122,7 +135,7 @@ const PostList = ({ showAllTags = false }) => {
 
   if (loading) return <div className={styles.message}>Loading posts...</div>;
   if (error) return <div className={styles.message}>Error: {error}</div>;
-  if (!posts.length) return <div className={styles.message}>No posts found.</div>;
+  if (!posts.length) return <div className={styles.message}>No posts found matching your filters.</div>;
 
   return (
     <div className={styles.postListContainer}>

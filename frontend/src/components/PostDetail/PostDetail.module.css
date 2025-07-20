@@ -1,13 +1,12 @@
-/* PostDetail.module.css - Modern Blue Theme */
+/* PostDetail.module.css - Dark Theme to match DevCove main site */
 
 /* Container and Layout */
 .container {
   min-height: 100vh;
-  background-attachment: fixed;
+  background: #1a1b23;
   padding: 2rem 0;
-  /* Thêm các thuộc tính khác cho container nếu cần */
-  max-width: 900px; /* Ví dụ: giới hạn chiều rộng nội dung */
-  margin: 0 auto; /* Căn giữa container */
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .maxWidth {
@@ -29,8 +28,8 @@
 .loadingSpinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(59, 130, 246, 0.3);
-  border-top: 4px solid #3b82f6;
+  border: 4px solid rgba(66, 153, 225, 0.3);
+  border-top: 4px solid #4299e1;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -41,7 +40,7 @@
 }
 
 .loadingText {
-  color: white;
+  color: #e2e8f0;
   font-size: 1.1rem;
   font-weight: 500;
   text-align: center;
@@ -55,7 +54,7 @@
   justify-content: center;
   min-height: 50vh;
   text-align: center;
-  color: white;
+  color: #e2e8f0;
 }
 
 .errorIcon {
@@ -67,34 +66,36 @@
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: #f7fafc;
 }
 
 .errorMessage {
   font-size: 1rem;
   opacity: 0.8;
+  color: #cbd5e0;
 }
 
 /* Main Post Card */
 .postCard {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
+  background: #2d3748;
+  border-radius: 16px;
   margin-bottom: 2rem;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid #4a5568;
   transition: all 0.3s ease;
 }
 
 .postCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border-color: #4299e1;
 }
 
 /* Post Header */
 .postHeader {
   padding: 2rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   color: white;
   position: relative;
   overflow: hidden;
@@ -107,8 +108,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  opacity: 0.1;
+  background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.1) 0%, transparent 50%);
+  opacity: 0.5;
 }
 
 .postHeaderContent {
@@ -121,7 +122,8 @@
   font-weight: 700;
   margin: 0 0 1.5rem 0;
   line-height: 1.2;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: #ffffff;
 }
 
 .postMeta {
@@ -148,11 +150,13 @@
   font-size: 1.2rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(10px);
+  color: white;
 }
 
 .authorName {
   font-weight: 600;
   font-size: 1.1rem;
+  color: #ffffff;
 }
 
 .postStats {
@@ -167,6 +171,7 @@
   gap: 0.25rem;
   font-size: 0.85rem;
   opacity: 0.9;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Post Image */
@@ -174,6 +179,7 @@
   position: relative;
   margin: 0;
   overflow: hidden;
+  background: #1a202c;
 }
 
 .postImage {
@@ -192,7 +198,6 @@
     position: relative;
     cursor: pointer;
     overflow: hidden;
-    border-radius: 12px;
     transition: transform 0.2s ease;
 }
 
@@ -211,7 +216,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -223,7 +228,7 @@
     background: rgba(255, 255, 255, 0.9);
     border-radius: 50%;
     padding: 12px;
-    color: #333;
+    color: #2d3748;
     backdrop-filter: blur(10px);
     transform: scale(0.8);
     transition: transform 0.2s ease;
@@ -240,7 +245,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -283,7 +288,7 @@
     position: absolute;
     top: -60px;
     right: -10px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(45, 55, 72, 0.8);
     border: none;
     border-radius: 50%;
     padding: 12px;
@@ -292,17 +297,19 @@
     transition: background 0.2s ease;
     backdrop-filter: blur(10px);
     z-index: 1001;
+    border: 1px solid #4a5568;
 }
 
 .closeButton:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(66, 153, 225, 0.8);
+    border-color: #4299e1;
 }
 
 .imageModalWrapper {
     position: relative;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modalImage {
@@ -314,34 +321,50 @@
     object-fit: contain;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-    .imageModalContent {
-        max-width: 90vw;
-        max-height: 90vh;
-    }
-    
-    .closeButton {
-        top: -50px;
-        right: 0;
-        padding: 10px;
-    }
-    
-    .zoomIcon {
-        padding: 8px;
-    }
-}
-
 /* Post Content */
 .postContent {
   padding: 2rem;
+  background: #2d3748;
 }
 
 .contentText {
   font-size: 1.1rem;
   line-height: 1.7;
-  color: #374151;
+  color: #e2e8f0;
   white-space: pre-line;
+}
+
+/* Tags Container */
+.tagsContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem;
+  background: #2d3748;
+  border-top: 1px solid #4a5568;
+}
+
+.tagIcon {
+  color: #4299e1;
+  flex-shrink: 0;
+}
+
+.tagItem {
+  background: rgba(66, 153, 225, 0.1);
+  color: #4299e1;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba(66, 153, 225, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tagItem:hover {
+  background: rgba(66, 153, 225, 0.2);
+  border-color: #4299e1;
+  transform: translateY(-1px);
 }
 
 /* Post Actions */
@@ -350,8 +373,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem 2rem;
-  background: rgba(59, 130, 246, 0.05);
-  border-top: 1px solid rgba(59, 130, 246, 0.1);
+  background: #1a202c;
+  border-top: 1px solid #4a5568;
 }
 
 .leftActions {
@@ -370,10 +393,11 @@
 .voteSection {
   display: flex;
   align-items: center;
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(66, 153, 225, 0.1);
   border-radius: 50px;
   padding: 0.25rem;
   gap: 0.25rem;
+  border: 1px solid rgba(66, 153, 225, 0.2);
 }
 
 .voteButton {
@@ -382,7 +406,7 @@
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
-  color: #3b82f6;
+  color: #4299e1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,19 +415,19 @@
 }
 
 .voteButton:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(66, 153, 225, 0.2);
   transform: scale(1.1);
 }
 
 .voteButton.active {
-  background: #3b82f6;
+  background: #4299e1;
   color: white;
 }
 
 .voteScore {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #3b82f6;
+  color: #4299e1;
   padding: 0 0.75rem;
   min-width: 40px;
   text-align: center;
@@ -416,7 +440,7 @@
   cursor: pointer;
   padding: 0.75rem 1rem;
   border-radius: 50px;
-  color: #6b7280;
+  color: #a0aec0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -424,39 +448,41 @@
   font-weight: 500;
   transition: all 0.2s ease;
   position: relative;
+  border: 1px solid transparent;
 }
 
 .actionButton:hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(66, 153, 225, 0.1);
+  color: #4299e1;
   transform: translateY(-1px);
+  border-color: rgba(66, 153, 225, 0.2);
 }
 
 .actionButton.bookmarked {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  color: #4299e1;
+  background: rgba(66, 153, 225, 0.1);
+  border-color: rgba(66, 153, 225, 0.2);
 }
 
 /* Comments Section */
 .commentsSection {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
+  background: #2d3748;
+  border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid #4a5568;
 }
 
 .commentsHeader {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+  border-bottom: 1px solid #4a5568;
 }
 
 .commentsTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #f7fafc;
   margin: 0;
 }
 
@@ -466,10 +492,10 @@
 }
 
 .commentForm {
-  background: rgba(59, 130, 246, 0.05);
+  background: #1a202c;
   border-radius: 16px;
   padding: 1.5rem;
-  border: 1px solid rgba(59, 130, 246, 0.1);
+  border: 1px solid #4a5568;
 }
 
 .commentInputWrapper {
@@ -482,20 +508,25 @@
   width: 100%;
   min-height: 120px;
   padding: 1rem;
-  border: 2px solid rgba(59, 130, 246, 0.2);
+  border: 2px solid #4a5568;
   border-radius: 12px;
   font-size: 1rem;
   font-family: inherit;
   resize: vertical;
-  background: white;
+  background: #2d3748;
+  color: #e2e8f0;
   box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
+.commentTextarea::placeholder {
+  color: #a0aec0;
+}
+
 .commentTextarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
 .commentFormActions {
@@ -504,7 +535,7 @@
 }
 
 .commentSubmitButton {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   color: white;
   border: none;
   padding: 0.75rem 2rem;
@@ -522,7 +553,7 @@
 
 .commentSubmitButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3);
 }
 
 .commentSubmitButton:disabled {
@@ -543,27 +574,27 @@
 .loginPrompt {
   text-align: center;
   padding: 2rem;
-  background: rgba(59, 130, 246, 0.05);
+  background: #1a202c;
   border-radius: 16px;
-  border: 1px solid rgba(59, 130, 246, 0.1);
+  border: 1px solid #4a5568;
   margin-bottom: 2rem;
 }
 
 .loginPrompt p {
   margin: 0;
-  color: #6b7280;
+  color: #a0aec0;
   font-size: 1rem;
 }
 
 .loginLink {
-  color: #3b82f6;
+  color: #4299e1;
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .loginLink:hover {
-  color: #1d4ed8;
+  color: #63b3ed;
   text-decoration: underline;
 }
 
@@ -575,17 +606,18 @@
 }
 
 .commentItem {
-  background: rgba(255, 255, 255, 0.7);
+  background: #1a202c;
   border-radius: 16px;
   padding: 1.5rem;
-  border: 1px solid rgba(59, 130, 246, 0.1);
+  border: 1px solid #4a5568;
   transition: all 0.2s ease;
 }
 
 .commentItem:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: #2d3748;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: #4299e1;
 }
 
 .commentHeader {
@@ -602,7 +634,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -619,12 +651,12 @@
 
 .commentAuthorName {
   font-weight: 600;
-  color: #1f2937;
+  color: #f7fafc;
 }
 
 .commentTime {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #a0aec0;
 }
 
 .commentContent {
@@ -635,7 +667,7 @@
 
 .commentText {
   margin: 0;
-  color: #374151;
+  color: #e2e8f0;
   line-height: 1.6;
   white-space: pre-line;
 }
@@ -651,7 +683,7 @@
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
-  color: #6b7280;
+  color: #a0aec0;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -661,15 +693,15 @@
 }
 
 .commentActionButton:hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: rgba(66, 153, 225, 0.1);
+  color: #4299e1;
 }
 
 /* No Comments State */
 .noComments {
   text-align: center;
   padding: 3rem 2rem;
-  color: #6b7280;
+  color: #a0aec0;
 }
 
 .noCommentsIcon {
@@ -681,12 +713,13 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #374151;
+  color: #e2e8f0;
 }
 
 .noCommentsText {
   font-size: 1rem;
   margin: 0;
+  color: #a0aec0;
 }
 
 /* Responsive Design */
@@ -865,11 +898,11 @@
   }
 }
 
-/* Additional Animations */
-@keyframes fadeIn {
+/* Smooth entrance animations */
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -878,65 +911,15 @@
 }
 
 .commentItem {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeInUp 0.4s ease-out;
 }
 
 .postCard {
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeInUp 0.6s ease-out;
 }
 
 .commentsSection {
-  animation: fadeIn 0.5s ease-out 0.1s both;
-}
-
-/* Glassmorphism effects */
-.postCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  pointer-events: none;
-  border-radius: 20px;
-}
-
-.commentsSection::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  pointer-events: none;
-  border-radius: 20px;
-}
-
-/* Hover effects for interactive elements */
-.voteButton::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(59, 130, 246, 0.2);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
-  z-index: -1;
-}
-
-.voteButton:hover::after {
-  width: 100%;
-  height: 100%;
-}
-
-/* Smooth transitions for all interactive elements */
-* {
-  transition: all 0.2s ease;
+  animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
 /* Focus states for accessibility */
@@ -945,7 +928,7 @@
 .actionButton:focus,
 .voteButton:focus,
 .commentActionButton:focus {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #4299e1;
   outline-offset: 2px;
 }
 
@@ -955,15 +938,35 @@
 }
 
 .commentTextarea::-webkit-scrollbar-track {
-  background: rgba(59, 130, 246, 0.1);
+  background: #4a5568;
   border-radius: 4px;
 }
 
 .commentTextarea::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: #4299e1;
   border-radius: 4px;
 }
 
 .commentTextarea::-webkit-scrollbar-thumb:hover {
-  background: #1d4ed8;
+  background: #63b3ed;
+}
+
+/* Enhanced hover effects */
+.voteButton::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(66, 153, 225, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+  z-index: -1;
+}
+
+.voteButton:hover::after {
+  width: 100%;
+  height: 100%;
 }

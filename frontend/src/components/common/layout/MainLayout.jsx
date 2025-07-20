@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header, Footer, Sidebar } from './index';
-import styles from './MainLayout.module.css';
+import styles from './MainLayout.module.css'; // Now using the new CSS module
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {
@@ -16,21 +16,15 @@ const formatTimeAgo = (dateString) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
   
-  if (diffInSeconds < 60) {
-    return 'just now';
-  } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  } else if (diffInSeconds < 2592000) {
-    const days = Math.floor(diffInSeconds / 86400);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
-  } else {
-    const months = Math.floor(diffInSeconds / 2592000);
-    return `${months} month${months > 1 ? 's' : ''} ago`;
-  }
+  if (diffInSeconds < 60) return 'just now';
+  const minutes = Math.floor(diffInSeconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months > 1 ? 's' : ''} ago`;
 };
 
 const MainLayout = () => {
@@ -60,8 +54,7 @@ const MainLayout = () => {
         setPopularTags(data.tags || data || []);
       } catch (err) {
         console.error('Failed to fetch popular tags:', err);
-        setError('Failed to load popular tags');
-        // Set empty array as fallback
+        setError('Failed to load popular tags. Please try again later.');
         setPopularTags([]);
       } finally {
         setLoading(false);
@@ -74,7 +67,6 @@ const MainLayout = () => {
   const handleTagToggle = async (tagSlug) => {
     try {
       console.log("Tag toggled:", tagSlug);
-      
       // Optional: Send tag interaction to server for analytics
       await fetch('/api/tags/interact', {
         method: 'POST',
@@ -93,95 +85,34 @@ const MainLayout = () => {
     }
   };
 
-  // Loading state with improved UI
-  if (loading) {
-    return (
-      <div className="app-container">
-        <Header />
-        <main className="main-content">
-          <div className="container">
-            <div className={styles.layoutContainer}>
-              <div className={styles.contentContainer}>
-                <div className="loading-container" style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  minHeight: '200px',
-                  flexDirection: 'column'
-                }}>
-                  <div className="spinner" style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '4px solid #f3f3f3',
-                    borderTop: '4px solid #ff4500',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                    marginBottom: '16px'
-                  }}></div>
-                  <p style={{ color: '#666', fontSize: '14px' }}>Loading popular tags...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className={styles.loadingContainer}>
+          <div className={styles.spinner}></div>
+          <p className={styles.loadingText}>Loading popular tags...</p>
+        </div>
+      );
+    }
 
-  // Error state with improved UI
-  if (error) {
+    if (error) {
+      return (
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>⚠️</div>
+          <h3 className={styles.errorTitle}>Oops! Something went wrong</h3>
+          <p className={styles.errorMessage}>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className={styles.retryButton}
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="app-container">
-        <Header />
-        <main className="main-content">
-          <div className="container">
-            <div className={styles.layoutContainer}>
-              <div className={styles.contentContainer}>
-                <div className="error-container" style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  minHeight: '200px',
-                  flexDirection: 'column',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ 
-                    fontSize: '48px', 
-                    marginBottom: '16px',
-                    color: '#ff4500'
-                  }}>⚠️</div>
-                  <h3 style={{ 
-                    color: '#333', 
-                    marginBottom: '8px',
-                    fontSize: '18px'
-                  }}>Oops! Something went wrong</h3>
-                  <p style={{ 
-                    color: '#666', 
-                    fontSize: '14px',
-                    marginBottom: '16px'
-                  }}>{error}</p>
-                  <button 
-                    onClick={() => window.location.reload()}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#ff4500',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <Outlet context={{ popularTags, formatTimeAgo, getCSRFToken }} />
     );
   }
 
@@ -189,20 +120,16 @@ const MainLayout = () => {
     <div className="app-container">
       <Header />
       <main className="main-content">
-        <div className="container">
-          <div className={styles.layoutContainer}>
-            <Sidebar 
-              popularTags={popularTags} 
-              onTagToggle={handleTagToggle}
-              formatTimeAgo={formatTimeAgo}
-            />
-            <div className={styles.contentContainer}>
-              <Outlet context={{ 
-                popularTags, 
-                formatTimeAgo, 
-                getCSRFToken 
-              }} />
-            </div>
+        <div className={styles.mainContainer}>
+          <Sidebar 
+            popularTags={popularTags} 
+            onTagToggle={handleTagToggle}
+            formatTimeAgo={formatTimeAgo}
+            loading={loading} // Pass loading state to sidebar
+            error={!!error}   // Pass error state to sidebar
+          />
+          <div className={styles.contentArea}>
+            {renderContent()}
           </div>
         </div>
       </main>

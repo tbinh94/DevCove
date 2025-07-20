@@ -60,7 +60,7 @@ class PostViewSet(viewsets.ModelViewSet):
     """
     queryset = Post.objects.all().order_by('-created_at')
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly] 
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['community', 'author']
@@ -68,15 +68,34 @@ class PostViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'calculated_score']
     ordering = ['-created_at']
 
+    # THAY THẾ HÀM get_queryset CŨ BẰNG HÀM MỚI NÀY
     def get_queryset(self):
-        return Post.objects.select_related('author').prefetch_related('tags').all().order_by('-created_at')
+        """
+        Ghi đè queryset để xử lý filter theo tags.
+        """
+        # Bắt đầu với queryset cơ bản
+        queryset = Post.objects.select_related('author', 'community') \
+                               .prefetch_related('tags', 'votes') \
+                               .all().order_by('-created_at')
+
+        # Lấy tham số 'tags' từ URL (ví dụ: ?tags=cv,coding)
+        tags_param = self.request.query_params.get('tags', None)
+
+        if tags_param:
+            # Tách chuỗi thành một danh sách các slug (ví dụ: ['cv', 'coding'])
+            tag_slugs = [slug.strip() for slug in tags_param.split(',')]
+            
+            # Lọc các bài viết có tag với slug nằm trong danh sách trên
+            # tags__slug__in là cú pháp của Django để lọc trên trường của quan hệ ManyToMany
+            queryset = queryset.filter(tags__slug__in=tag_slugs).distinct()
+
+        return queryset
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
-        # KHI LẤY CHI TIẾT 1 BÀI VIẾT (retrieve), DÙNG PostDetailSerializer
         if self.action == 'retrieve':
-            return PostDetailSerializer 
+            return PostDetailSerializer
         return PostSerializer
 
     def perform_create(self, serializer):
@@ -894,45 +913,7 @@ def popular_tags(request):
     serializer = TagSerializer(tags, many=True)
     return Response(serializer.data)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_tag(request):
-    """
-    Tạo một tag mới nếu nó chưa tồn tại, với logic chuẩn hóa đầu vào.
-    API này được gọi từ frontend khi người dùng nhập một tag mới.
-    """
-    original_name = request.data.get('name', '').strip()
-    if not original_name:
-        return Response({'error': 'Tag name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if len(original_name) > 50: # Giới hạn độ dài từ model
-         return Response({'error': 'Tag name cannot exceed 50 characters.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # --- LOGIC CHUẨN HÓA ---
-    # 1. Chuyển thành chữ thường
-    # 2. Thay thế nhiều khoảng trắng bằng một gạch ngang
-    # 3. Slugify để loại bỏ các ký tự đặc biệt không mong muốn
-    normalized_name = slugify(original_name, allow_unicode=False)
-    
-    # Kiểm tra lại sau khi chuẩn hóa
-    if not normalized_name:
-        return Response({'error': 'Invalid tag name after normalization.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-    # Sử dụng `get_or_create` để tránh trùng lặp, tìm kiếm trên slug đã chuẩn hóa
-    # `defaults` sẽ chỉ được sử dụng khi tạo mới một đối tượng
-    tag, created = Tag.objects.get_or_create(
-        slug=normalized_name,
-        defaults={
-            'name': original_name, # Giữ lại tên gốc để hiển thị nếu bạn muốn
-            'slug': normalized_name
-        }
-    )
-    
-    serializer = TagSerializer(tag)
-    
-    # Trả về 201 nếu tag mới được tạo, 200 nếu nó đã tồn tại
-    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return Response(serializer.data, status=response_status)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -991,20 +972,26 @@ def get_user_vote_data_for_posts(user, posts):
 @permission_classes([IsAuthenticated])
 def create_tag(request):
     """
-    Tạo một tag mới nếu nó chưa tồn tại.
+    Tạo một tag mới nếu nó chưa tồn tại, với logic chuẩn hóa đầu vào.
     API này được gọi từ frontend khi người dùng nhập một tag mới.
     """
-    tag_name = request.data.get('name', '').strip()
-    if not tag_name:
+    original_name = request.data.get('name', '').strip()
+    if not original_name:
         return Response({'error': 'Tag name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # get_or_create an toàn và hiệu quả, trả về (object, created_boolean)
+    if len(original_name) > 50:
+        return Response({'error': 'Tag name cannot exceed 50 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    normalized_name = slugify(original_name, allow_unicode=False)
+    
+    if not normalized_name:
+        return Response({'error': 'Invalid tag name after normalization.'}, status=status.HTTP_400_BAD_REQUEST)
+        
     tag, created = Tag.objects.get_or_create(
-        name__iexact=tag_name,  # Tìm kiếm không phân biệt hoa thường
-        defaults={'name': tag_name, 'slug': slugify(tag_name)}
+        slug=normalized_name,
+        defaults={'name': original_name, 'slug': normalized_name}
     )
     
     serializer = TagSerializer(tag)
-    # Trả về 201 nếu tag mới được tạo, 200 nếu nó đã tồn tại
     response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return Response(serializer.data, status=response_status)
