@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header, Footer, Sidebar } from './index';
-import styles from './MainLayout.module.css'; // Now using the new CSS module
+import styles from './MainLayout.module.css';
 
 // Utility function to get CSRF token
 const getCSRFToken = () => {
@@ -31,6 +31,7 @@ const MainLayout = () => {
   const [popularTags, setPopularTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -64,6 +65,21 @@ const MainLayout = () => {
     fetchTags();
   }, []);
 
+  // Handle responsive sidebar collapse
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(false);
+      }
+    };
+
+    handleResize(); // Check initial size
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleTagToggle = async (tagSlug) => {
     try {
       console.log("Tag toggled:", tagSlug);
@@ -90,7 +106,7 @@ const MainLayout = () => {
       return (
         <div className={styles.loadingContainer}>
           <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Loading popular tags...</p>
+          <p className={styles.loadingText}>Loading popular tags</p>
         </div>
       );
     }
@@ -99,7 +115,7 @@ const MainLayout = () => {
       return (
         <div className={styles.errorContainer}>
           <div className={styles.errorIcon}>⚠️</div>
-          <h3 className={styles.errorTitle}>Oops! Something went wrong</h3>
+          <h3 className={styles.errorTitle}>Something went wrong</h3>
           <p className={styles.errorMessage}>{error}</p>
           <button 
             onClick={() => window.location.reload()}
@@ -112,23 +128,31 @@ const MainLayout = () => {
     }
 
     return (
-      <Outlet context={{ popularTags, formatTimeAgo, getCSRFToken }} />
+      <Outlet context={{ 
+        popularTags, 
+        formatTimeAgo, 
+        getCSRFToken,
+        sidebarCollapsed,
+        setSidebarCollapsed
+      }} />
     );
-  }
+  };
 
   return (
-    <div className="app-container">
+    <div className={styles.appContainer}>
       <Header />
-      <main className="main-content">
-        <div className={styles.mainContainer}>
+      <main className={styles.mainContent}>
+        <div className={styles.layoutContainer}>
           <Sidebar 
             popularTags={popularTags} 
             onTagToggle={handleTagToggle}
             formatTimeAgo={formatTimeAgo}
-            loading={loading} // Pass loading state to sidebar
-            error={!!error}   // Pass error state to sidebar
+            loading={loading}
+            error={!!error}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
-          <div className={styles.contentArea}>
+          <div className={`${styles.contentArea} ${sidebarCollapsed ? styles.contentExpanded : ''}`}>
             {renderContent()}
           </div>
         </div>

@@ -1,19 +1,20 @@
-/* Header.module.css */
+/* Header.module.css - Updated for better compatibility */
 
 .header {
-  background-color: #ffffff; /* White background */
-  border-bottom: 1px solid #e2e8f0; /* Light gray border */
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
   position: sticky;
   top: 0;
   z-index: 50;
-  height: 64px; /* Consistent height */
+  height: 64px;
   display: flex;
   align-items: center;
-  padding: 0 1rem; /* Horizontal padding */
+  padding: 0 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 
 .container {
-  max-width: 1280px; /* Equivalent to max-w-7xl */
+  max-width: 1280px;
   margin-left: auto;
   margin-right: auto;
   width: 100%;
@@ -23,138 +24,171 @@
   height: 100%;
 }
 
-.logoWrapper { /* New wrapper for better alignment with flex */
+/* Left section with mobile menu and logo */
+.leftSection {
   display: flex;
   align-items: center;
-  /* flex-shrink: 0; */ /* Prevent logo from shrinking */
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.logoLink { /* Apply styles to the Link itself */
+.mobileMenuButton {
+  display: none;
+  padding: 0.5rem;
+  color: #4a5568;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.mobileMenuButton:hover {
+  background-color: #f7fafc;
+  color: #1a202c;
+}
+
+.logoWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.logoLink {
   display: flex;
   align-items: center;
   cursor: pointer;
-  text-decoration: none; /* Remove underline from Link */
-  color: #1a202c; /* Default text color */
-  gap: 0.5rem; /* Space between icon and text */
+  text-decoration: none;
+  color: #1a202c;
+  gap: 0.5rem;
+  transition: opacity 0.2s;
+}
+
+.logoLink:hover {
+  opacity: 0.8;
 }
 
 .logoIcon {
-  height: 24px; /* h-6, fixed pixels for better control */
-  width: 24px; /* w-6, fixed pixels */
+  height: 32px;
+  width: 32px;
+  flex-shrink: 0;
 }
 
 .logoText {
-  font-size: 1.25rem; /* text-xl */
-  font-weight: 700; /* font-bold */
-  color: #1a202c; /* text-gray-900 */
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+  white-space: nowrap;
 }
 
+/* Search bar section */
 .searchBar {
-  flex: 1; /* Allow search bar to grow */
-  max-width: 640px; /* max-w-2xl */
-  margin: 0 2rem; /* mx-8 - combined margin */
+  flex: 1;
+  max-width: 640px;
+  margin: 0 2rem;
   position: relative;
-  min-width: 200px; /* Ensure search bar has a minimum width */
+  min-width: 200px;
 }
 
-.searchForm { /* Added a form class */
+.searchForm {
   width: 100%;
 }
 
-.searchInputContainer { /* Wrapper for input and icon */
+.searchInputContainer {
   position: relative;
   width: 100%;
 }
 
 .searchIcon {
   position: absolute;
-  left: 0.75rem; /* left-3 */
+  left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  height: 16px; /* h-4 */
-  width: 16px; /* w-4 */
-  color: #a0aec0; /* text-gray-400 */
-  pointer-events: none; /* Make icon unclickable so input receives click */
+  height: 16px;
+  width: 16px;
+  color: #a0aec0;
+  pointer-events: none;
 }
 
 .searchInput {
   width: 100%;
-  padding: 0.5rem 1rem 0.5rem 2.5rem; /* py-2 pl-10 pr-4 */
-  border: 1px solid #cbd5e0; /* border-gray-300 */
-  border-radius: 9999px; /* rounded-full */
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 9999px;
   outline: none;
-  font-size: 0.875rem; /* text-sm, ensure text size matches */
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  transition: all 0.2s;
 }
 
 .searchInput:focus {
-  border-color: transparent;
-  box-shadow: 0 0 0 2px #f97316; /* focus:ring-2 focus:ring-orange-500 */
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
 }
 
 .searchResultsDropdown {
   position: absolute;
-  top: calc(100% + 0.25rem); /* Adjust top to be exactly below input + mt-1 */
+  top: calc(100% + 0.25rem);
   left: 0;
   right: 0;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 0.5rem; /* rounded-lg */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-  max-height: 24rem; /* max-h-96 */
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-height: 24rem;
   overflow-y: auto;
-  z-index: 50;
-  padding: 0.5rem 0; /* Add vertical padding for content */
+  z-index: 60;
+  padding: 0.5rem 0;
 }
 
 .searchLoading {
   padding: 1rem;
   text-align: center;
-  color: #718096; /* text-gray-500 */
+  color: #718096;
 }
 
-.searchSection { /* New class for sections within search results */
-  padding: 0 1rem; /* Horizontal padding for sections */
+.searchSection {
+  padding: 0 1rem;
 }
 
-.searchSectionBorderTop { /* Class for sections needing a top border */
-  border-top: 1px solid #edf2f7; /* border-gray-100 */
+.searchSectionBorderTop {
+  border-top: 1px solid #edf2f7;
   padding-top: 0.5rem;
   margin-top: 0.5rem;
 }
 
 .searchSectionTitle {
-  font-size: 0.875rem; /* text-sm */
-  font-weight: 500; /* font-medium */
-  color: #718096; /* text-gray-500 */
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #718096;
   margin-bottom: 0.5rem;
-  padding: 0 0.5rem; /* Small internal padding */
+  padding: 0 0.5rem;
 }
 
 .searchItem {
   padding: 0.5rem;
-  font-size: 0.875rem; /* text-sm */
-  border-radius: 0.25rem; /* rounded */
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
   cursor: pointer;
-  display: flex; /* Ensure flex for item alignment */
-  flex-direction: column; /* Stack title and meta */
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.2s;
 }
 
 .searchItem:hover {
-  background-color: #f7fafc; /* hover:bg-gray-50 */
+  background-color: #f7fafc;
 }
 
 .searchItemTitle {
   font-weight: 500;
-  color: #1a202c; /* text-gray-900 */
+  color: #1a202c;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .searchItemMeta {
-  font-size: 0.75rem; /* text-xs */
-  color: #718096; /* text-gray-500 */
+  font-size: 0.75rem;
+  color: #718096;
 }
 
 .noResults {
@@ -163,37 +197,49 @@
   color: #718096;
 }
 
+/* Right side section */
 .rightSide {
   display: flex;
   align-items: center;
-  gap: 1rem; /* space-x-4 */
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .createPostButton {
   display: flex;
   align-items: center;
-  gap: 0.5rem; /* space-x-2 */
-  background-color: #f97316; /* bg-orange-500 */
+  gap: 0.5rem;
+  background-color: #f97316;
   color: #ffffff;
-  padding: 0.5rem 1rem; /* px-4 py-2 */
-  border-radius: 9999px; /* rounded-full */
-  transition: background-color 150ms ease-in-out; /* transition-colors */
-  border: none; /* Remove default button border */
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  transition: all 0.2s;
+  border: none;
   cursor: pointer;
-  white-space: nowrap; /* Prevent text wrapping */
+  white-space: nowrap;
+  font-weight: 500;
 }
 
 .createPostButton:hover {
-  background-color: #ea580c; /* hover:bg-orange-600 */
+  background-color: #ea580c;
+  transform: translateY(-1px);
 }
 
-
-.buttonIcon { /* General style for Lucide icons in buttons */
-  height: 20px; /* Adjusted from 16px to 20px for better visibility */
-  width: 20px;
-  flex-shrink: 0; /* Prevent icon from shrinking */
+.createPostButton:active {
+  transform: translateY(0);
 }
 
+.createPostButtonText {
+  font-size: 0.875rem;
+}
+
+.buttonIcon {
+  height: 18px;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+/* Notification wrapper */
 .notificationWrapper {
   position: relative;
   display: flex;
@@ -201,161 +247,184 @@
 }
 
 .notificationButton {
-  position: relative; /* For badge positioning */
+  position: relative;
   padding: 0.5rem;
-  color: #a0aec0; /* text-gray-400 */
-  transition: color 150ms ease-in-out;
+  color: #a0aec0;
+  transition: all 0.2s;
   background: none;
   border: none;
   cursor: pointer;
-  display: flex; /* Ensure bell icon is centered if it's the only content */
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px; /* Make it circular on hover */
+  border-radius: 9999px;
 }
 
 .notificationButton:hover {
-  color: #718096; /* hover:text-gray-600 */
-  background-color: #f7fafc; /* Subtle hover background */
+  color: #718096;
+  background-color: #f7fafc;
 }
 
 .notificationBadge {
   position: absolute;
-  top: 0px; /* Adjusted to sit on top-right */
-  right: 0px; /* Adjusted */
-  background-color: #ef4444; /* bg-red-500 */
+  top: 0px;
+  right: 0px;
+  background-color: #ef4444;
   color: #ffffff;
-  font-size: 0.625rem; /* Smaller text-xs to fit */
-  font-weight: 600; /* make it bolder */
-  border-radius: 9999px; /* rounded-full */
-  height: 16px; /* h-4 */
-  width: 16px; /* w-4 */
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  height: 16px;
+  width: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translate(25%, -25%); /* Shift badge slightly out */
+  transform: translate(25%, -25%);
   box-sizing: border-box;
 }
 
-.notificationDropdown { /* Styles for the dropdown itself */
+.notificationDropdown {
   position: absolute;
-  top: calc(100% + 0.5rem); /* Below the button, adjust as needed */
+  top: calc(100% + 0.5rem);
   right: 0;
-  width: 300px; /* Or a fixed width */
+  width: 300px;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  padding: 0.5rem 0; /* Vertical padding for dropdown content */
-  z-index: 60; /* Higher z-index than other dropdowns if needed */
-  max-height: 400px; /* Limit height */
-  overflow-y: auto; /* Allow scrolling */
+  padding: 0.5rem 0;
+  z-index: 60;
+  max-height: 400px;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
-
-
+/* User menu */
 .userMenu {
   position: relative;
-  display: flex; /* Ensure consistent alignment */
+  display: flex;
   align-items: center;
 }
 
 .userMenuButton {
   display: flex;
   align-items: center;
-  gap: 0.5rem; /* space-x-2 */
-  color: #4a5568; /* text-gray-700 */
-  transition: color 150ms ease-in-out;
+  gap: 0.5rem;
+  color: #4a5568;
+  transition: all 0.2s;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.5rem 0.75rem; /* Add padding to make clickable area larger */
-  border-radius: 9999px; /* Rounded corners for the button area */
-  white-space: nowrap; /* Prevent text from wrapping */
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  white-space: nowrap;
 }
 
 .userMenuButton:hover {
-  color: #1a202c; /* hover:text-gray-900 */
-  background-color: #f7fafc; /* Subtle hover background */
+  color: #1a202c;
+  background-color: #f7fafc;
 }
 
 .userMenuButtonText {
-  font-weight: 700; /* font-bold */
-  color: #4a5568; /* text-gray-700 */
-  /* Adjust based on design, e.g., hidden on mobile */
-  display: block; /* Ensure it respects flex */
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.875rem;
 }
 
 .avatarSm {
-  height: 28px; /* h-7 */
-  width: 28px; /* w-7 */
-  border-radius: 9999px; /* rounded-full */
-  object-fit: cover; /* Ensure image covers the area */
-  flex-shrink: 0; /* Prevent avatar from shrinking */
+  height: 32px;
+  width: 32px;
+  border-radius: 9999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid #e2e8f0;
+  transition: border-color 0.2s;
+}
+
+.userMenuButton:hover .avatarSm {
+  border-color: #cbd5e0;
+}
+
+.dropdownArrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s;
 }
 
 .userDropdownMenu {
   position: absolute;
-  top: calc(100% + 0.5rem); /* Below the button, adjust as needed */
+  top: calc(100% + 0.5rem);
   right: 0;
-  width: 12rem; /* w-48 */
+  width: 14rem;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 0.5rem; /* rounded-lg */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-  padding: 0.25rem 0; /* Vertical padding */
-  z-index: 50;
-  transform-origin: top right; /* For potential animations */
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 0.25rem 0;
+  z-index: 60;
+  transform-origin: top right;
   box-sizing: border-box;
-  /* Transition can be added here if needed */
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .userDropdownHeader {
-  padding: 0.5rem 1rem; /* px-4 py-2 */
-  border-bottom: 1px solid #edf2f7; /* border-gray-100 */
-  margin-bottom: 0.25rem; /* Add some space below header */
-}
-
-.userDropdownUsername {
-  font-weight: 500;
-  color: #1a202c;
-  display: flex; /* For icon alignment */
-  align-items: center;
-  gap: 0.5rem; /* space-x-2 for icon */
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #edf2f7;
   margin-bottom: 0.25rem;
 }
 
+.userDropdownUsername {
+  font-weight: 600;
+  color: #1a202c;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
 .userDropdownKarma {
-  font-size: 0.875rem; /* text-sm */
+  font-size: 0.75rem;
   color: #718096;
 }
 
 .userDropdownItem {
   width: 100%;
   text-align: left;
-  padding: 0.5rem 1rem; /* px-4 py-2 */
-  font-size: 0.875rem; /* text-sm */
-  color: #4a5568; /* text-gray-700 */
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #4a5568;
   display: flex;
   align-items: center;
-  gap: 0.5rem; /* space-x-2 */
+  gap: 0.5rem;
   background: none;
   border: none;
   cursor: pointer;
-  transition: background-color 150ms ease-in-out;
+  transition: all 0.2s;
 }
 
 .userDropdownItem:hover {
-  background-color: #f7fafc; /* hover:bg-gray-50 */
+  background-color: #f7fafc;
+  color: #1a202c;
 }
 
 .userDropdownItemRed {
-  color: #dc2626; /* text-red-600 */
+  color: #dc2626;
 }
 
 .userDropdownItemRed:hover {
-  background-color: #fef2f2; /* hover:bg-red-50 */
+  background-color: #fef2f2;
+  color: #dc2626;
 }
 
 .userDropdownItemDisabled {
@@ -364,32 +433,33 @@
 }
 
 .separator {
-  margin: 0.25rem 0; /* my-1 - combined margin */
-  border-top: 1px solid #edf2f7; /* hr class */
+  margin: 0.25rem 0;
+  border-top: 1px solid #edf2f7;
 }
 
-/* For non-authenticated users */
+/* Authentication buttons */
 .authButtons {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* space-x-3 */
+  gap: 0.75rem;
 }
 
 .loginButton {
   color: #4a5568;
-  transition: color 150ms ease-in-out;
+  transition: all 0.2s;
   font-weight: 500;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.5rem 0.75rem; /* Added padding for better click area */
-  border-radius: 9999px; /* Make it look like a subtle button */
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
   white-space: nowrap;
+  font-size: 0.875rem;
 }
 
 .loginButton:hover {
   color: #1a202c;
-  background-color: #f7fafc; /* Subtle hover background */
+  background-color: #f7fafc;
 }
 
 .signUpButton {
@@ -397,87 +467,34 @@
   color: #ffffff;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
-  transition: background-color 150ms ease-in-out;
+  transition: all 0.2s;
   border: none;
   cursor: pointer;
   white-space: nowrap;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
 .signUpButton:hover {
   background-color: #ea580c;
+  transform: translateY(-1px);
 }
 
-/* Icons within dropdowns and buttons */
-.dropdownIcon { /* General icon style for dropdown items */
-  height: 16px; /* h-4 w-4 */
+/* Icons */
+.dropdownIcon {
+  height: 16px;
   width: 16px;
   flex-shrink: 0;
 }
 
-.communityIcon { /* Specific styling for community emoji */
-  font-size: 1rem; /* Adjust emoji size if needed */
+.communityIcon {
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-
-/* Responsive adjustments */
-@media (max-width: 768px) { /* Adjust for medium screens or smaller if needed */
-  .searchBar {
-    margin: 0 1rem; /* Reduce horizontal margin */
-    max-width: 400px; /* Adjust max-width for smaller screens */
-  }
-
-  .createPostButtonText {
-    display: none; /* Hide "Create Post" text on small screens */
-  }
-
-  .userMenuButtonText {
-    display: none; /* Hide "Hello, username" on small screens */
-  }
-}
-
-@media (max-width: 640px) { /* sm breakpoint */
-  .header {
-    padding: 0 0.5rem; /* Smaller padding on very small screens */
-  }
-  .logoText {
-    display: none; /* Hide logo text on very small screens, keep icon */
-  }
-  .searchBar {
-    margin: 0 0.5rem;
-    max-width: unset; /* Allow search bar to take more width */
-  }
-  .rightSide {
-    gap: 0.5rem; /* Reduce gap */
-  }
-  .createPostButton {
-    padding: 0.5rem; /* Smaller button */
-    border-radius: 50%; /* Make it circular */
-  }
-  .createPostButton .buttonIcon {
-    margin-right: 0;
-  }
-  .notificationButton {
-    padding: 0.5rem;
-  }
-  .userMenuButton {
-    padding: 0.25rem; /* Smaller user menu button */
-  }
-  .userMenuButton span.ml-1 {
-    display: none; /* Hide arrow on very small screens */
-  }
-  .authButtons .loginButton, .authButtons .signUpButton {
-    padding: 0.5rem;
-  }
-}
-.rightSide .notificationWrapper {
-  margin: 0; /* Reset any margins that might interfere */
-}
-
-/* Modal Styles - Thêm vào Header.module.css */
-
+/* Modal Styles */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -490,6 +507,16 @@
   align-items: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  animation: fadeInOverlay 0.2s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modalContent {
@@ -501,6 +528,18 @@
   overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   position: relative;
+  animation: slideInModal 0.3s ease-out;
+}
+
+@keyframes slideInModal {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modalHeader {
@@ -542,8 +581,91 @@
   padding: 0;
 }
 
-/* Responsive design */
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .searchBar {
+    margin: 0 1rem;
+    max-width: 400px;
+  }
+}
+
 @media (max-width: 768px) {
+  .mobileMenuButton {
+    display: flex;
+  }
+  
+  .searchBar {
+    margin: 0 1rem;
+    max-width: 300px;
+  }
+
+  .createPostButtonText {
+    display: none;
+  }
+
+  .userMenuButtonText {
+    display: none;
+  }
+  
+  .rightSide {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 0 0.75rem;
+  }
+  
+  .leftSection {
+    gap: 0.25rem;
+  }
+  
+  .logoText {
+    display: none;
+  }
+  
+  .logoIcon {
+    height: 28px;
+    width: 28px;
+  }
+  
+  .searchBar {
+    margin: 0 0.5rem;
+    min-width: 150px;
+  }
+  
+  .createPostButton {
+    padding: 0.5rem;
+    border-radius: 50%;
+  }
+  
+  .createPostButton .buttonIcon {
+    margin: 0;
+  }
+  
+  .notificationButton {
+    padding: 0.375rem;
+  }
+  
+  .userMenuButton {
+    padding: 0.375rem;
+  }
+  
+  .dropdownArrow {
+    display: none;
+  }
+  
+  .authButtons {
+    gap: 0.5rem;
+  }
+  
+  .authButtons .loginButton,
+  .authButtons .signUpButton {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
   .modalContent {
     width: 95%;
     max-height: 95vh;
@@ -559,3 +681,17 @@
   }
 }
 
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+  
+  .searchBar {
+    min-width: 120px;
+  }
+  
+  .avatarSm {
+    height: 28px;
+    width: 28px;
+  }
+}

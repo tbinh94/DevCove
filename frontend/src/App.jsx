@@ -5,7 +5,7 @@ import apiService from './services/api';
 // Import components
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import SearchResults from './components/common/SearchResults.jsx';
+import SearchResults from './components/SearchResults';
 import CreatePost from './components/CreatePost';
 import PostDetail from './components/PostDetail';
 import PostList from './components/PostList';

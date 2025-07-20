@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Plus, User, LogOut, Settings, Key, X } from 'lucide-react';
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu } from 'lucide-react';
 import defaultAvatar from '../../../assets/imgs/avatar-default.png';
 import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -10,7 +10,7 @@ import NotificationManager from '../../Notification';
 import CreatePost from '../../CreatePost';
 import UnifiedSearch from '../../UnifiedSearch';
 
-const Header = () => {
+const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -34,7 +34,11 @@ const Header = () => {
 
   // Handle Create Post button click
   const handleCreatePostClick = () => {
-    setIsCreatePostOpen(true);
+    if (isAuthenticated) {
+      setIsCreatePostOpen(true);
+    } else {
+      navigate('/login');
+    }
   };
 
   // Handle Create Post modal close
@@ -70,15 +74,27 @@ const Header = () => {
     <>
       <header className={styles.header}>
         <div className={styles.container}>
-          {/* Logo */}
-          <div className={styles.logoWrapper}>
-            <Link
-              className={styles.logoLink}
-              to="/"
+          {/* Mobile Menu Toggle and Logo */}
+          <div className={styles.leftSection}>
+            {/* Mobile Sidebar Toggle */}
+            <button
+              onClick={onToggleSidebar}
+              className={styles.mobileMenuButton}
+              aria-label="Toggle sidebar"
             >
-              <img src={RedditLogo} alt="Reddit Logo" className={styles.logoIcon} />
-              <span className={styles.logoText}>DevCove</span>
-            </Link>
+              <Menu className={styles.buttonIcon} />
+            </button>
+
+            {/* Logo */}
+            <div className={styles.logoWrapper}>
+              <Link
+                className={styles.logoLink}
+                to="/"
+              >
+                <img src={RedditLogo} alt="DevCove Logo" className={styles.logoIcon} />
+                <span className={styles.logoText}>DevCove</span>
+              </Link>
+            </div>
           </div>
 
           {/* Unified Search Bar */}
@@ -94,27 +110,38 @@ const Header = () => {
                 <button
                   onClick={handleCreatePostClick}
                   className={styles.createPostButton}
+                  title="Create a new post"
                 >
                   <Plus className={styles.buttonIcon} />
                   <span className={styles.createPostButtonText}>Create Post</span>
                 </button>
 
                 {/* Notifications */}
-                <NotificationManager />
+                <div className={styles.notificationWrapper}>
+                  <NotificationManager />
+                </div>
 
                 {/* User Menu */}
                 <div className={styles.userMenu} ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className={styles.userMenuButton}
+                    title={`User menu for ${user?.username || 'User'}`}
                   >
-                    <span className={styles.userMenuButtonText}>Hello, {user.username}</span>
+                    <span className={styles.userMenuButtonText}>
+                      Hello, {user?.username || 'User'}
+                    </span>
                     <img 
-                      src={DefaultAvatar} 
-                      className={styles.logoIcon}
-                      alt={user.username || 'User'} 
+                      src={user?.avatar || DefaultAvatar} 
+                      className={styles.avatarSm}
+                      alt={user?.username || 'User Avatar'} 
+                      onError={(e) => {
+                        e.target.src = DefaultAvatar;
+                      }}
                     />
-                    {isUserMenuOpen ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>}
+                    <span className={styles.dropdownArrow}>
+                      {isUserMenuOpen ? '▲' : '▼'}
+                    </span>
                   </button>
 
                   {/* User Dropdown Menu */}
@@ -123,14 +150,16 @@ const Header = () => {
                       <div className={styles.userDropdownHeader}>
                         <div className={styles.userDropdownUsername}>
                           <User className={styles.dropdownIcon} />
-                          {user.username}
+                          {user?.username || 'User'}
                         </div>
-                        <div className={styles.userDropdownKarma}>Karma: {user.karma || 0}</div>
+                        <div className={styles.userDropdownKarma}>
+                          Karma: {user?.karma || 0}
+                        </div>
                       </div>
                       
                       <button
                         onClick={() => {
-                          navigate(`/profile/${user.username}`);
+                          navigate(`/profile/${user?.username}`);
                           setIsUserMenuOpen(false);
                         }}
                         className={styles.userDropdownItem}
@@ -146,7 +175,9 @@ const Header = () => {
                         }}
                         className={styles.userDropdownItem}
                       >
-                        <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>👨‍👩‍👦‍👦</span>
+                        <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>
+                          👥
+                        </span>
                         <span>Communities</span>
                       </button>
                       
@@ -201,6 +232,15 @@ const Header = () => {
                 >
                   Sign Up
                 </button>
+                {/* Create Post for non-authenticated users */}
+                <button
+                  onClick={handleCreatePostClick}
+                  className={styles.createPostButton}
+                  title="Create a post (requires login)"
+                >
+                  <Plus className={styles.buttonIcon} />
+                  <span className={styles.createPostButtonText}>Create Post</span>
+                </button>
               </div>
             )}
           </div>
@@ -216,6 +256,7 @@ const Header = () => {
               <button 
                 onClick={handleCreatePostClose}
                 className={styles.modalCloseButton}
+                title="Close modal"
               >
                 <X size={24} />
               </button>
