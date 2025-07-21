@@ -331,20 +331,69 @@
   font-size: 0.875rem;
 }
 
+/* Avatar container styles */
 .avatarSm {
-  height: 32px;
+  position: relative;
   width: 32px;
-  border-radius: 9999px;
-  object-fit: cover;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #ddd;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  border: 2px solid #e2e8f0;
-  transition: border-color 0.2s;
 }
-
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.defaultAvatarFallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .avatarSm {
+    border-color: #333;
+    background-color: #2a2a2a;
+  }
+}
 .userMenuButton:hover .avatarSm {
-  border-color: #cbd5e0;
+  border-color: #007bff;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+.avatarSm.loading {
+  background-color: #e9ecef;
 }
 
+.avatarSm.loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 .dropdownArrow {
   font-size: 0.75rem;
   transition: transform 0.2s;
