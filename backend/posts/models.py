@@ -4,6 +4,18 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
+import uuid
+class BotSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    post = models.ForeignKey(
+        'posts.Post', on_delete=models.CASCADE, related_name='bot_sessions'
+    )
+    request_payload = models.JSONField()
+    response_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"BotSession {self.id} for Post {self.post_id}"
 
 
 class Community(models.Model):
@@ -54,7 +66,7 @@ class Post(models.Model):
                                      )
     tags         = models.ManyToManyField(Tag, blank=True, related_name='posts')
     created_at   = models.DateTimeField(auto_now_add=True)
-
+    
     def comment_count(self):
         return self.comments.count()  # nếu bạn dùng related_name='comments'
 
@@ -108,7 +120,7 @@ class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
-    
+    is_bot = models.BooleanField(default=False)
     def __str__(self):
         return f"Comment on {self.post.title}"
 

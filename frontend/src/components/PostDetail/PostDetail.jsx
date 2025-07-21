@@ -6,17 +6,20 @@ import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown,
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
+
 const PostDetail = () => {
     const { postId } = useParams();
     const {user, isAuthenticated } = useAuth();
     const [post, setPost] = useState(null);
-    // const [comments, setComments] = useState([]);
+    // const [comments, setComments] = useState([]); // Không cần dùng nữa vì comment nằm trong post
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [botLoading, setBotLoading] = useState(false);
+    const [botError, setBotError]   = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,7 +32,7 @@ const PostDetail = () => {
                 
                 // Sắp xếp comment theo thứ tự mới nhất trước
                 if (postData.comments) {
-                    postData.comments.sort((a, b) => new Date(b.created) - new Date(a.created));
+                    postData.comments.sort((a, b) => new Date(b.created_at || b.created) - new Date(a.created_at || a.created));
                 }
                 
                 setPost(postData);
@@ -150,6 +153,31 @@ const PostDetail = () => {
         const days = Math.floor(diffInHours / 24);
         return `${days}d ago`;
     };
+
+    // chatbot
+    const handleAskBot = async () => {
+        if (botLoading) return;
+        setBotLoading(true);
+        setBotError(null);
+
+        try {
+            // This API call now returns the created bot comment directly
+            const newBotComment = await apiService.askBot(post.id);
+
+            // Add the new bot comment to the top of the comments list
+            setPost(prev => ({
+                ...prev,
+                comments: [newBotComment, ...prev.comments],
+            }));
+        } catch (err) {
+            console.error('AskBot error:', err);
+            const errorMessage = err.response?.data?.error || err.message || "An error occurred while asking the bot.";
+            setBotError(errorMessage);
+        } finally {
+            setBotLoading(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -274,6 +302,21 @@ const PostDetail = () => {
                                 <MessageCircle size={16} />
                                 <span>{comments.length}</span>
                             </button>
+
+                            <button
+                                onClick={handleAskBot}
+                                disabled={botLoading || !isAuthenticated}
+                                className={styles.actionButton}
+                                title={!isAuthenticated ? "You must be logged in to use the bot" : "Ask AI to review the code"}
+                                style={{ marginLeft: '1rem' }}
+                            >
+                                {botLoading ? '🤖 Reviewing...' : '🤖 Ask Bot'}
+                            </button>
+                            {botError && (
+                                <div className={styles.botError}>
+                                    {botError}
+                                </div>
+                            )}
                         </div>
                         
                         <div className={styles.rightActions}>
@@ -337,8 +380,12 @@ const PostDetail = () => {
                     {/* Comments List */}
                     <div className={styles.commentsList}>
                         {comments.length > 0 ? (
+                            // START OF MODIFIED SECTION
                             comments.map((comment) => (
-                                <div key={comment.id} className={styles.commentItem}>
+                                <div
+                                    key={comment.id}
+                                    className={`${styles.commentItem} ${comment.is_bot ? styles.botComment : ''}`}
+                                >
                                     <div className={styles.commentHeader}>
                                         <div className={styles.commentAuthor}>
                                             <div className={styles.commentAvatar}>
@@ -346,29 +393,32 @@ const PostDetail = () => {
                                             </div>
                                             <div className={styles.commentAuthorInfo}>
                                                 <span className={styles.commentAuthorName}>
-                                                    {comment.author?.username || 'Unknown'}
+                                                    {comment.is_bot ? '🤖 DevAlly Bot' : (comment.author?.username || 'Unknown')}
                                                 </span>
                                                 <span className={styles.commentTime}>
-                                                    {formatTimeAgo(comment.created_at)}
+                                                    {formatTimeAgo(comment.created_at || comment.created)} {/* Sử dụng created_at hoặc created */}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className={styles.commentContent}>
                                         <p className={styles.commentText}>{comment.text}</p>
-                                        <div className={styles.commentActions}>
-                                            <button className={styles.commentActionButton}>
-                                                <Heart size={12} />
-                                                <span>Like</span>
-                                            </button>
-                                            <button className={styles.commentActionButton}>
-                                                <MessageCircle size={12} />
-                                                <span>Reply</span>
-                                            </button>
-                                        </div>
+                                        {!comment.is_bot && ( // Chỉ hiển thị action cho comment của người dùng
+                                            <div className={styles.commentActions}>
+                                                <button className={styles.commentActionButton}>
+                                                    <Heart size={12} />
+                                                    <span>Like</span>
+                                                </button>
+                                                <button className={styles.commentActionButton}>
+                                                    <MessageCircle size={12} />
+                                                    <span>Reply</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
+                            // END OF MODIFIED SECTION
                         ) : (
                             <div className={styles.noComments}>
                                 <div className={styles.noCommentsIcon}>💬</div>

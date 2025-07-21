@@ -1,42 +1,62 @@
-from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django_filters.rest_framework import DjangoFilterBackend
+import json
+import logging
+import os
+import re
+from datetime import timedelta
+import requests 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
-from django.db.models import Count, Sum, Case, When, IntegerField, Q, F
-from django.utils import timezone
-from datetime import timedelta
-from django.db.models.functions import Coalesce
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db import connection
-from django.urls import reverse
-import re
+from django.db.models import Case, Count, F, IntegerField, Q, Sum, When
+from django.db.models.functions import Coalesce
 from django.middleware.csrf import get_token
-from rest_framework.permissions import AllowAny # Allow anyone to register
-from rest_framework.views import APIView
-import json
-
-from .models import Post, Comment, Profile, Vote, Tag, Community, Notification, Follow
-from .serializers import (
-    UserSerializer, UserBasicSerializer, CommunitySerializer,
-    CommunityBasicSerializer, TagSerializer, TagBasicSerializer,
-    PostSerializer, PostCreateUpdateSerializer, PostDetailSerializer,
-    VoteSerializer, CommentSerializer, ProfileSerializer,
-    NotificationSerializer,  ProfileUpdateSerializer
-)
-from django.views.decorators.csrf import ensure_csrf_cookie
-import logging
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-from django.utils.text import slugify
+
+from rest_framework import permissions, status, viewsets # permissions is added here!
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote
+from .serializers import (
+    CommunityBasicSerializer,
+    CommunitySerializer,
+    CommentSerializer,
+    NotificationSerializer,
+    PostCreateUpdateSerializer,
+    PostDetailSerializer,
+    PostSerializer,
+    ProfileSerializer,
+    ProfileUpdateSerializer,
+    TagBasicSerializer,
+    TagSerializer,
+    UserBasicSerializer,
+    UserSerializer,
+    VoteSerializer,
+)
 
 logger = logging.getLogger(__name__)
+# Import thư viện Gemini
+from google import genai
+# Import dotenv để tải biến môi trường từ file .env (khuyên dùng)
+from dotenv import load_dotenv
+
 
 
 @api_view(['GET'])
@@ -239,6 +259,99 @@ class PostViewSet(viewsets.ModelViewSet):
 
         serializer = CommentSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ask_bot(self, request, pk=None):
+        """
+        Ask bot to analyze code in the post using Google Gemini API.
+        """
+        # 1. Fetch Post
+        post = self.get_object()
+
+        # 2. Build prompt
+        prompt = f"""
+    You are a code reviewer for the following post.
+    Here is the code snippet:
+    {post.content}
+
+    Provide:
+    1. A summary of potential issues.
+    2. Suggested fixes or refactoring.
+    3. A short explanation for each suggestion.
+    """
+
+        # 3. Load environment variables
+        load_dotenv()
+
+        # 4. Initialize Gemini client
+        try:
+            client = genai.Client()
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini client. Check GEMINI_API_KEY environment variable. Error: {e}")
+            return Response(
+                {'error': 'Gemini API is not configured or accessible. Please check your API key.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # 5. Call Gemini API
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            ai_text = response.text
+            # Log full response for debugging
+            logger.info(f"Gemini API raw response: {response}")
+            logger.info(f"Gemini API generated text: {ai_text}")
+
+            if not ai_text:
+                return Response(
+                    {'error': 'Received an empty response from the bot.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Exception as e:
+            logger.error(f"Error calling Gemini API: {e}")
+            return Response(
+                {'error': f'Could not get code analysis from Gemini: {str(e)}'},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        # 6. Save BotSession for logging (if you have this model)
+        try:
+            from .models import BotSession
+            BotSession.objects.create(
+                post=post,
+                request_payload={"inputs": prompt},
+                response_text=ai_text
+            )
+        except ImportError:
+            logger.info("BotSession model not found, skipping session logging")
+            pass
+        except Exception as e:
+            logger.error(f"Error saving BotSession: {e}")
+            pass
+
+        # 7. Create the bot's comment
+        try:
+            bot_comment = Comment.objects.create(
+                post=post,
+                author=request.user,
+                text=ai_text,
+                is_bot=True
+            )
+
+            # 8. Return the new comment to the frontend
+            serializer = CommentSerializer(bot_comment, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error creating bot comment: {e}")
+            return Response(
+                {'error': 'Failed to create bot comment.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
 class CommentViewSet(viewsets.ModelViewSet):

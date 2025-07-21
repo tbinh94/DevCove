@@ -1,8 +1,13 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession
 from django.utils.text import slugify
+
+class BotSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BotSession
+        fields = ['id', 'post', 'request_payload', 'response_text', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer cho User model"""
@@ -76,7 +81,7 @@ class CommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'author', 'text', 'created']
+        fields = ['id', 'post', 'author', 'text', 'created', 'is_bot']
         read_only_fields = ['id', 'created']
 
 
@@ -91,6 +96,7 @@ class PostSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     
+
     class Meta:
         model = Post
         fields = [
@@ -139,7 +145,6 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     Sử dụng PrimaryKeyRelatedField để xử lý `tag_ids` một cách chuẩn xác.
     """
     author = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    
     # Chấp nhận một danh sách các ID của Tag.
     # `source='tags'` map trường này tới field `tags` của model Post.
     # `queryset` được dùng để DRF xác thực các ID được gửi lên.

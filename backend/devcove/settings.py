@@ -1,8 +1,11 @@
 import os
 from pathlib import Path
 from django.urls import reverse_lazy
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 SECRET_KEY = 'your-secret-key'
 DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'localhost:3000']

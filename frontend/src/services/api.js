@@ -18,8 +18,13 @@ class APIService {
    * @param {string} [options.method='GET'] - HTTP method.
    * @param {object|FormData} [options.body=null] - The request body.
    * @param {object} [options.headers={}] - Custom headers to merge.
+   * Gửi request đến endpoint /ask_bot/ của PostViewSet
+   * @param {string|number} postId
+   * @returns {Promise<object>} BotSession object
    * @returns {Promise<any>} - The parsed JSON or text response.
    */
+
+
   async request(endpoint, { method = 'GET', body = null, headers = {}, ...restOptions } = {}) {
     // Ensure CSRF token is ready for state-changing methods
     const isStateChanging = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase());
@@ -116,6 +121,7 @@ class APIService {
 
     return this.csrfPromise;
   }
+
 
   // --- CSRF & Auth Utilities ---
 
@@ -345,7 +351,15 @@ class APIService {
     }
     return data;
   }
-
+  // Chat & Bot
+  async askBot(postId, { language } = {}) {
+    // endpoint DRF auto-generated: /api/posts/{id}/ask_bot/
+    const data = await this.request(`/api/posts/${postId}/ask_bot/`, {
+      method: 'POST',
+      body: {language},    // không cần payload thêm vì backend lấy từ post
+    });
+    return data;
+  }
   // --- Utility Accessor ---
   
   get utils() {
