@@ -29,6 +29,10 @@ const CreatePost = ({ onPostCreated }) => {
 
     const tagInputRef = useRef(null);
 
+    // chatbot
+    const [autoAskBot, setAutoAskBot] = useState(false);
+
+
     useEffect(() => {
         const fetchTags = async () => {
             try {
@@ -133,6 +137,16 @@ const CreatePost = ({ onPostCreated }) => {
 
             const newPost = await apiService.createPost(finalData);
 
+            // Nếu bật autoAskBot, gửi yêu cầu đến bot
+            if (autoAskBot) {
+                try {
+                    await apiService.askBot(newPost.id);
+                } catch (err) {
+                    console.error('Auto AskBot error:', err);
+                    // không block, chỉ logging
+                }
+            }
+
             setSuccess('Post created successfully!');
             if (onPostCreated) {
                 onPostCreated(newPost);
@@ -223,6 +237,17 @@ const CreatePost = ({ onPostCreated }) => {
                             )}
                         </div>
                     )}
+                </div>
+                <div className={styles.formGroup}>
+                    <label className={styles.checkboxLabel}>
+                        <input
+                        type="checkbox"
+                        checked={autoAskBot}
+                        onChange={() => setAutoAskBot(!autoAskBot)}
+                        disabled={isLoading}
+                        />
+                        {' '}Auto-review with AI bot
+                    </label>
                 </div>
 
                 {selectedTags.length > 0 && (
