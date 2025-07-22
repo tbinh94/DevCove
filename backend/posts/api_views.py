@@ -18,6 +18,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from ai_formatter import AIResponseService, build_enhanced_prompt
 
 from rest_framework import permissions, status, viewsets # permissions is added here!
 from rest_framework.decorators import action, api_view, permission_classes
@@ -33,7 +34,7 @@ from rest_framework.views import APIView
 
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -264,142 +265,138 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def ask_bot(self, request, pk=None):
         """
-        Enhanced AI code analysis using Google Gemini API with improved prompts and response processing.
+        Enhanced AI code analysis with improved formatting and numbered issues.
         """
-        # 1. Fetch Post
-        post = self.get_object()
-
-        # 2. Extract metadata from request (optional enhancements)
-        language = request.data.get('language')  # e.g., 'python', 'javascript'
-        framework = request.data.get('framework')  # e.g., 'django', 'react'
-        focus_areas = request.data.get('focus_areas', [])  # e.g., ['security', 'performance']
-
-        # 3. Build enhanced, context-aware prompt
-        enhanced_prompt = build_enhanced_prompt(
+        try:
+            # Initialize services
+            ai_service = AIResponseService()
+            post = self.get_object()
+            
+            # Get AI analysis
+            ai_response = self._get_ai_analysis(request, post)
+            if isinstance(ai_response, Response):  # Error response
+                return ai_response
+            
+            # Process and format response
+            formatted_response, summary = ai_service.process_response(ai_response, post)
+            
+            # Create and save bot comment
+            bot_comment = self._create_bot_comment(post, request.user, formatted_response)
+            
+            # Create notification
+            self._create_notification(post, request.user)
+            
+            # Log session for analytics
+            self._log_bot_session(post, request, ai_response, summary)
+            
+            # Return enhanced response
+            return self._build_success_response(bot_comment, summary, request)
+            
+        except Exception as e:
+            logger.error(f"Error in ask_bot for post {pk}: {e}")
+            return Response(
+                {'error': 'Failed to complete AI analysis. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _get_ai_analysis(self, request, post):
+        """Get AI analysis from Gemini API"""
+        # Extract request parameters
+        language = request.data.get('language')
+        framework = request.data.get('framework')
+        focus_areas = request.data.get('focus_areas', [])
+        
+        # Build enhanced prompt
+        prompt = build_enhanced_prompt(
             content=post.content,
             language=language,
             framework=framework,
             focus_areas=focus_areas
         )
-
-        # 4. Load environment variables
+        
+        # Initialize and call Gemini API
         load_dotenv()
-
-        # 5. Initialize Gemini client
         try:
             client = genai.Client()
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini client. Check GEMINI_API_KEY environment variable. Error: {e}")
-            return Response(
-                {'error': 'AI service is not configured. Please check API configuration.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        # 6. Call Gemini API with enhanced prompt
-        try:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=enhanced_prompt
+                contents=prompt
             )
-            ai_text = response.text
             
-            # Log for debugging
-            logger.info(f"Gemini API response received for post {post.id}, length: {len(ai_text) if ai_text else 0}")
-
-            if not ai_text or len(ai_text.strip()) == 0:
+            if not response.text or len(response.text.strip()) == 0:
                 return Response(
                     {'error': 'AI service returned empty response. Please try again.'},
                     status=status.HTTP_502_BAD_GATEWAY
                 )
-
+            
+            logger.info(f"Gemini API success for post {post.id}, length: {len(response.text)}")
+            return response.text
+            
         except Exception as e:
-            logger.error(f"Error calling Gemini API for post {post.id}: {e}")
+            logger.error(f"Gemini API error for post {post.id}: {e}")
             return Response(
                 {'error': f'AI analysis failed: {str(e)}'},
                 status=status.HTTP_502_BAD_GATEWAY
             )
-
-        # 7. Process AI response for better formatting and metadata
+    
+    def _create_bot_comment(self, post, user, formatted_response):
+        """Create bot comment with formatted response"""
+        return Comment.objects.create(
+            post=post,
+            author=user,
+            text=formatted_response,
+            is_bot=True
+        )
+    
+    def _create_notification(self, post, user):
+        """Create notification for post author"""
+        if post.author != user:
+            try:
+                Notification.objects.create(
+                    recipient=post.author,
+                    type='bot_analysis',
+                    message=f"AI analyzed your post: {post.title[:50]}...",
+                    related_object_id=post.id,
+                    actor=user
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create notification: {e}")
+    
+    def _log_bot_session(self, post, request, ai_response, summary):
+        """Log bot session for analytics"""
         try:
-            processed_response = process_ai_response(ai_text, post)
-            response_summary = extract_summary(ai_text)
-            
-        except Exception as e:
-            logger.warning(f"Error processing AI response: {e}")
-            # Fallback to raw response if processing fails
-            processed_response = ai_text
-            response_summary = {}
-
-        # 8. Save BotSession for analytics and debugging
-        try:
-            from .models import BotSession
             BotSession.objects.create(
                 post=post,
                 request_payload={
                     "model": "gemini-2.5-flash",
-                    "prompt": enhanced_prompt,
                     "metadata": {
-                        "language": language,
-                        "framework": framework,
-                        "focus_areas": focus_areas,
+                        "language": request.data.get('language'),
+                        "framework": request.data.get('framework'),
+                        "focus_areas": request.data.get('focus_areas', []),
                         "user_id": request.user.id,
                         "content_length": len(post.content)
                     }
                 },
-                response_text=processed_response,
-                response_metadata=response_summary
+                response_text=ai_response,
+                response_metadata=summary
             )
             logger.info(f"BotSession saved for post {post.id}")
-        except ImportError:
-            logger.info("BotSession model not found, skipping session logging")
         except Exception as e:
-            logger.error(f"Error saving BotSession for post {post.id}: {e}")
-
-        # 9. Create the enhanced bot comment
-        try:
-            bot_comment = Comment.objects.create(
-                post=post,
-                author=request.user,
-                text=processed_response,
-                is_bot=True
-            )
-
-            # 10. Create notification for post author (if different from requester)
-            if post.author != request.user:
-                try:
-                    from .models import Notification
-                    Notification.objects.create(
-                        recipient=post.author,
-                        type='bot_analysis',
-                        message=f"AI analyzed your post: {post.title[:50]}...",
-                        related_object_id=post.id,
-                        actor=request.user
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to create notification: {e}")
-
-            # 11. Return enhanced response with metadata
-            serializer = CommentSerializer(bot_comment, context={'request': request})
-            
-            return Response({
-                **serializer.data,
-                'analysis_metadata': {
-                    'quality_score': response_summary.get('quality_score'),
-                    'has_critical_issues': response_summary.get('has_critical_issues', False),
-                    'has_suggestions': response_summary.get('has_suggestions', False),
-                    'sections_found': response_summary.get('sections_found', 0),
-                    'processing_time': timezone.now().isoformat(),
-                    'language': language,
-                    'framework': framework
-                }
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"Error creating bot comment for post {post.id}: {e}")
-            return Response(
-                {'error': 'Failed to save AI analysis. Please try again.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error saving BotSession: {e}")
+    
+    def _build_success_response(self, bot_comment, summary, request):
+        """Build success response with metadata"""
+        serializer = CommentSerializer(bot_comment, context={'request': request})
+        
+        return Response({
+            **serializer.data,
+            'analysis_metadata': {
+                **summary,
+                'processing_time': timezone.now().isoformat(),
+                'language': request.data.get('language'),
+                'framework': request.data.get('framework'),
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 
@@ -1159,101 +1156,3 @@ def create_tag(request):
     return Response(serializer.data, status=response_status)
 
 
-def build_enhanced_prompt(content, language=None, framework=None, focus_areas=None):
-    """Build context-aware prompt based on provided metadata"""
-    context_parts = []
-    if language:
-        context_parts.append(f"Programming Language: {language}")
-    if framework:
-        context_parts.append(f"Framework/Library: {framework}")
-
-    context = "\n".join(context_parts) + "\n" if context_parts else ""
-
-    focus_instruction = ""
-    if focus_areas:
-        focus_instruction = f"\nPay special attention to: {', '.join(focus_areas)}\n"
-
-    return f"""You are a senior software engineer conducting a thorough code review. Analyze this code and provide actionable, educational feedback.{context}CODE TO REVIEW:
-```{content}```
-{focus_instruction}
-Please provide your analysis in a natural, conversational format with clear sections. Use plain text without markdown symbols (**, ##, etc). Structure your response as follows:
-🎯 OVERALL ASSESSMENT
-Quality Score: X/10
-Complexity Level: [Low/Medium/High]
-Maintainability: [Poor/Fair/Good/Excellent]
-✅ STRENGTHS
-List what's done well with specific examples.
-🚨 CRITICAL ISSUES
-Identify any security vulnerabilities or bugs that break functionality.
-⚠️ IMPROVEMENTS NEEDED
-Point out performance, architecture, or maintainability issues.
-💡 ENHANCEMENT SUGGESTIONS
-Recommend code style improvements and best practices.
-🔧 SPECIFIC CODE FIXES
-For each major issue, provide:
-Issue: Clear description
-Solution: Specific code changes needed
-Impact: Why this change improves the code
-📈 PRIORITY ACTION ITEMS
-List the most important fixes in order of priority.
-📚 LEARNING RESOURCES
-Include relevant documentation or best practices if applicable.
-Write in a natural, conversational tone. Be constructive and educational. Include code examples where helpful. Focus on helping the developer learn and grow. Do NOT use markdown formatting symbols like **, ##, [], etc. Write everything in plain text.
-"""
-
-def process_ai_response(ai_text, post):
-    """Process and enhance AI response before saving"""
-    # Add metadata header in plain text
-    header = f"🤖 AI Code Review for Post #{post.id}\nGenerated on {timezone.now().strftime('%Y-%m-%d at %H:%M UTC')}\n\n"
-
-    # Clean up any remaining markdown artifacts from AI response
-    cleaned_text = clean_markdown_artifacts(ai_text)
-
-    # Process the AI text
-    processed = header + cleaned_text
-
-    # Add footer with disclaimers in plain text
-    footer = "\n\n" + "="*50 + "\n💡 This analysis was generated by AI. Please review suggestions carefully, test any code changes, and consider getting human review for critical applications."
-
-    return processed + footer
-
-def clean_markdown_artifacts(text):
-    """Remove markdown formatting artifacts from AI response"""
-    # Remove markdown headers (## -> empty, keep emoji and text)
-    text = re.sub(r'^##\s*', '', text, flags=re.MULTILINE)
-
-    # Remove bold markdown (**text** -> text)
-    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
-
-    # Remove italic markdown (*text* -> text)
-    text = re.sub(r'\*(.*?)\*', r'\1', text)
-
-    # Remove markdown list markers (- or * at start of line)
-    text = re.sub(r'^[\s]*[-\*]\s*', '', text, flags=re.MULTILINE)
-
-    # Remove brackets from [text] -> text
-    text = re.sub(r'\[(.*?)\]', r'\1', text)
-
-    # Clean up multiple newlines
-    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
-
-    return text.strip()
-
-def extract_summary(ai_text):
-    """Extract key points for API response summary"""
-    summary = {
-        'has_critical_issues': '🚨' in ai_text or 'Critical' in ai_text.lower(),
-        'has_suggestions': '💡' in ai_text or 'suggestion' in ai_text.lower(),
-        'has_code_fixes': '🔧' in ai_text or 'fix' in ai_text.lower(),
-        'estimated_length': len(ai_text),
-        'sections_found': len([line for line in ai_text.split('\n') if line.startswith('🎯') or line.startswith('✅') or line.startswith('🚨') or line.startswith('⚠️') or line.startswith('💡') or line.startswith('🔧') or line.startswith('📈') or line.startswith('📚')]), # Adjusted to match the plain text headings
-        'quality_score': extract_quality_score(ai_text)
-    }
-    return summary
-
-def extract_quality_score(ai_text):
-    """Extract quality score from AI response if present"""
-    # Look for patterns like "Quality Score: 7/10" or "Score: 8/10"
-    score_pattern = r'(?:Quality Score|Score):\s*(\d+)/10'
-    match = re.search(score_pattern, ai_text, re.IGNORECASE)
-    return int(match.group(1)) if match else None

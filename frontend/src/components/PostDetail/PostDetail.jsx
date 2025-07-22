@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, Edit3, Trash2, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag } from 'lucide-react';
+import { MessageCircle, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
-
+import DOMPurify from 'dompurify';
 const PostDetail = () => {
     const { postId } = useParams();
     const {user, isAuthenticated } = useAuth();
@@ -20,6 +20,72 @@ const PostDetail = () => {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [botLoading, setBotLoading] = useState(false);
     const [botError, setBotError]   = useState(null);
+
+    // Define copy functionality globally
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.textContent = `
+            function copyCode(elementId) {
+                const element = document.getElementById(elementId);
+                const text = element.textContent || element.innerText;
+                
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        showCopySuccess(elementId);
+                    }).catch(function() {
+                        fallbackCopyTextToClipboard(text, elementId);
+                    });
+                } else {
+                    fallbackCopyTextToClipboard(text, elementId);
+                }
+            }
+            
+            function fallbackCopyTextToClipboard(text, elementId) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+                
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    showCopySuccess(elementId);
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            function showCopySuccess (elementId) {
+                const codeBlock = document.getElementById(elementId).closest('.code-block-container');
+                const copyBtn = codeBlock.querySelector('.copy-btn');
+                const copyText = copyBtn.querySelector('.copy-text');
+                const copyIcon = copyBtn.querySelector('.copy-icon');
+                
+                const originalText = copyText.textContent;
+                const originalIcon = copyIcon.textContent;
+                
+                copyText.textContent = 'Copied!';
+                copyIcon.textContent = '✅';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyText.textContent = originalText;
+                    copyIcon.textContent = originalIcon;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }
+        `;
+        document.body.appendChild(script);
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -378,9 +444,9 @@ const PostDetail = () => {
                     )}
                     
                     {/* Comments List */}
+                    {/* Comments List */}
                     <div className={styles.commentsList}>
                         {comments.length > 0 ? (
-                            // START OF MODIFIED SECTION
                             comments.map((comment) => (
                                 <div
                                     key={comment.id}
@@ -396,14 +462,21 @@ const PostDetail = () => {
                                                     {comment.is_bot ? '🤖 DevAlly Bot' : (comment.author?.username || 'Unknown')}
                                                 </span>
                                                 <span className={styles.commentTime}>
-                                                    {formatTimeAgo(comment.created_at || comment.created)} {/* Sử dụng created_at hoặc created */}
+                                                    {formatTimeAgo(comment.created_at || comment.created)}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className={styles.commentContent}>
-                                        <p className={styles.commentText}>{comment.text}</p>
-                                        {!comment.is_bot && ( // Chỉ hiển thị action cho comment của người dùng
+                                        {comment.is_bot ? (
+                                            <div
+                                                className={styles.commentText}
+                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.text) }}
+                                            />
+                                        ) : (
+                                            <p className={styles.commentText}>{comment.text}</p>
+                                        )}
+                                        {!comment.is_bot && (
                                             <div className={styles.commentActions}>
                                                 <button className={styles.commentActionButton}>
                                                     <Heart size={12} />
@@ -418,7 +491,6 @@ const PostDetail = () => {
                                     </div>
                                 </div>
                             ))
-                            // END OF MODIFIED SECTION
                         ) : (
                             <div className={styles.noComments}>
                                 <div className={styles.noCommentsIcon}>💬</div>
