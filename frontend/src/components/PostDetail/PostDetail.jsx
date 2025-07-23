@@ -1,15 +1,17 @@
 // PostDetail.jsx - Modern Blue Theme Design with Image Modal
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { MessageCircle, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
 import DOMPurify from 'dompurify';
+
 const PostDetail = () => {
     const { postId } = useParams();
     const {user, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const [post, setPost] = useState(null);
     // const [comments, setComments] = useState([]); // Không cần dùng nữa vì comment nằm trong post
     const [loading, setLoading] = useState(true);
@@ -20,6 +22,10 @@ const PostDetail = () => {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [botLoading, setBotLoading] = useState(false);
     const [botError, setBotError]   = useState(null);
+
+    // delete modal
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     // Define copy functionality globally
     useEffect(() => {
@@ -197,6 +203,26 @@ const PostDetail = () => {
         alert("Bookmark feature is in development!");
     };
 
+    const handleDeletePost = async () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeletePostConfirm = async () => {
+        setShowDeleteConfirm(false); // Đóng modal xác nhận
+
+        try {
+            await apiService.deletePost(postId);
+            setShowSuccessModal(true); // Hiển thị modal thông báo thành công
+            setTimeout(() => {
+                setShowSuccessModal(false); // Ẩn modal sau 2 giây
+                navigate('/'); // Chuyển hướng về trang chủ
+            }, 2000); // Thời gian hiển thị modal thành công
+        } catch (err) {
+            console.error('Failed to delete post:', err);
+            alert(err.message || 'An error occurred while deleting the post.'); // Giữ alert tạm thời cho lỗi, có thể cải thiện sau
+        }
+    };
+
     const openImageModal = () => {
         setIsImageModalOpen(true);
     };
@@ -234,6 +260,11 @@ const PostDetail = () => {
             setPost(prev => ({
                 ...prev,
                 comments: [newBotComment, ...prev.comments],
+                // Cập nhật các trường bot review sau khi bot comment mới được thêm
+                is_bot_reviewed: true,
+                bot_reviews_count: (prev.bot_reviews_count || 0) + 1,
+                latest_bot_review_date: new Date().toISOString(), // Hoặc lấy từ newBotComment.created_at
+                bot_review_summary: newBotComment.text.slice(0, 100) + "..."
             }));
         } catch (err) {
             console.error('AskBot error:', err);
@@ -274,6 +305,7 @@ const PostDetail = () => {
         );
     }
 
+    const isOwner = isAuthenticated && user?.id === post?.author?.id;
     const comments = post.comments || [];
 
     return (
@@ -284,7 +316,17 @@ const PostDetail = () => {
                     {/* Post Header */}
                     <div className={styles.postHeader}>
                         <div className={styles.postHeaderContent}>
-                            <h1 className={styles.postTitle}>{post.title}</h1>
+                            <h1 className={styles.postTitle}>
+                                {post.title}
+                                {post.is_bot_reviewed && (
+                                  <span 
+                                    className={styles.botReviewedBadgeDetail} 
+                                    title={`This post has been reviewed by the bot ${post.bot_reviews_count} time(s). Latest review: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
+                                  >
+                                    🤖 Reviewed ({post.bot_reviews_count})
+                                  </span>
+                                )}
+                            </h1>
                             <div className={styles.postMeta}>
                                 <div className={styles.authorInfo}>
                                     <div className={styles.authorAvatar}>
@@ -328,20 +370,29 @@ const PostDetail = () => {
                     {post.content && (
                         <div className={styles.postContent}>
                             <div className={styles.contentText}>
-                                {post.content}
+                                {DOMPurify.sanitize(post.content)}
                             </div>
                         </div>
                     )}
                     
                     {/* Post Tags */}
+                    {/* fix lỗi khi click tag để filter */}
                     {post.tags && post.tags.length > 0 && (
                         <div className={styles.tagsContainer}>
                             <Tag size={16} className={styles.tagIcon} />
-                            {post.tags.map(tag => (
-                                <Link to={`/tags/${tag.slug}`} key={tag.id} className={styles.tagItem}>
-                                    {tag.name}
-                                </Link>
-                            ))}
+                            {post.tags.map((tag, index) => {
+                                // Lấy tên tag, dù tag là string hay object
+                                const tagName = typeof tag === 'object' ? tag.name : tag.toString();
+                                
+                                // Tạo slug từ name nếu slug không tồn tại, và chuyển thành chữ thường
+                                const tagSlug = (tag.slug || tagName).toLowerCase().replace(/\s+/g, '-');
+
+                                return (
+                                    <Link to={`/?tags=${tagSlug}`} key={tag.id || index} className={styles.tagItem}>
+                                        {tagName}
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -386,6 +437,15 @@ const PostDetail = () => {
                         </div>
                         
                         <div className={styles.rightActions}>
+                            {isOwner && (
+                                <button
+                                    onClick={handleDeletePost}
+                                    className={`${styles.actionButton} ${styles.deleteButton}`}
+                                    title="Delete Post"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                             <button 
                                 onClick={handleBookmark}
                                 className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
@@ -501,7 +561,40 @@ const PostDetail = () => {
                     </div>
                 </div>
             </div>
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className={styles.deleteConfirmModalOverlay}>
+                    <div className={styles.deleteConfirmModal}>
+                        <h3 className={styles.deleteConfirmTitle}>Confirm Deletion</h3>
+                        <p className={styles.deleteConfirmMessage}>Are you sure you want to delete this post? This action cannot be undone.</p>
+                        <div className={styles.deleteConfirmActions}>
+                            <button 
+                                onClick={() => setShowDeleteConfirm(false)} 
+                                className={styles.deleteConfirmCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDeletePostConfirm} 
+                                className={styles.deleteConfirmButton}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
+            {/* Success Notification Modal */}
+            {showSuccessModal && (
+                <div className={styles.successModalOverlay}>
+                    <div className={styles.successModal}>
+                        <CheckCircle size={48} className={styles.successIcon} />
+                        <h3 className={styles.successTitle}>Success!</h3>
+                        <p className={styles.successMessage}>Your post has been deleted successfully.</p>
+                    </div>
+                </div>
+            )}
             {/* Image Modal */}
             {isImageModalOpen && post.image_url && (
                 <div className={styles.imageModal} onClick={closeImageModal}>

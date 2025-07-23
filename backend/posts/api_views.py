@@ -19,6 +19,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from ai_formatter import AIResponseService, build_enhanced_prompt
+from django.db.models import Max, Q
 
 from rest_framework import permissions, status, viewsets # permissions is added here!
 from rest_framework.decorators import action, api_view, permission_classes
@@ -92,9 +93,6 @@ class PostViewSet(viewsets.ModelViewSet):
 
     # THAY THẾ HÀM get_queryset CŨ BẰNG HÀM MỚI NÀY
     def get_queryset(self):
-        """
-        Ghi đè queryset để xử lý filter theo tags.
-        """
         # Bắt đầu với queryset cơ bản
         queryset = Post.objects.select_related('author', 'community') \
                                .prefetch_related('tags', 'votes') \
@@ -111,6 +109,16 @@ class PostViewSet(viewsets.ModelViewSet):
             # tags__slug__in là cú pháp của Django để lọc trên trường của quan hệ ManyToMany
             queryset = queryset.filter(tags__slug__in=tag_slugs).distinct()
 
+        # ===== THÊM FILTER CHO BOT REVIEWED =====
+        bot_reviewed = self.request.query_params.get('bot_reviewed', None)
+        if bot_reviewed is not None:
+            if bot_reviewed.lower() in ['true', '1', 'yes']:
+                # Chỉ lấy posts đã được bot review
+                queryset = queryset.filter(comments__is_bot=True).distinct()
+            elif bot_reviewed.lower() in ['false', '0', 'no']:
+                # Chỉ lấy posts chưa được bot review
+                queryset = queryset.exclude(comments__is_bot=True)
+        
         return queryset
 
     def get_serializer_class(self):
@@ -397,6 +405,57 @@ class PostViewSet(viewsets.ModelViewSet):
                 'framework': request.data.get('framework'),
             }
         }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def bot_reviewed_posts(self, request):
+        """
+        Lấy danh sách các posts đã được bot review với thống kê chi tiết
+        """
+        posts = Post.objects.filter(
+            comments__is_bot=True
+        ).distinct().select_related(
+            'author', 'community'
+        ).prefetch_related(
+            'tags', 'comments'
+        ).annotate(
+            bot_comments_count=Count('comments', filter=Q(comments__is_bot=True)),
+            latest_bot_review_date=Max('comments__created', filter=Q(comments__is_bot=True))
+        ).order_by('-latest_bot_review_date')
+        
+        # Phân trang
+        page = self.paginate_queryset(posts)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data)
+    
+    # ===== THÊM ACTION ĐỂ LẤY THỐNG KÊ BOT REVIEWS =====
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def bot_review_stats(self, request):
+        """
+        Thống kê về bot reviews
+        """
+        total_posts = Post.objects.count()
+        reviewed_posts = Post.objects.filter(comments__is_bot=True).distinct().count()
+        total_bot_comments = Comment.objects.filter(is_bot=True).count()
+        
+        # Thống kê theo thời gian (7 ngày gần nhất)
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        recent_reviews = Comment.objects.filter(
+            is_bot=True,
+            created__gte=seven_days_ago
+        ).count()
+        
+        return Response({
+            'total_posts': total_posts,
+            'reviewed_posts_count': reviewed_posts,
+            'review_percentage': round((reviewed_posts / total_posts * 100), 2) if total_posts > 0 else 0,
+            'total_bot_comments': total_bot_comments,
+            'recent_reviews_7days': recent_reviews,
+            'average_reviews_per_post': round(total_bot_comments / reviewed_posts, 2) if reviewed_posts > 0 else 0
+        })
 
 
 

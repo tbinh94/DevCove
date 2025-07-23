@@ -1,4 +1,4 @@
-/* Sidebar */
+/* Enhanced Responsive Sidebar */
 .sidebar {
   width: 280px;
   min-width: 240px;
@@ -9,6 +9,7 @@
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   background: transparent;
+  transition: all 0.3s ease;
 }
 
 /* Tags Section */
@@ -19,13 +20,22 @@
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.tagsSection:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
 .tagsSection h3 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: clamp(14px, 2.5vw, 16px);
   font-weight: 600;
   color: #d7dadc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tagsList {
@@ -43,18 +53,22 @@
   color: #fff;
   text-decoration: none;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   font-weight: 500;
   transition: all 0.2s;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 36px;
 }
 
 .tagBadge:hover {
   background: #0066cc;
   text-decoration: none;
   color: #fff;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 121, 211, 0.3);
 }
 
@@ -69,6 +83,7 @@
   user-select: none;
   position: relative;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 
 .tagToggle:hover {
@@ -97,14 +112,16 @@
   background: rgba(255, 255, 255, 0.25);
   padding: 2px 6px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: clamp(9px, 1.5vw, 10px);
   margin-left: 8px;
   font-weight: 600;
+  min-width: 20px;
+  text-align: center;
 }
 
 .viewAllButton {
   color: #8cc8ff;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   text-decoration: none;
   margin-top: 8px;
   display: block;
@@ -116,6 +133,7 @@
   background: transparent;
   border: 1px solid #343536;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .viewAllButton:hover {
@@ -123,6 +141,7 @@
   text-decoration: none;
   color: #8cc8ff;
   border-color: #8cc8ff;
+  transform: translateY(-1px);
 }
 
 /* Loading State */
@@ -151,7 +170,8 @@
 
 .loading p {
   margin: 0;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
+  text-align: center;
 }
 
 /* Error State */
@@ -163,7 +183,7 @@
 
 .error p {
   margin: 0 0 8px 0;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
 }
 
 .retryButton {
@@ -172,9 +192,10 @@
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: clamp(10px, 1.8vw, 11px);
   cursor: pointer;
   transition: background 0.2s;
+  touch-action: manipulation;
 }
 
 .retryButton:hover {
@@ -183,7 +204,7 @@
 
 .noTags {
   color: #818384;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   text-align: center;
   margin: 20px 0;
 }
@@ -196,6 +217,12 @@
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.filterStatus:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
 .filterHeader {
@@ -203,11 +230,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .filterStatus h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: clamp(13px, 2.2vw, 14px);
   color: #d7dadc;
   font-weight: 600;
 }
@@ -218,14 +247,17 @@
   border: none;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: clamp(10px, 1.8vw, 11px);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .clearAllBtn:hover {
   background: #d63447;
+  transform: translateY(-1px);
 }
 
 .filterItem {
@@ -233,7 +265,7 @@
   align-items: flex-start;
   gap: 8px;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   flex-wrap: wrap;
 }
 
@@ -241,6 +273,7 @@
   color: #818384;
   font-weight: 500;
   min-width: 40px;
+  flex-shrink: 0;
 }
 
 .selectedTags {
@@ -248,6 +281,7 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
+  flex: 1;
 }
 
 .filterValue {
@@ -259,8 +293,12 @@
   background: #0079d3;
   color: white;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: clamp(10px, 1.8vw, 11px);
   font-weight: 500;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clearFilter {
@@ -274,15 +312,18 @@
   justify-content: center;
   border-radius: 50%;
   background: rgba(245, 69, 92, 0.2);
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   transition: all 0.2s;
   border: none;
   cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
 }
 
 .clearFilter:hover {
   background: #f5455c;
   color: #fff;
+  transform: scale(1.1);
 }
 
 .tagRemove {
@@ -292,21 +333,24 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: clamp(10px, 1.8vw, 12px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  touch-action: manipulation;
 }
 
 .tagRemove:hover {
   background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
 }
 
 .filterStats {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: clamp(10px, 1.8vw, 11px);
   color: #818384;
   font-style: italic;
 }
@@ -319,11 +363,17 @@
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.userSection:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
 }
 
 .userSection h3 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: clamp(14px, 2.5vw, 16px);
   font-weight: 600;
   color: #d7dadc;
 }
@@ -340,20 +390,25 @@
   border: none;
   padding: 10px 16px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: clamp(12px, 2.2vw, 13px);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
+  touch-action: manipulation;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .actionBtn:hover {
   background: #0066cc;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 121, 211, 0.3);
 }
 
-/* Scrollbar */
+/* Enhanced Scrollbar */
 .sidebar::-webkit-scrollbar {
   width: 6px;
 }
@@ -366,19 +421,21 @@
 .sidebar::-webkit-scrollbar-thumb {
   background: #343536;
   border-radius: 3px;
+  transition: background 0.2s;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: #474748;
 }
 
-/* Focus States */
+/* Focus States - Enhanced for accessibility */
 .tagBadge:focus,
 .clearFilter:focus,
 .clearAllBtn:focus,
 .actionBtn:focus,
 .viewAllButton:focus,
-.retryButton:focus {
+.retryButton:focus,
+.tagToggle:focus {
   outline: 2px solid #8cc8ff;
   outline-offset: 2px;
 }
@@ -400,11 +457,41 @@
   font-weight: bold;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
+/* Responsive Design - Enhanced Breakpoints */
+@media (max-width: 1400px) {
   .sidebar {
     width: 260px;
     min-width: 220px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 240px;
+    min-width: 200px;
+  }
+  
+  .tagsSection,
+  .filterStatus,
+  .userSection {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 220px;
+    min-width: 180px;
+  }
+  
+  .tagBadge {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .tagCount {
+    padding: 1px 4px;
+    font-size: 9px;
   }
 }
 
@@ -418,12 +505,23 @@
     max-height: none;
     overflow-y: visible;
     margin-top: 20px;
+    top: auto;
   }
   
   .tagsSection,
   .filterStatus,
   .userSection {
     margin-bottom: 12px;
+  }
+  
+  .userActions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .actionBtn {
+    flex: 1;
+    min-width: 120px;
   }
 }
 
@@ -446,16 +544,52 @@
   .tagBadge {
     font-size: 11px;
     padding: 6px 10px;
+    min-height: 32px;
   }
   
   .userActions {
-    flex-direction: row;
+    gap: 6px;
   }
   
   .actionBtn {
-    flex: 1;
     padding: 8px 12px;
     font-size: 12px;
+    min-height: 36px;
+  }
+  
+  .filterHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .clearAllBtn {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .tagsList {
+    gap: 6px;
+  }
+  
+  .tagBadge {
+    padding: 5px 8px;
+    border-radius: 16px;
+    min-height: 30px;
+  }
+  
+  .filterItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  
+  .filterLabel {
+    min-width: auto;
+  }
+  
+  .selectedTags {
+    margin-top: 0;
   }
 }
 
@@ -469,15 +603,135 @@
   .userSection {
     padding: 12px;
     border-radius: 6px;
+    margin-bottom: 10px;
   }
   
   .filterHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
   }
   
-  .clearAllBtn {
-    align-self: flex-end;
+  .tagBadge {
+    padding: 4px 8px;
+    font-size: 10px;
+    min-height: 28px;
+  }
+  
+  .tagCount {
+    margin-left: 4px;
+    padding: 1px 3px;
+    font-size: 8px;
+  }
+  
+  .userActions {
+    gap: 4px;
+  }
+  
+  .actionBtn {
+    padding: 6px 10px;
+    font-size: 11px;
+    min-height: 32px;
+  }
+  
+  .viewAllButton {
+    padding: 6px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .sidebar {
+    padding: 0 4px;
+  }
+  
+  .tagsSection,
+  .filterStatus,
+  .userSection {
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .tagBadge {
+    padding: 3px 6px;
+    font-size: 9px;
+    border-radius: 14px;
+    min-height: 26px;
+  }
+  
+  .filterValue {
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+  
+  .actionBtn {
+    padding: 5px 8px;
+    font-size: 10px;
+    min-height: 28px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .tagBadge,
+  .actionBtn,
+  .clearFilter,
+  .clearAllBtn,
+  .viewAllButton,
+  .retryButton {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  .tagBadge:hover,
+  .actionBtn:hover,
+  .clearFilter:hover,
+  .clearAllBtn:hover,
+  .viewAllButton:hover,
+  .retryButton:hover {
+    transform: none;
+  }
+  
+  .tagBadge:active,
+  .actionBtn:active,
+  .clearFilter:active,
+  .clearAllBtn:active,
+  .viewAllButton:active,
+  .retryButton:active {
+    transform: scale(0.95);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .tagsSection,
+  .filterStatus,
+  .userSection {
+    border-width: 2px;
+  }
+  
+  .tagBadge,
+  .actionBtn {
+    border: 2px solid transparent;
+  }
+  
+  .tagBadge:focus,
+  .actionBtn:focus {
+    border-color: #8cc8ff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .tagBadge:hover,
+  .actionBtn:hover,
+  .tagsSection:hover,
+  .filterStatus:hover,
+  .userSection:hover {
+    transform: none;
   }
 }

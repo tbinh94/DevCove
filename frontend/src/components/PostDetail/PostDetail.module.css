@@ -970,3 +970,186 @@
   width: 100%;
   height: 100%;
 }
+
+.deleteButton:hover {
+    background-color: #ffebee; /* A light red color */
+    color: #c62828; /* A darker red for the icon */
+}
+/* Delete Confirmation Modal Styles */
+.deleteConfirmModalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+.deleteConfirmModal {
+    background: #2d3748;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    border: 1px solid #4a5568;
+    animation: slideIn 0.3s ease;
+}
+
+.deleteConfirmTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f7fafc;
+    margin-bottom: 1rem;
+}
+
+.deleteConfirmMessage {
+    font-size: 1rem;
+    color: #cbd5e0;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.deleteConfirmActions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.deleteConfirmButton,
+.deleteConfirmCancel {
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.deleteConfirmButton {
+    background: #c62828; /* Red for delete */
+    color: white;
+    border: 1px solid #c62828;
+}
+
+.deleteConfirmButton:hover {
+    background: #d32f2f;
+    box-shadow: 0 5px 15px rgba(198, 40, 40, 0.3);
+    transform: translateY(-1px);
+}
+
+.deleteConfirmCancel {
+    background: none;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+}
+
+.deleteConfirmCancel:hover {
+    background: rgba(160, 174, 192, 0.1);
+    color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+/* Add these keyframes if not already present from image modal */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* Success Notification Modal Styles */
+.successModalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+.successModal {
+    background: #2d3748; /* Same background as postCard */
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 350px;
+    width: 90%;
+    text-align: center;
+    border: 1px solid #4a5568; /* Same border as postCard */
+    animation: slideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.successIcon {
+    color: #48bb78; /* A nice green color */
+    margin-bottom: 1rem;
+}
+
+.successTitle {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f7fafc;
+    margin-bottom: 0.5rem;
+}
+
+.successMessage {
+    font-size: 1.1rem;
+    color: #cbd5e0;
+    line-height: 1.5;
+}
+
+/* Make sure these keyframes are present */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.botReviewedBadgeDetail {
+  background-color: #e0f7fa; /* Light blue background */
+  color: #007bb6; /* Darker blue text */
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-left: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap; /* Keep the badge on one line */
+}
+
+.botReviewedBadgeDetail:hover {
+  background-color: #b3e5fc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}

@@ -96,6 +96,10 @@ class PostSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     
+    is_bot_reviewed = serializers.BooleanField(read_only=True)
+    bot_reviews_count = serializers.IntegerField(read_only=True)
+    latest_bot_review_date = serializers.SerializerMethodField()
+    bot_review_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -104,7 +108,9 @@ class PostSerializer(serializers.ModelSerializer):
             'image_url',
             'author', 'community', 'tags', 'created_at', 
             'calculated_score',
-            'comment_count', 'user_vote'
+            'comment_count', 'user_vote',
+            'is_bot_reviewed', 'bot_reviews_count', 
+            'latest_bot_review_date', 'bot_review_summary'
         ]
         read_only_fields = ['id', 'created_at']
     
@@ -125,6 +131,18 @@ class PostSerializer(serializers.ModelSerializer):
             vote = post.votes.filter(user=request.user).first()
             if vote:
                 return 'up' if vote.is_upvote else 'down'
+        return None
+    
+    def get_latest_bot_review_date(self, post):
+        """Get the date of latest bot review"""
+        latest_review = post.latest_bot_review
+        return latest_review.created.isoformat() if latest_review else None
+    
+    def get_bot_review_summary(self, post):
+        """Get a brief summary of bot review (first 100 chars)"""
+        latest_review = post.latest_bot_review
+        if latest_review:
+            return latest_review.text[:100] + "..." if len(latest_review.text) > 100 else latest_review.text
         return None
 
 

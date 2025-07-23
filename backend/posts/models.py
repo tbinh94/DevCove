@@ -93,7 +93,23 @@ class Post(models.Model):
             return self.votes.get(user=user)
         except Vote.DoesNotExist:
             return None
-
+        
+    @property 
+    def is_bot_reviewed(self):
+        """Check if this post has been reviewed by bot (has bot comments)"""
+        return self.comments.filter(is_bot=True).exists()
+    
+    @property
+    def bot_reviews_count(self):
+        """Count number of bot reviews/comments"""
+        return self.comments.filter(is_bot=True).count()
+    
+    @property
+    def latest_bot_review(self):
+        """Get the latest bot review"""
+        return self.comments.filter(is_bot=True).order_by('-created').first()
+    
+    
 
 class Vote(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -216,3 +232,4 @@ class Notification(models.Model):
         
         # URL mặc định nếu không có hành động cụ thể
         return reverse('posts:notifications')
+    

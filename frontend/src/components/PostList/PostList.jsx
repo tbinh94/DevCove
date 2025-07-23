@@ -1,3 +1,4 @@
+// PostList.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
@@ -234,18 +235,24 @@ const PostList = ({ showAllTags = false }) => {
           </div>
           
           <div className={styles.postContentArea}>
+            {post.is_bot_reviewed && (
+              <span className={styles.botReviewedBadge} title={post.bot_review_summary}>
+                🤖 Reviewed
+              </span>
+            )}
             <Link to={`/post/${post.id}`} className={styles.postLink}>
               <div className={styles.postMeta}>
                 u/{post.author?.username}
                 {post.community && ` in r/${post.community.name}`}
               </div>
-              <h3 className={styles.postTitle}>{post.title}</h3>
-              {renderTags(post.tags)}
+              <h3 className={styles.postTitle}>
+                {post.title}
+              </h3>
               {post.image_url && (
                 <div className={styles.imageContainer}>
-                  <img 
-                    src={post.image_url} 
-                    alt={post.title} 
+                  <img
+                    src={post.image_url}
+                    alt={post.title}
                     className={styles.postImage}
                     loading="lazy"
                   />
@@ -253,14 +260,13 @@ const PostList = ({ showAllTags = false }) => {
               )}
               {post.content && (
                 <p className={styles.postContentPreview}>
-                  {post.content.length > 200 
-                    ? `${post.content.slice(0, 200)}...` 
-                    : post.content
-                  }
+                  {post.content.length > 200
+                    ? `${post.content.slice(0, 200)}...`
+                    : post.content}
                 </p>
               )}
             </Link>
-            
+            {renderTags(post.tags)} {/* Di chuyển ra ngoài Link */}
             <div className={styles.postFooter}>
               <Link to={`/post/${post.id}`} className={styles.actionButton}>
                 <MessageCircle size={16} />
