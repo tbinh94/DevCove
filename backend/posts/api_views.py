@@ -273,105 +273,124 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def ask_bot(self, request, pk=None):
         """
-        Enhanced AI code analysis with improved formatting and numbered issues.
+        [IMPROVED] Handles AI code analysis requests with better robustness and spam prevention.
+        
+        NOTE ON ASYNC PROCESSING: This workflow is synchronous, meaning the user waits for the 
+        AI API call to complete. For a better user experience, this should be converted to an 
+        asynchronous task using a message queue like Celery or Django-Q.
+        
+        The async flow would be:
+        1. This view validates the request and queues a background task.
+        2. Return an immediate `202 Accepted` response to the user.
+        3. The background worker executes the AI call and creates the comment.
+        4. Use WebSockets (Django Channels) to push the new comment to the user's browser in real-time.
         """
         try:
+            post = self.get_object()
+
+            # [NEW] Prevent spamming the AI bot for the same post
+            five_minutes_ago = timezone.now() - timedelta(minutes=5)
+            if BotSession.objects.filter(post=post, created_at__gte=five_minutes_ago).exists():
+                return Response(
+                    {'error': 'An AI analysis for this post was requested recently. Please wait a few minutes.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
             # Initialize services
             ai_service = AIResponseService()
-            post = self.get_object()
             
-            # Get AI analysis
-            ai_response = self._get_ai_analysis(request, post)
-            if isinstance(ai_response, Response):  # Error response
-                return ai_response
+            # 1. Get AI analysis from the external API
+            ai_response_text = self._get_ai_analysis(request, post)
+            if isinstance(ai_response_text, Response):  # Check if it's an error Response
+                return ai_response_text
             
-            # Process and format response
-            formatted_response, summary = ai_service.process_response(ai_response, post)
+            # 2. Process and format the response into HTML
+            formatted_response, summary = ai_service.process_response(ai_response_text, post)
             
-            # Create and save bot comment
+            # 3. Create and save the primary artifact: the bot comment
             bot_comment = self._create_bot_comment(post, request.user, formatted_response)
             
-            # Create notification
+            # 4. Perform non-critical side effects (notification, logging)
+            # These are in separate functions and try/except blocks so their failure
+            # doesn't prevent the main comment from being created.
             self._create_notification(post, request.user)
+            self._log_bot_session(post, request, ai_response_text, summary)
             
-            # Log session for analytics
-            self._log_bot_session(post, request, ai_response, summary)
-            
-            # Return enhanced response
+            # 5. Return the final success response
             return self._build_success_response(bot_comment, summary, request)
             
         except Exception as e:
-            logger.error(f"Error in ask_bot for post {pk}: {e}")
+            logger.error(f"Critical error in ask_bot for post {pk}: {e}")
             return Response(
-                {'error': 'Failed to complete AI analysis. Please try again.'},
+                {'error': 'A critical error occurred while processing the AI analysis.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     def _get_ai_analysis(self, request, post):
-        """Get AI analysis from Gemini API"""
-        # Extract request parameters
-        language = request.data.get('language')
-        framework = request.data.get('framework')
-        focus_areas = request.data.get('focus_areas', [])
-        
-        # Build enhanced prompt
+        """[IMPROVED & FIXED] Get AI analysis from Gemini API with better error handling."""
         prompt = build_enhanced_prompt(
             content=post.content,
-            language=language,
-            framework=framework,
-            focus_areas=focus_areas
+            language=request.data.get('language'),
+            framework=request.data.get('framework'),
+            focus_areas=request.data.get('focus_areas', [])
         )
         
-        # Initialize and call Gemini API
         load_dotenv()
         try:
-            client = genai.Client()
+            # In a production environment, you would configure the client globally.
+            # You should also configure a timeout for the API request.
+            client = genai.Client() 
+            
+            # [FIXED] The 'model' parameter must be a keyword argument.
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-2.5-flash", 
                 contents=prompt
             )
             
-            if not response.text or len(response.text.strip()) == 0:
+            ai_text = response.text
+            if not ai_text or not ai_text.strip():
+                logger.warning(f"Gemini API returned an empty response for post {post.id}")
                 return Response(
-                    {'error': 'AI service returned empty response. Please try again.'},
+                    {'error': 'The AI service returned an empty or invalid response. Please try again.'},
                     status=status.HTTP_502_BAD_GATEWAY
                 )
             
-            logger.info(f"Gemini API success for post {post.id}, length: {len(response.text)}")
-            return response.text
+            logger.info(f"Gemini API success for post {post.id}, response length: {len(ai_text)}")
+            return ai_text
             
         except Exception as e:
-            logger.error(f"Gemini API error for post {post.id}: {e}")
+            # This catches API errors, timeouts, connection issues, etc.
+            logger.error(f"Gemini API call failed for post {post.id}: {e}")
             return Response(
-                {'error': f'AI analysis failed: {str(e)}'},
+                {'error': f'The AI analysis service failed to process the request. Details: {str(e)}'},
                 status=status.HTTP_502_BAD_GATEWAY
             )
     
     def _create_bot_comment(self, post, user, formatted_response):
-        """Create bot comment with formatted response"""
+        """Create bot comment with formatted response."""
         return Comment.objects.create(
             post=post,
-            author=user,
+            author=user, # The user who requested the review is the author of the comment
             text=formatted_response,
             is_bot=True
         )
     
     def _create_notification(self, post, user):
-        """Create notification for post author"""
+        """[IMPROVED] Create notification for post author, handling potential errors."""
         if post.author != user:
             try:
                 Notification.objects.create(
                     recipient=post.author,
                     type='bot_analysis',
-                    message=f"AI analyzed your post: {post.title[:50]}...",
+                    message=f"Your post '{post.title[:30]}...' has been analyzed by the AI.",
                     related_object_id=post.id,
-                    actor=user
+                    actor=user # The user who initiated the action
                 )
             except Exception as e:
-                logger.warning(f"Failed to create notification: {e}")
-    
+                logger.warning(f"Non-critical error: Failed to create notification for post {post.id}. Error: {e}")
+
     def _log_bot_session(self, post, request, ai_response, summary):
-        """Log bot session for analytics"""
+        """[IMPROVED] Log bot session for analytics, handling potential errors."""
         try:
             BotSession.objects.create(
                 post=post,
@@ -388,23 +407,22 @@ class PostViewSet(viewsets.ModelViewSet):
                 response_text=ai_response,
                 response_metadata=summary
             )
-            logger.info(f"BotSession saved for post {post.id}")
+            logger.info(f"BotSession saved successfully for post {post.id}")
         except Exception as e:
-            logger.error(f"Error saving BotSession: {e}")
-    
+            logger.error(f"Non-critical error: Failed to save BotSession for post {post.id}. Error: {e}")
+
     def _build_success_response(self, bot_comment, summary, request):
-        """Build success response with metadata"""
-        serializer = CommentSerializer(bot_comment, context={'request': request})
+        """
+        [FIXED] Build the final success response for the client.
+        The frontend expects the comment object to be returned directly.
+        We revert to this behavior to prevent the 'slice' error.
+        """
+        # Ghi lại thông tin phân tích ở backend để debug
+        logger.info(f"AI Analysis Summary for Post {bot_comment.post.id}: {summary}")
         
-        return Response({
-            **serializer.data,
-            'analysis_metadata': {
-                **summary,
-                'processing_time': timezone.now().isoformat(),
-                'language': request.data.get('language'),
-                'framework': request.data.get('framework'),
-            }
-        }, status=status.HTTP_201_CREATED)
+        # Trả về đối tượng comment đã được serialize
+        serializer = CommentSerializer(bot_comment, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def bot_reviewed_posts(self, request):

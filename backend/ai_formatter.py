@@ -569,59 +569,39 @@ class AICommentFormatter:
         return """
         function copyCode(elementId) {
             const element = document.getElementById(elementId);
+            if (!element) return;
             const text = element.textContent || element.innerText;
             
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(function() {
-                    showCopySuccess(elementId);
-                }).catch(function() {
-                    fallbackCopyTextToClipboard(text, elementId);
-                });
+                navigator.clipboard.writeText(text).then(() => showCopySuccess(elementId));
             } else {
-                fallbackCopyTextToClipboard(text, elementId);
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopySuccess(elementId);
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textArea);
             }
         }
-        
-        function fallbackCopyTextToClipboard(text, elementId) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                showCopySuccess(elementId);
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-            }
-            
-            document.body.removeChild(textArea);
-        }
-        
         function showCopySuccess(elementId) {
             const codeBlock = document.getElementById(elementId).closest('.code-block-container');
+            if (!codeBlock) return;
             const copyBtn = codeBlock.querySelector('.copy-btn');
+            if (!copyBtn) return;
             const copyText = copyBtn.querySelector('.copy-text');
-            const copyIcon = copyBtn.querySelector('.copy-icon');
-            
-            // Store original values
             const originalText = copyText.textContent;
-            const originalIcon = copyIcon.textContent;
-            
-            // Update button to show success
             copyText.textContent = 'Copied!';
-            copyIcon.textContent = '✅';
             copyBtn.classList.add('copied');
-            
-            // Reset after 2 seconds
             setTimeout(() => {
                 copyText.textContent = originalText;
-                copyIcon.textContent = originalIcon;
                 copyBtn.classList.remove('copied');
             }, 2000);
         }
