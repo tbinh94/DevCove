@@ -9,7 +9,7 @@ import styles from './Header.module.css';
 import NotificationManager from '../../Notification';
 import CreatePost from '../../CreatePost';
 import UnifiedSearch from '../../UnifiedSearch';
-import RedditLogo from '../../../assets/imgs/reddit-svgrepo-com.svg';
+import Logo from '../../../assets/imgs/logo.svg';
 
 const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -136,7 +136,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
 
             <div className={styles.logoWrapper}>
               <Link className={styles.logoLink} to="/">
-                <img src={RedditLogo} alt="DevCove Logo" className={styles.logoIcon} />
+                <img src={Logo} alt="DevCove Logo" className={styles.logoIcon} />
                 <span className={styles.logoText}>DevCove</span>
               </Link>
             </div>
