@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
 import uuid
+
 class BotSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post = models.ForeignKey(
@@ -35,6 +36,24 @@ class Community(models.Model):
     def __str__(self):
         return self.name
 
+# NEW MODEL: Language
+class Language(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, unique=True, blank=True)
@@ -50,7 +69,8 @@ class Tag(models.Model):
         return self.name
     
     def posts_count(self):
-        return self.posts.count()
+        # This will now count posts associated with this Tag (not language)
+        return self.posts.count() 
     
     class Meta:
         ordering = ['name']
@@ -64,7 +84,10 @@ class Post(models.Model):
                                      null=True, blank=True, 
                                      #related_name='posts'
                                      )
-    tags         = models.ManyToManyField(Tag, blank=True, related_name='posts')
+    # MODIFIED: Use a ForeignKey to the new Language model
+    language     = models.ForeignKey(Language, on_delete=models.SET_NULL, null=True, blank=True, related_name='posts_in_language')
+    # Tags are now for general categorization, not programming languages
+    tags         = models.ManyToManyField(Tag, blank=True, related_name='posts') 
     created_at   = models.DateTimeField(auto_now_add=True)
     
     def comment_count(self):
@@ -169,6 +192,7 @@ class Notification(models.Model):
         ('vote', 'Vote'),
         ('follow', 'Follow'),
         ('mention', 'Mention'),
+        ('bot_analysis', 'Bot Analysis'), # NEW: Added bot_analysis type
     ]
     
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
@@ -205,6 +229,7 @@ class Notification(models.Model):
             'vote': 'fas fa-arrow-up',
             'follow': 'fas fa-user-plus',
             'mention': 'fas fa-at',
+            'bot_analysis': 'fas fa-robot', # NEW: Icon for bot analysis
         }
         return icons.get(self.notification_type, 'fas fa-bell')
     
@@ -215,6 +240,7 @@ class Notification(models.Model):
             'vote': 'success',
             'follow': 'info',
             'mention': 'warning',
+            'bot_analysis': 'secondary', # NEW: Color for bot analysis
         }
         return colors.get(self.notification_type, 'secondary')
     
@@ -222,7 +248,7 @@ class Notification(models.Model):
         """
         Tạo URL động bằng hàm reverse() để đảm bảo luôn chính xác.
         """
-        if self.notification_type in ['comment', 'vote'] and self.post:
+        if self.notification_type in ['comment', 'vote', 'bot_analysis'] and self.post: # MODIFIED
             # Sửa lỗi chính ở đây: dùng reverse để tạo URL đúng là 'post/<pk>/'
             return reverse('posts:post_detail', kwargs={'pk': self.post.pk})
         
@@ -232,4 +258,3 @@ class Notification(models.Model):
         
         # URL mặc định nếu không có hành động cụ thể
         return reverse('posts:notifications')
-    

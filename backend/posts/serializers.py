@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language # MODIFIED: Import Language
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -42,6 +42,21 @@ class CommunityBasicSerializer(serializers.ModelSerializer):
     """Serializer cơ bản cho Community"""
     class Meta:
         model = Community
+        fields = ['id', 'name', 'slug']
+
+
+# NEW: Language Serializers
+class LanguageSerializer(serializers.ModelSerializer):
+    """Serializer cho Language model"""
+    class Meta:
+        model = Language
+        fields = ['id', 'name', 'slug', 'created_at']
+        read_only_fields = ['id', 'slug', 'created_at']
+
+class LanguageBasicSerializer(serializers.ModelSerializer):
+    """Serializer cơ bản cho Language"""
+    class Meta:
+        model = Language
         fields = ['id', 'name', 'slug']
 
 
@@ -90,6 +105,7 @@ class PostSerializer(serializers.ModelSerializer):
     author = UserBasicSerializer(read_only=True)
     community = CommunityBasicSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    language = LanguageBasicSerializer(read_only=True) # MODIFIED: Added language field
     
     calculated_score = serializers.IntegerField(source='score', read_only=True)
     comment_count = serializers.SerializerMethodField()
@@ -106,7 +122,7 @@ class PostSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'content', 
             'image_url',
-            'author', 'community', 'tags', 'created_at', 
+            'author', 'community', 'tags', 'language', 'created_at', # MODIFIED: Added language
             'calculated_score',
             'comment_count', 'user_vote',
             'is_bot_reviewed', 'bot_reviews_count', 
@@ -160,7 +176,7 @@ class PostDetailSerializer(PostSerializer):
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
     """
     FIXED: Serializer cho việc tạo/cập nhật Post.
-    Sử dụng PrimaryKeyRelatedField để xử lý `tag_ids` một cách chuẩn xác.
+    Sử dụng PrimaryKeyRelatedField để xử lý `tag_ids` và `language_id` một cách chuẩn xác.
     """
     author = serializers.HiddenField(default=serializers.CurrentUserDefault())
     # Chấp nhận một danh sách các ID của Tag.
@@ -173,17 +189,25 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False # Cho phép tạo bài viết không có tag
     )
+    # NEW: For selecting the programming language
+    language_id = serializers.PrimaryKeyRelatedField(
+        queryset=Language.objects.all(),
+        source='language',
+        write_only=True,
+        required=False, # Language can be optional
+        allow_null=True
+    )
 
     class Meta:
         model = Post
-        # Thêm 'tag_ids' vào fields để nó được xử lý khi tạo/cập nhật
-        fields = ['title', 'content', 'image', 'community', 'author', 'tag_ids']
+        # Thêm 'tag_ids' và 'language_id' vào fields để nó được xử lý khi tạo/cập nhật
+        fields = ['title', 'content', 'image', 'community', 'author', 'tag_ids', 'language_id'] # MODIFIED
 
     def create(self, validated_data):
-        """Ghi đè hàm create để xử lý quan hệ Many-to-Many."""
-        # Tách dữ liệu tags ra khỏi validated_data.
-        # `PrimaryKeyRelatedField` đã chuyển đổi list ID thành list object Tag.
+        """Ghi đè hàm create để xử lý quan hệ Many-to-Many và ForeignKey."""
+        # Tách dữ liệu tags và language ra khỏi validated_data.
         tags_data = validated_data.pop('tags', []) 
+        language_data = validated_data.pop('language', None) # NEW: Pop language data
         
         # Tạo đối tượng Post với các trường còn lại.
         post = Post.objects.create(**validated_data)
@@ -191,12 +215,18 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         # Gán các tags cho bài viết vừa tạo.
         if tags_data:
             post.tags.set(tags_data)
-            
+        
+        # NEW: Assign language
+        if language_data:
+            post.language = language_data
+            post.save() # Save again to persist language FK
+
         return post
 
     def update(self, instance, validated_data):
-        """Ghi đè hàm update để xử lý quan hệ Many-to-Many."""
+        """Ghi đè hàm update để xử lý quan hệ Many-to-Many và ForeignKey."""
         tags_data = validated_data.pop('tags', None)
+        language_data = validated_data.pop('language', None) # NEW: Pop language data
 
         # Cập nhật các trường thông thường của Post
         instance = super().update(instance, validated_data)
@@ -205,6 +235,11 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         if tags_data is not None:
             instance.tags.set(tags_data)
         
+        # NEW: Update language
+        if language_data is not None: # Can be set to None if cleared
+            instance.language = language_data
+        instance.save() # Save to persist language FK
+
         return instance
 
     def to_representation(self, instance):

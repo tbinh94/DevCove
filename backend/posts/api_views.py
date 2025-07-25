@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import timedelta
 import requests 
 from django.contrib.auth import authenticate, login, logout
@@ -18,7 +19,17 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-from ai_formatter import AIResponseService, build_enhanced_prompt
+from rest_framework.decorators import action # Đảm bảo dòng này CÓ
+
+# Import thư viện Gemini
+from google import genai
+client = genai.Client()
+
+import prompts # <-- Import file prompts mới
+from ai_formatter import AICommentFormatter # <-- Import formatter mới
+from prompts import build_prompt, TASK_PROMPTS
+
+
 from django.db.models import Max, Q
 
 from rest_framework import permissions, status, viewsets # permissions is added here!
@@ -54,8 +65,7 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
-# Import thư viện Gemini
-from google import genai
+
 # Import dotenv để tải biến môi trường từ file .env (khuyên dùng)
 from dotenv import load_dotenv
 
@@ -272,23 +282,10 @@ class PostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def ask_bot(self, request, pk=None):
-        """
-        [IMPROVED] Handles AI code analysis requests with better robustness and spam prevention.
-        
-        NOTE ON ASYNC PROCESSING: This workflow is synchronous, meaning the user waits for the 
-        AI API call to complete. For a better user experience, this should be converted to an 
-        asynchronous task using a message queue like Celery or Django-Q.
-        
-        The async flow would be:
-        1. This view validates the request and queues a background task.
-        2. Return an immediate `202 Accepted` response to the user.
-        3. The background worker executes the AI call and creates the comment.
-        4. Use WebSockets (Django Channels) to push the new comment to the user's browser in real-time.
-        """
         try:
             post = self.get_object()
 
-            # [NEW] Prevent spamming the AI bot for the same post
+            # Kiểm tra spam protection
             five_minutes_ago = timezone.now() - timedelta(minutes=5)
             if BotSession.objects.filter(post=post, created_at__gte=five_minutes_ago).exists():
                 return Response(
@@ -296,87 +293,175 @@ class PostViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
 
-            # Initialize services
-            ai_service = AIResponseService()
+            # Lấy parameters từ request
+            user_prompt_text = request.data.get('prompt_text', '').strip()
+            prompt_type = request.data.get('prompt_type')
+            if not prompt_type:
+                return Response(
+                    {'error': 'prompt_type is required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
+                return Response({
+                    'error': f'Invalid prompt_type. Available: {list(TASK_PROMPTS)} + ["custom_analysis"]'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            language = request.data.get('language', post.language if hasattr(post, 'language') else 'text')
+
+            # === VALIDATION ENHANCED ===
+            # Kiểm tra prompt_type có hợp lệ không
+            if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
+                return Response({
+                    'error': f'Invalid prompt_type. Available options: {list(TASK_PROMPTS.keys()) + ["custom_analysis"]}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validation cho custom_analysis
+            if prompt_type == 'custom_analysis' and not user_prompt_text:
+                return Response({
+                    'error': 'prompt_text is required for custom_analysis'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # === PARAMETER PROCESSING THEO TỪNG PROMPT TYPE ===
+            additional_params = self._process_prompt_parameters(request, prompt_type, user_prompt_text, language)
             
-            # 1. Get AI analysis from the external API
-            ai_response_text = self._get_ai_analysis(request, post)
-            if isinstance(ai_response_text, Response):  # Check if it's an error Response
+            # Validate required parameters cho specific prompt types
+            validation_error = self._validate_prompt_parameters(prompt_type, additional_params, request.data)
+            if validation_error:
+                return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+
+            # === BUILD PROMPT ===
+            logger.debug(f"ask_bot payload prompt_type={prompt_type}, data={request.data}")
+
+            final_prompt = prompts.build_prompt(
+                content=post.content,
+                language=language,
+                prompt_type=prompt_type,
+                user_prompt_text=user_prompt_text,
+                **additional_params
+            )
+
+            # Log prompt for debugging
+            logger.info(f"Generated prompt for {prompt_type}: {final_prompt[:200]}...")
+
+            # === GET AI RESPONSE ===
+            ai_response_text = self._get_ai_analysis(final_prompt)
+            if isinstance(ai_response_text, Response):
                 return ai_response_text
-            
-            # 2. Process and format the response into HTML
-            formatted_response, summary = ai_service.process_response(ai_response_text, post)
-            
-            # 3. Create and save the primary artifact: the bot comment
-            bot_comment = self._create_bot_comment(post, request.user, formatted_response)
-            
-            # 4. Perform non-critical side effects (notification, logging)
-            # These are in separate functions and try/except blocks so their failure
-            # doesn't prevent the main comment from being created.
+
+            # === FORMAT RESPONSE ===
+            formatter = AICommentFormatter()
+            formatted_html = formatter.format_full_response(ai_response_text, post)
+
+            # === CREATE SUMMARY WITH DETAILED METADATA ===
+            summary = {
+                'prompt_type': prompt_type,
+                'language': language,
+                'user_prompt_length': len(user_prompt_text) if user_prompt_text else 0,
+                'response_length': len(ai_response_text),
+                'additional_params': additional_params,
+                'processing_timestamp': timezone.now().isoformat(),
+                'prompt_title': TASK_PROMPTS.get(prompt_type, {}).get('title', 'Custom Analysis') if prompt_type != 'custom_analysis' else 'Custom Analysis'
+            }
+
+            # === CREATE COMMENT & SIDE EFFECTS ===
+            bot_comment = self._create_bot_comment(post, request.user, formatted_html)
             self._create_notification(post, request.user)
             self._log_bot_session(post, request, ai_response_text, summary)
-            
-            # 5. Return the final success response
+
+            # === BUILD RESPONSE ===
             return self._build_success_response(bot_comment, summary, request)
-            
+
         except Exception as e:
             logger.error(f"Critical error in ask_bot for post {pk}: {e}")
-            return Response(
-                {'error': 'A critical error occurred while processing the AI analysis.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
-    def _get_ai_analysis(self, request, post):
-        """[IMPROVED & FIXED] Get AI analysis from Gemini API with better error handling."""
-        prompt = build_enhanced_prompt(
-            content=post.content,
-            language=request.data.get('language'),
-            framework=request.data.get('framework'),
-            focus_areas=request.data.get('focus_areas', [])
-        )
+            return Response({'error': 'A critical error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _process_prompt_parameters(self, request, prompt_type, user_prompt_text, language):
+        """
+        Xử lý các tham số bổ sung cho từng loại prompt
+        """
+        additional_params = {}
         
+        if prompt_type == 'guide_library_usage':
+            additional_params.update({
+                'entity_type': request.data.get('entity_type', 'Library'),
+                'entity_name': request.data.get('entity_name', 'Unknown Library')
+            })
+        elif prompt_type == 'explain_cs_concept':
+            additional_params['concept_name'] = request.data.get('concept_name', 'Programming Concept')
+        elif prompt_type == 'generate_snippet':
+            additional_params['functionality'] = request.data.get('functionality', 'requested functionality')
+        elif prompt_type == 'generate_full_code':
+            additional_params['user_request'] = user_prompt_text or 'Generate code as requested'
+        elif prompt_type == 'generate_tests':
+            additional_params['language'] = language
+        elif prompt_type == 'generate_comments_docs':
+            additional_params['document_type'] = request.data.get('document_type', 'Code Comments')
+        elif prompt_type == 'translate_code':
+            additional_params.update({
+                'source_language': request.data.get('source_language', language),
+                'target_language': request.data.get('target_language', 'python')
+            })
+        elif prompt_type == 'ci_cd_integration':
+            additional_params['platform_name'] = request.data.get('platform_name', 'GitHub Actions')
+        
+        return additional_params
+
+    def _validate_prompt_parameters(self, prompt_type, additional_params, request_data):
+        """
+        Validate required parameters cho specific prompt types
+        """
+        if prompt_type == 'guide_library_usage':
+            if not request_data.get('entity_name'):
+                return 'entity_name is required for guide_library_usage'
+                
+        elif prompt_type == 'explain_cs_concept':
+            if not request_data.get('concept_name'):
+                return 'concept_name is required for explain_cs_concept'
+                
+        elif prompt_type == 'generate_snippet':
+            if not request_data.get('functionality'):
+                return 'functionality is required for generate_snippet'
+                
+        elif prompt_type == 'translate_code':
+            if not request_data.get('target_language'):
+                return 'target_language is required for translate_code'
+                
+        elif prompt_type == 'ci_cd_integration':
+            if not request_data.get('platform_name'):
+                return 'platform_name is required for ci_cd_integration'
+        
+        return None
+
+    def _get_ai_analysis(self, prompt: str):
+        """Gets AI analysis from Gemini API using the final prompt string."""
         load_dotenv()
         try:
-            # In a production environment, you would configure the client globally.
-            # You should also configure a timeout for the API request.
-            client = genai.Client() 
-            
-            # [FIXED] The 'model' parameter must be a keyword argument.
             response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
+                model="gemini-2.5-flash",
+                contents=prompt 
             )
             
             ai_text = response.text
             if not ai_text or not ai_text.strip():
-                logger.warning(f"Gemini API returned an empty response for post {post.id}")
-                return Response(
-                    {'error': 'The AI service returned an empty or invalid response. Please try again.'},
-                    status=status.HTTP_502_BAD_GATEWAY
-                )
+                return Response({'error': 'AI returned an empty response.'}, status=status.HTTP_502_BAD_GATEWAY)
             
-            logger.info(f"Gemini API success for post {post.id}, response length: {len(ai_text)}")
             return ai_text
             
         except Exception as e:
-            # This catches API errors, timeouts, connection issues, etc.
-            logger.error(f"Gemini API call failed for post {post.id}: {e}")
-            return Response(
-                {'error': f'The AI analysis service failed to process the request. Details: {str(e)}'},
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-    
+            logger.error(f"AI service failed: {e}")
+            return Response({'error': f'AI service failed: {str(e)}'}, status=status.HTTP_502_BAD_GATEWAY)
+
     def _create_bot_comment(self, post, user, formatted_response):
         """Create bot comment with formatted response."""
         return Comment.objects.create(
             post=post,
-            author=user, # The user who requested the review is the author of the comment
+            author=user,
             text=formatted_response,
             is_bot=True
         )
-    
+
     def _create_notification(self, post, user):
-        """[IMPROVED] Create notification for post author, handling potential errors."""
+        """Create notification for post author, handling potential errors."""
         if post.author != user:
             try:
                 Notification.objects.create(
@@ -384,24 +469,28 @@ class PostViewSet(viewsets.ModelViewSet):
                     type='bot_analysis',
                     message=f"Your post '{post.title[:30]}...' has been analyzed by the AI.",
                     related_object_id=post.id,
-                    actor=user # The user who initiated the action
+                    actor=user
                 )
             except Exception as e:
                 logger.warning(f"Non-critical error: Failed to create notification for post {post.id}. Error: {e}")
 
     def _log_bot_session(self, post, request, ai_response, summary):
-        """[IMPROVED] Log bot session for analytics, handling potential errors."""
+        """Log bot session with enhanced metadata"""
         try:
             BotSession.objects.create(
                 post=post,
                 request_payload={
                     "model": "gemini-2.5-flash",
+                    "prompt_type": summary.get('prompt_type'),
                     "metadata": {
-                        "language": request.data.get('language'),
-                        "framework": request.data.get('framework'),
-                        "focus_areas": request.data.get('focus_areas', []),
+                        "language": summary.get('language'),
                         "user_id": request.user.id,
-                        "content_length": len(post.content)
+                        "content_length": len(post.content),
+                        "prompt_type": summary.get('prompt_type'),
+                        "user_prompt_text_length": summary.get('user_prompt_length', 0),
+                        "additional_params": summary.get('additional_params', {}),
+                        "processing_timestamp": summary.get('processing_timestamp'),
+                        "prompt_title": summary.get('prompt_title')
                     }
                 },
                 response_text=ai_response,
@@ -412,17 +501,21 @@ class PostViewSet(viewsets.ModelViewSet):
             logger.error(f"Non-critical error: Failed to save BotSession for post {post.id}. Error: {e}")
 
     def _build_success_response(self, bot_comment, summary, request):
-        """
-        [FIXED] Build the final success response for the client.
-        The frontend expects the comment object to be returned directly.
-        We revert to this behavior to prevent the 'slice' error.
-        """
-        # Ghi lại thông tin phân tích ở backend để debug
+        """Build the final success response for the client."""
         logger.info(f"AI Analysis Summary for Post {bot_comment.post.id}: {summary}")
         
-        # Trả về đối tượng comment đã được serialize
         serializer = CommentSerializer(bot_comment, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        response_data = serializer.data
+        response_data['analysis_metadata'] = {
+            'prompt_type': summary.get('prompt_type'),
+            'prompt_title': summary.get('prompt_title'),
+            'language': summary.get('language'),
+            'processing_time': summary.get('processing_timestamp'),
+            'additional_params': summary.get('additional_params', {})
+        }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def bot_reviewed_posts(self, request):
@@ -440,7 +533,6 @@ class PostViewSet(viewsets.ModelViewSet):
             latest_bot_review_date=Max('comments__created', filter=Q(comments__is_bot=True))
         ).order_by('-latest_bot_review_date')
         
-        # Phân trang
         page = self.paginate_queryset(posts)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -449,7 +541,6 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(posts, many=True)
         return Response(serializer.data)
     
-    # ===== THÊM ACTION ĐỂ LẤY THỐNG KÊ BOT REVIEWS =====
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def bot_review_stats(self, request):
         """
@@ -459,7 +550,6 @@ class PostViewSet(viewsets.ModelViewSet):
         reviewed_posts = Post.objects.filter(comments__is_bot=True).distinct().count()
         total_bot_comments = Comment.objects.filter(is_bot=True).count()
         
-        # Thống kê theo thời gian (7 ngày gần nhất)
         seven_days_ago = timezone.now() - timedelta(days=7)
         recent_reviews = Comment.objects.filter(
             is_bot=True,
@@ -474,6 +564,61 @@ class PostViewSet(viewsets.ModelViewSet):
             'recent_reviews_7days': recent_reviews,
             'average_reviews_per_post': round(total_bot_comments / reviewed_posts, 2) if reviewed_posts > 0 else 0
         })
+
+    # === NEW ACTION: GET AVAILABLE PROMPT TYPES ===
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def available_prompt_types(self, request):
+        """
+        Trả về danh sách các prompt types có sẵn với metadata
+        """
+        prompt_options = []
+        
+        for prompt_key, prompt_data in TASK_PROMPTS.items():
+            prompt_options.append({
+                'key': prompt_key,
+                'title': prompt_data['title'],
+                'description': self._extract_description_from_instruction(prompt_data['instruction']),
+                'required_params': self._get_required_params_for_prompt(prompt_key)
+            })
+        
+        # Thêm custom analysis option
+        prompt_options.append({
+            'key': 'custom_analysis',
+            'title': '❓ Yêu cầu tùy chỉnh',
+            'description': 'Đặt câu hỏi hoặc yêu cầu tùy chỉnh về code',
+            'required_params': ['prompt_text']
+        })
+        
+        return Response({
+            'available_prompts': prompt_options,
+            'total_count': len(prompt_options)
+        })
+
+    def _extract_description_from_instruction(self, instruction):
+        """
+        Trích xuất mô tả ngắn gọn từ instruction
+        """
+        # Lấy dòng đầu tiên sau title làm description
+        lines = instruction.strip().split('\n')
+        for line in lines[1:]:  # Skip title line
+            if line.strip() and not line.startswith('## ') and not line.startswith('- '):
+                return line.strip()[:100] + ('...' if len(line.strip()) > 100 else '')
+        return "No description available"
+
+    def _get_required_params_for_prompt(self, prompt_key):
+        """
+        Trả về danh sách các tham số bắt buộc cho prompt type
+        """
+        required_params_map = {
+            'guide_library_usage': ['entity_name'],
+            'explain_cs_concept': ['concept_name'],
+            'generate_snippet': ['functionality'],
+            'translate_code': ['target_language'],
+            'ci_cd_integration': ['platform_name'],
+            'generate_comments_docs': ['document_type'],
+        }
+        return required_params_map.get(prompt_key, [])
+
 
 
 
@@ -1231,5 +1376,4 @@ def create_tag(request):
     serializer = TagSerializer(tag)
     response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return Response(serializer.data, status=response_status)
-
 

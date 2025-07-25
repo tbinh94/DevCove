@@ -36,7 +36,7 @@ api_urlpatterns = [
     path('tags/toggle/',   api_views.toggle_tag_filter, name='api_toggle_tag_filter'),
 
     path('tags/create/', api_views.create_tag, name='create-tag'),
-
+    
     path('', include(router.urls)),
 ]
 
