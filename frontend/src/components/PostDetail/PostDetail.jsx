@@ -1,29 +1,32 @@
-// PostDetail.jsx - Modern Blue Theme Design with Image Modal
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MessageCircle, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle } from 'lucide-react';
+import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
 import DOMPurify from 'dompurify';
+import BotChatInterface from './BotChatInterface';
 
 const PostDetail = () => {
     const { postId } = useParams();
-    const {user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [post, setPost] = useState(null);
-    // const [comments, setComments] = useState([]); // Không cần dùng nữa vì comment nằm trong post
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-    const [botLoading, setBotLoading] = useState(false);
-    const [botError, setBotError]   = useState(null);
 
-    // delete modal
+    // Bot chat states
+    const [botLoading, setBotLoading] = useState(false);
+    const [botError, setBotError] = useState(null);
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+    const [latestBotResponse, setLatestBotResponse] = useState(null); // This state isn't directly used for display, but can be for internal tracking if needed
+    const [latestBotCommentId, setLatestBotCommentId] = useState(null);
+
+    // Delete modal states
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -67,7 +70,7 @@ const PostDetail = () => {
                 document.body.removeChild(textArea);
             }
             
-            function showCopySuccess (elementId) {
+            function showCopySuccess(elementId) {
                 const codeBlock = document.getElementById(elementId).closest('.code-block-container');
                 const copyBtn = codeBlock.querySelector('.copy-btn');
                 const copyText = copyBtn.querySelector('.copy-text');
@@ -93,20 +96,18 @@ const PostDetail = () => {
         };
     }, []);
 
+    // Fetch post data
     useEffect(() => {
         const fetchData = async () => {
             if (!postId) return;
             setLoading(true);
             setError(null);
             try {
-                // CHỈ CẦN 1 API CALL DUY NHẤT
                 const postData = await apiService.getPost(postId);
-                
-                // Sắp xếp comment theo thứ tự mới nhất trước
                 if (postData.comments) {
+                    // Sort comments by creation date (newest first)
                     postData.comments.sort((a, b) => new Date(b.created_at || b.created) - new Date(a.created_at || a.created));
                 }
-                
                 setPost(postData);
             } catch (err) {
                 console.error('Error fetching post details:', err);
@@ -121,30 +122,40 @@ const PostDetail = () => {
     // Handle modal close on ESC key
     useEffect(() => {
         const handleEscKey = (e) => {
-            if (e.key === 'Escape') setIsImageModalOpen(false);
+            if (e.key === 'Escape') {
+                if (isImageModalOpen) {
+                    setIsImageModalOpen(false);
+                }
+                if (isChatModalOpen) {
+                    handleCloseChatModal();
+                }
+            }
         };
-        if (isImageModalOpen) {
+        
+        if (isImageModalOpen || isChatModalOpen) {
             document.addEventListener('keydown', handleEscKey);
-            document.body.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
         }
+        
         return () => {
             document.removeEventListener('keydown', handleEscKey);
-            document.body.style.overflow = 'unset';
+            document.body.style.overflow = 'unset'; // Restore scrolling
         };
-    }, [isImageModalOpen]);
+    }, [isImageModalOpen, isChatModalOpen]);
 
     const handleVote = async (voteType) => {
         if (!isAuthenticated) {
-            // Có thể chuyển hướng đến trang login
-            alert("You must be logged in to vote.");
+            alert("Bạn cần đăng nhập để bỏ phiếu.");
             return;
         }
+        
         const originalVote = post.user_vote;
         const originalScore = post.calculated_score;
 
         // Optimistic update
         let newVoteStatus = voteType;
         let newScore = originalScore;
+        
         if (originalVote === voteType) { // Un-voting
             newVoteStatus = null;
             newScore += (voteType === 'up' ? -1 : 1);
@@ -153,28 +164,30 @@ const PostDetail = () => {
         } else { // New vote
             newScore += (voteType === 'up' ? 1 : -1);
         }
-        setPost(p => ({...p, user_vote: newVoteStatus, calculated_score: newScore}));
+        
+        setPost(p => ({ ...p, user_vote: newVoteStatus, calculated_score: newScore }));
 
         try {
-            // API call trả về score chính xác từ server
             const data = await apiService.vote(post.id, voteType);
             setPost(prevPost => ({
                 ...prevPost,
-                calculated_score: data.score, // Cập nhật score từ server
-                // Cập nhật lại vote status dựa trên action trả về
+                calculated_score: data.score,
                 user_vote: data.action === 'removed' ? null : voteType,
             }));
         } catch (err) {
             // Rollback on error
-            setPost(p => ({...p, user_vote: originalVote, calculated_score: originalScore}));
+            setPost(p => ({ ...p, user_vote: originalVote, calculated_score: originalScore }));
             console.error('Vote error:', err);
-            alert(err.message || "An error occurred while voting.");
+            alert(err.message || "Đã xảy ra lỗi khi bỏ phiếu.");
         }
     };
     
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !isAuthenticated) return;
+        if (!newComment.trim() || !isAuthenticated) {
+            if (!isAuthenticated) alert("Bạn cần đăng nhập để bình luận.");
+            return;
+        }
         
         setIsSubmitting(true);
         try {
@@ -183,7 +196,6 @@ const PostDetail = () => {
                 text: newComment 
             });
 
-            // Cập nhật lại state post để thêm comment mới
             setPost(prevPost => ({
                 ...prevPost,
                 comments: [newCommentData, ...prevPost.comments]
@@ -191,16 +203,15 @@ const PostDetail = () => {
             setNewComment('');
         } catch (err) {
             console.error('Comment error:', err);
-            alert(err.message || "Failed to post comment.");
+            alert(err.message || "Gửi bình luận thất bại.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleBookmark = () => {
-        // TODO: Implement API call to save bookmark on the server
         setIsBookmarked(!isBookmarked);
-        alert("Bookmark feature is in development!");
+        alert("Tính năng đánh dấu đang được phát triển!");
     };
 
     const handleDeletePost = async () => {
@@ -208,18 +219,18 @@ const PostDetail = () => {
     };
 
     const handleDeletePostConfirm = async () => {
-        setShowDeleteConfirm(false); // Đóng modal xác nhận
+        setShowDeleteConfirm(false);
 
         try {
             await apiService.deletePost(postId);
-            setShowSuccessModal(true); // Hiển thị modal thông báo thành công
+            setShowSuccessModal(true);
             setTimeout(() => {
-                setShowSuccessModal(false); // Ẩn modal sau 2 giây
-                navigate('/'); // Chuyển hướng về trang chủ
-            }, 2000); // Thời gian hiển thị modal thành công
+                setShowSuccessModal(false);
+                navigate('/');
+            }, 2000);
         } catch (err) {
             console.error('Failed to delete post:', err);
-            alert(err.message || 'An error occurred while deleting the post.'); // Giữ alert tạm thời cho lỗi, có thể cải thiện sau
+            alert(err.message || 'Đã xảy ra lỗi khi xóa bài đăng.');
         }
     };
 
@@ -237,50 +248,119 @@ const PostDetail = () => {
         const past = new Date(dateString);
         const diffInSeconds = Math.floor((now - past) / 1000);
         
-        if (diffInSeconds < 60) return "just now";
+        if (diffInSeconds < 60) return "vừa xong";
         const diffInMinutes = Math.floor(diffInSeconds / 60);
-        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
         const diffInHours = Math.floor(diffInMinutes / 60);
-        if (diffInHours < 24) return `${diffInHours}h ago`;
+        if (diffInHours < 24) return `${diffInHours} giờ trước`;
         const days = Math.floor(diffInHours / 24);
-        return `${days}d ago`;
+        return `${days} ngày trước`;
     };
 
-    // chatbot
-    const handleAskBot = async () => {
-        if (botLoading) return;
+    // Hàm xử lý gửi tin nhắn tới bot
+    const handleSendBotMessage = async (promptText, promptType) => {
         setBotLoading(true);
         setBotError(null);
+        setLatestBotResponse(null);
 
         try {
-            // This API call now returns the created bot comment directly
-            const newBotComment = await apiService.askBot(post.id);
+            const payload = {
+                prompt_type: promptType,
+                prompt_text: promptText,
+                // language: post.language || 'text', // Thêm nếu cần
+            };
 
-            // Add the new bot comment to the top of the comments list
-            setPost(prev => ({
-                ...prev,
-                comments: [newBotComment, ...prev.comments],
-                // Cập nhật các trường bot review sau khi bot comment mới được thêm
-                is_bot_reviewed: true,
-                bot_reviews_count: (prev.bot_reviews_count || 0) + 1,
-                latest_bot_review_date: new Date().toISOString(), // Hoặc lấy từ newBotComment.created_at
-                bot_review_summary: newBotComment.text.slice(0, 100) + "..."
-            }));
+            const newBotComment = await apiService.askBot(post.id, payload);
+
+            if (newBotComment && newBotComment.text) {
+                setPost(prev => ({
+                    ...prev,
+                    comments: [newBotComment, ...prev.comments],
+                    is_bot_reviewed: true,
+                    bot_reviews_count: (prev.bot_reviews_count || 0) + 1,
+                    latest_bot_review_date: new Date().toISOString(),
+                    bot_review_summary: newBotComment.text.slice(0, 100) + "..."
+                }));
+                setLatestBotCommentId(newBotComment.id);
+                setTimeout(() => {
+                    setIsChatModalOpen(false);
+                    setBotError(null);
+                    setLatestBotResponse(null);
+                }, 500);
+            } else {
+                throw new Error('Phản hồi không hợp lệ từ dịch vụ bot');
+            }
         } catch (err) {
-            console.error('AskBot error:', err);
-            const errorMessage = err.response?.data?.error || err.message || "An error occurred while asking the bot.";
+            console.error('Bot message error:', err);
+            const errorMessage = err.response?.data?.error ||
+                                err.response?.data?.message ||
+                                err.message ||
+                                "Đã xảy ra lỗi khi hỏi bot.";
             setBotError(errorMessage);
+            setLatestBotResponse(null);
         } finally {
             setBotLoading(false);
         }
     };
 
+    // Logic cuộn đến bình luận của bot và highlight sau khi modal đóng
+    useEffect(() => {
+        if (!isChatModalOpen && latestBotCommentId) {
+            // Chờ animation đóng modal hoàn tất
+            setTimeout(() => {
+                const commentElement = document.getElementById(`comment-${latestBotCommentId}`);
+                if (commentElement) {
+                    // Cuộn đến bình luận với hiệu ứng mượt mà
+                    commentElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center',
+                        inline: 'nearest'
+                    });
+                    
+                    // Thêm hiệu ứng highlight
+                    commentElement.classList.add(styles.highlightComment);
+                    
+                    // Xóa hiệu ứng highlight sau animation
+                    setTimeout(() => {
+                        commentElement.classList.remove(styles.highlightComment);
+                    }, 3000);
+                }
+                
+                // Đặt lại ID bình luận để không kích hoạt lại hiệu ứng
+                setLatestBotCommentId(null);
+            }, 600); // Chờ chuyển đổi đóng modal
+        }
+    }, [isChatModalOpen, latestBotCommentId]);
+
+    // Xử lý mở modal chat
+    const handleOpenChatModal = () => {
+        if (!isAuthenticated) {
+            alert("Bạn cần đăng nhập để sử dụng bot chat.");
+            return;
+        }
+        
+        // Xóa trạng thái trước đó khi mở modal
+        setBotError(null);
+        setLatestBotResponse(null);
+        setIsChatModalOpen(true);
+    };
+
+    // Xử lý đóng modal chat với dọn dẹp trạng thái
+    const handleCloseChatModal = () => {
+        setIsChatModalOpen(false);
+        setLatestBotResponse(null);
+        setBotError(null);
+        // Lưu ý: Không xóa botLoading ở đây phòng trường hợp có yêu cầu đang diễn ra
+    };
+
+    // --- Legacy function handleAskBot đã bị loại bỏ vì không còn phù hợp với prompt mới ---
+    // const handleAskBot = async () => { ... }; 
 
     if (loading) {
         return (
             <div className={styles.loadingContainer}>
                 <div className={styles.loadingSpinner}></div>
-                <p className={styles.loadingText}>Loading post...</p>
+                <p className={styles.loadingText}>Đang tải bài đăng...</p>
             </div>
         );
     }
@@ -289,7 +369,7 @@ const PostDetail = () => {
         return (
             <div className={styles.errorContainer}>
                 <div className={styles.errorIcon}>⚠️</div>
-                <h3 className={styles.errorTitle}>Something went wrong</h3>
+                <h3 className={styles.errorTitle}>Đã xảy ra lỗi</h3>
                 <p className={styles.errorMessage}>{error}</p>
             </div>
         );
@@ -299,8 +379,8 @@ const PostDetail = () => {
         return (
             <div className={styles.errorContainer}>
                 <div className={styles.errorIcon}>🔍</div>
-                <h3 className={styles.errorTitle}>Post not found</h3>
-                <p className={styles.errorMessage}>The post you're looking for doesn't exist.</p>
+                <h3 className={styles.errorTitle}>Không tìm thấy bài đăng</h3>
+                <p className={styles.errorMessage}>Bài đăng bạn đang tìm kiếm không tồn tại.</p>
             </div>
         );
     }
@@ -319,12 +399,12 @@ const PostDetail = () => {
                             <h1 className={styles.postTitle}>
                                 {post.title}
                                 {post.is_bot_reviewed && (
-                                  <span 
-                                    className={styles.botReviewedBadgeDetail} 
-                                    title={`This post has been reviewed by the bot ${post.bot_reviews_count} time(s). Latest review: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
-                                  >
-                                    🤖 Reviewed ({post.bot_reviews_count})
-                                  </span>
+                                    <span 
+                                        className={styles.botReviewedBadgeDetail} 
+                                        title={`Bài đăng này đã được bot xem xét ${post.bot_reviews_count} lần. Lần xem xét gần nhất: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
+                                    >
+                                        🤖 Đã xem xét ({post.bot_reviews_count})
+                                    </span>
                                 )}
                             </h1>
                             <div className={styles.postMeta}>
@@ -334,7 +414,7 @@ const PostDetail = () => {
                                     </div>
                                     <div className={styles.authorDetails}>
                                         <span className={styles.authorName}>
-                                            {post.author?.username || 'Unknown'}
+                                            {post.author?.username || 'Ẩn danh'}
                                         </span>
                                         <div className={styles.postStats}>
                                             <span className={styles.statItem}>
@@ -343,7 +423,7 @@ const PostDetail = () => {
                                             </span>
                                             <span className={styles.statItem}>
                                                 <Eye size={12} />
-                                                {post.views || 0} views
+                                                {post.views || 0} lượt xem
                                             </span>
                                         </div>
                                     </div>
@@ -369,22 +449,19 @@ const PostDetail = () => {
                     {/* Post Content */}
                     {post.content && (
                         <div className={styles.postContent}>
-                            <div className={styles.contentText}>
-                                {DOMPurify.sanitize(post.content)}
-                            </div>
+                            <div 
+                                className={styles.contentText}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
+                            />
                         </div>
                     )}
                     
                     {/* Post Tags */}
-                    {/* fix lỗi khi click tag để filter */}
                     {post.tags && post.tags.length > 0 && (
                         <div className={styles.tagsContainer}>
                             <Tag size={16} className={styles.tagIcon} />
                             {post.tags.map((tag, index) => {
-                                // Lấy tên tag, dù tag là string hay object
                                 const tagName = typeof tag === 'object' ? tag.name : tag.toString();
-                                
-                                // Tạo slug từ name nếu slug không tồn tại, và chuyển thành chữ thường
                                 const tagSlug = (tag.slug || tagName).toLowerCase().replace(/\s+/g, '-');
 
                                 return (
@@ -403,6 +480,7 @@ const PostDetail = () => {
                                 <button 
                                     onClick={() => handleVote('up')} 
                                     className={`${styles.voteButton} ${styles.upvote} ${post.user_vote === 'up' ? styles.active : ''}`}
+                                    disabled={!isAuthenticated}
                                 >
                                     <ChevronUp size={18} />
                                 </button>
@@ -410,6 +488,7 @@ const PostDetail = () => {
                                 <button 
                                     onClick={() => handleVote('down')} 
                                     className={`${styles.voteButton} ${styles.downvote} ${post.user_vote === 'down' ? styles.active : ''}`}
+                                    disabled={!isAuthenticated}
                                 >
                                     <ChevronDown size={18} />
                                 </button>
@@ -420,16 +499,22 @@ const PostDetail = () => {
                                 <span>{comments.length}</span>
                             </button>
 
+                            {/* Cập nhật nút Ask Bot để mở modal */}
                             <button
-                                onClick={handleAskBot}
+                                onClick={handleOpenChatModal}
                                 disabled={botLoading || !isAuthenticated}
-                                className={styles.actionButton}
-                                title={!isAuthenticated ? "You must be logged in to use the bot" : "Ask AI to review the code"}
-                                style={{ marginLeft: '1rem' }}
+                                className={`${styles.actionButton} ${botLoading ? styles.loading : ''}`}
+                                title={!isAuthenticated ? "Bạn cần đăng nhập để sử dụng bot" : "Yêu cầu AI phân tích bài đăng này"}
                             >
-                                {botLoading ? '🤖 Reviewing...' : '🤖 Ask Bot'}
+                                {botLoading ? (
+                                    <span className={styles.loadingSpinnerSmall}></span>
+                                ) : (
+                                    <Bot size={18} />
+                                )} 
+                                Hỏi Bot
                             </button>
-                            {botError && (
+                            
+                            {botError && !isChatModalOpen && (
                                 <div className={styles.botError}>
                                     {botError}
                                 </div>
@@ -441,7 +526,7 @@ const PostDetail = () => {
                                 <button
                                     onClick={handleDeletePost}
                                     className={`${styles.actionButton} ${styles.deleteButton}`}
-                                    title="Delete Post"
+                                    title="Xóa bài đăng"
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -449,10 +534,11 @@ const PostDetail = () => {
                             <button 
                                 onClick={handleBookmark}
                                 className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
+                                title="Đánh dấu bài đăng này"
                             >
                                 <Bookmark size={16} />
                             </button>
-                            <button className={styles.actionButton}>
+                            <button className={styles.actionButton} title="Chia sẻ bài đăng này">
                                 <Share2 size={16} />
                             </button>
                         </div>
@@ -463,7 +549,7 @@ const PostDetail = () => {
                 <div className={styles.commentsSection}>
                     <div className={styles.commentsHeader}>
                         <h2 className={styles.commentsTitle}>
-                            Comments ({post.comments?.length || 0})
+                            Bình luận ({comments.length})
                         </h2>
                     </div>
                     
@@ -475,7 +561,7 @@ const PostDetail = () => {
                                     <textarea 
                                         value={newComment} 
                                         onChange={(e) => setNewComment(e.target.value)} 
-                                        placeholder="Share your thoughts..." 
+                                        placeholder="Chia sẻ suy nghĩ của bạn..." 
                                         className={styles.commentTextarea} 
                                         required 
                                     />
@@ -488,7 +574,7 @@ const PostDetail = () => {
                                             {isSubmitting ? (
                                                 <div className={styles.buttonSpinner}></div>
                                             ) : (
-                                                'Post Comment'
+                                                'Đăng bình luận'
                                             )}
                                         </button>
                                     </div>
@@ -498,28 +584,28 @@ const PostDetail = () => {
                     ) : (
                         <div className={styles.loginPrompt}>
                             <p>
-                                <Link to="/login" className={styles.loginLink}>Sign in</Link> to join the conversation
+                                <Link to="/login" className={styles.loginLink}>Đăng nhập</Link> để tham gia bình luận
                             </p>
                         </div>
                     )}
                     
-                    {/* Comments List */}
                     {/* Comments List */}
                     <div className={styles.commentsList}>
                         {comments.length > 0 ? (
                             comments.map((comment) => (
                                 <div
                                     key={comment.id}
+                                    id={`comment-${comment.id}`}
                                     className={`${styles.commentItem} ${comment.is_bot ? styles.botComment : ''}`}
                                 >
                                     <div className={styles.commentHeader}>
                                         <div className={styles.commentAuthor}>
-                                            <div className={styles.commentAvatar}>
-                                                {comment.author?.username?.[0]?.toUpperCase() || 'U'}
+                                            <div className={`${styles.commentAvatar} ${comment.is_bot ? styles.botAvatar : ''}`}>
+                                                {comment.is_bot ? '🤖' : (comment.author?.username?.[0]?.toUpperCase() || 'U')}
                                             </div>
                                             <div className={styles.commentAuthorInfo}>
                                                 <span className={styles.commentAuthorName}>
-                                                    {comment.is_bot ? '🤖 DevAlly Bot' : (comment.author?.username || 'Unknown')}
+                                                    {comment.is_bot ? 'DevAlly Bot' : (comment.author?.username || 'Ẩn danh')}
                                                 </span>
                                                 <span className={styles.commentTime}>
                                                     {formatTimeAgo(comment.created_at || comment.created)}
@@ -540,11 +626,11 @@ const PostDetail = () => {
                                             <div className={styles.commentActions}>
                                                 <button className={styles.commentActionButton}>
                                                     <Heart size={12} />
-                                                    <span>Like</span>
+                                                    <span>Thích</span>
                                                 </button>
                                                 <button className={styles.commentActionButton}>
                                                     <MessageCircle size={12} />
-                                                    <span>Reply</span>
+                                                    <span>Trả lời</span>
                                                 </button>
                                             </div>
                                         )}
@@ -554,31 +640,34 @@ const PostDetail = () => {
                         ) : (
                             <div className={styles.noComments}>
                                 <div className={styles.noCommentsIcon}>💬</div>
-                                <h3 className={styles.noCommentsTitle}>No comments yet</h3>
-                                <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
+                                <h3 className={styles.noCommentsTitle}>Chưa có bình luận nào</h3>
+                                <p className={styles.noCommentsText}>Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
+
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
                 <div className={styles.deleteConfirmModalOverlay}>
                     <div className={styles.deleteConfirmModal}>
-                        <h3 className={styles.deleteConfirmTitle}>Confirm Deletion</h3>
-                        <p className={styles.deleteConfirmMessage}>Are you sure you want to delete this post? This action cannot be undone.</p>
+                        <h3 className={styles.deleteConfirmTitle}>Xác nhận xóa</h3>
+                        <p className={styles.deleteConfirmMessage}>
+                            Bạn có chắc chắn muốn xóa bài đăng này? Hành động này không thể hoàn tác.
+                        </p>
                         <div className={styles.deleteConfirmActions}>
                             <button 
                                 onClick={() => setShowDeleteConfirm(false)} 
                                 className={styles.deleteConfirmCancel}
                             >
-                                Cancel
+                                Hủy bỏ
                             </button>
                             <button 
                                 onClick={handleDeletePostConfirm} 
                                 className={styles.deleteConfirmButton}
                             >
-                                Delete
+                                Xóa
                             </button>
                         </div>
                     </div>
@@ -590,11 +679,12 @@ const PostDetail = () => {
                 <div className={styles.successModalOverlay}>
                     <div className={styles.successModal}>
                         <CheckCircle size={48} className={styles.successIcon} />
-                        <h3 className={styles.successTitle}>Success!</h3>
-                        <p className={styles.successMessage}>Your post has been deleted successfully.</p>
+                        <h3 className={styles.successTitle}>Thành công!</h3>
+                        <p className={styles.successMessage}>Bài đăng của bạn đã được xóa thành công.</p>
                     </div>
                 </div>
             )}
+
             {/* Image Modal */}
             {isImageModalOpen && post.image_url && (
                 <div className={styles.imageModal} onClick={closeImageModal}>
@@ -612,6 +702,17 @@ const PostDetail = () => {
                     </div>
                 </div>
             )}
+            
+            {/* Bot Chat Interface Component */}
+            <BotChatInterface
+                isOpen={isChatModalOpen}
+                onClose={handleCloseChatModal}
+                post={post}
+                onSendMessage={handleSendBotMessage}
+                isLoading={botLoading}
+                error={botError}
+                addBotResponse={latestBotResponse} // This prop is not directly used for display in BotChatInterface but for internal state management if needed.
+            />
         </div>
     );
 };

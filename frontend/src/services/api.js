@@ -351,14 +351,11 @@ class APIService {
     }
     return data;
   }
-  // Chat & Bot
-  async askBot(postId, { language } = {}) {
-    // endpoint DRF auto-generated: /api/posts/{id}/ask_bot/
-    const data = await this.request(`/api/posts/${postId}/ask_bot/`, {
-      method: 'POST',
-      body: {language},    // không cần payload thêm vì backend lấy từ post
+  async askBot(postId, payload) {
+    return this.request(`/api/posts/${postId}/ask_bot/`, {
+        method: 'POST',
+        body: payload,
     });
-    return data;
   }
   // --- Utility Accessor ---
   
