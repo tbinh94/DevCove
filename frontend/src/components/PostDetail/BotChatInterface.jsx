@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Send, Bot, User, MessageSquare, Code, Languages, Zap, FileText,
   AlertCircle, CheckCircle2, Minimize2, Maximize2, GitBranch, Shield, BookOpen, Search,
-  Feather, Clipboard, PlayCircle, Layers, Terminal, Package, RefreshCw, Box, HelpCircle, Menu
+  Feather, Clipboard, PlayCircle, Layers, Terminal, Package, RefreshCw, Box, HelpCircle, Menu, Eye, EyeOff
 } from 'lucide-react';
 import styles from './BotChatInterface.module.css'; // Import CSS module
 
@@ -137,8 +137,35 @@ const BotChatInterface = ({
     setShowQuickOptions(false);
   };
 
+  // Hàm để thêm phản hồi từ bot (cần được gọi từ component cha hoặc nơi gửi yêu cầu API)
+  // Đảm bảo rằng hàm này được cung cấp qua props và được sử dụng khi nhận được phản hồi từ bot
+  // Ví dụ: addBotResponse(responseText);
+  // Cập nhật hàm addBotResponse để thêm showComment: true mặc định
+  useEffect(() => {
+    if (addBotResponse) {
+      const originalAddBotResponse = addBotResponse;
+      addBotResponse = (responseText) => {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { text: responseText, type: 'bot', timestamp: new Date(), showComment: true },
+        ]);
+        originalAddBotResponse(responseText); // Gọi lại hàm gốc nếu cần
+      };
+    }
+  }, [addBotResponse]);
+
+
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
+  };
+
+  // Hàm để ẩn/hiện comment của bot
+  const toggleCommentVisibility = (index) => {
+    setMessages(prevMessages => 
+      prevMessages.map((msg, i) => 
+        i === index ? { ...msg, showComment: !msg.showComment } : msg
+      )
+    );
   };
 
   if (!isOpen) return null;
@@ -181,7 +208,18 @@ const BotChatInterface = ({
                     <div className={`${styles.messageBubble} ${msg.type === 'user' ? styles.userMessage : styles.botMessage}`}>
                       {/* Render HTML content for bot messages */}
                       {msg.type === 'bot' ? (
-                        <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                        <>
+                          <div className={styles.botMessageContent} style={{ display: msg.showComment ? 'block' : 'none' }}>
+                            <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                          </div>
+                          <button 
+                            onClick={() => toggleCommentVisibility(index)} 
+                            className={styles.toggleCommentButton}
+                            title={msg.showComment ? 'Ẩn bình luận' : 'Hiện bình luận'}
+                          >
+                            {msg.showComment ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </>
                       ) : (
                         msg.text
                       )}

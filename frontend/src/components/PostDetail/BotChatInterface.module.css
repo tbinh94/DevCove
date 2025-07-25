@@ -436,3 +436,36 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+
+/* Toggle chatbot comment */
+.messageBubble.botMessage {
+  position: relative; /* Để vị trí của nút toggle được chuẩn xác */
+  padding-right: 35px; /* Tạo không gian cho nút toggle */
+}
+
+.botMessageContent {
+  /* Có thể thêm transition cho hiệu ứng ẩn/hiện */
+  transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
+  overflow: hidden; /* Đảm bảo nội dung không tràn ra ngoài khi ẩn */
+}
+
+.toggleCommentButton {
+  position: absolute;
+  top: 8px; /* Điều chỉnh vị trí theo ý muốn */
+  right: 8px; /* Điều chỉnh vị trí theo ý muốn */
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color-secondary); /* Hoặc màu phù hợp với theme của bạn */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+  transition: background-color 0.2s ease;
+}
+
+.toggleCommentButton:hover {
+  background-color: var(--hover-color); /* Màu nền khi hover */
+}

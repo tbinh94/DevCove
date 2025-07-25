@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle } from 'lucide-react';
+import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle, EyeOff } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,6 +29,9 @@ const PostDetail = () => {
     // Delete modal states
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    
+    // State to toggle bot comment visibility
+    const [showBotComments, setShowBotComments] = useState(true);
 
     // Define copy functionality globally
     useEffect(() => {
@@ -387,6 +390,8 @@ const PostDetail = () => {
 
     const isOwner = isAuthenticated && user?.id === post?.author?.id;
     const comments = post.comments || [];
+    const hasBotComments = comments.some(comment => comment.is_bot);
+    const filteredComments = comments.filter(comment => showBotComments || !comment.is_bot);
 
     return (
         <div className={styles.container}>
@@ -496,7 +501,7 @@ const PostDetail = () => {
                             
                             <button className={styles.actionButton}>
                                 <MessageCircle size={16} />
-                                <span>{comments.length}</span>
+                                <span>{filteredComments.length}</span>
                             </button>
 
                             {/* Cập nhật nút Ask Bot để mở modal */}
@@ -531,6 +536,15 @@ const PostDetail = () => {
                                     <Trash2 size={16} />
                                 </button>
                             )}
+                            {hasBotComments && (
+                                <button
+                                    onClick={() => setShowBotComments(prev => !prev)}
+                                    className={styles.actionButton}
+                                    title={showBotComments ? "Ẩn bình luận của Bot" : "Hiện bình luận của Bot"}
+                                >
+                                    {showBotComments ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            )}
                             <button 
                                 onClick={handleBookmark}
                                 className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
@@ -549,7 +563,7 @@ const PostDetail = () => {
                 <div className={styles.commentsSection}>
                     <div className={styles.commentsHeader}>
                         <h2 className={styles.commentsTitle}>
-                            Bình luận ({comments.length})
+                            Bình luận ({filteredComments.length})
                         </h2>
                     </div>
                     
@@ -591,8 +605,8 @@ const PostDetail = () => {
                     
                     {/* Comments List */}
                     <div className={styles.commentsList}>
-                        {comments.length > 0 ? (
-                            comments.map((comment) => (
+                        {filteredComments.length > 0 ? (
+                            filteredComments.map((comment) => (
                                 <div
                                     key={comment.id}
                                     id={`comment-${comment.id}`}
