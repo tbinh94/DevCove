@@ -56,6 +56,20 @@ Kiểm tra đoạn code được cung cấp để tìm lỗi.
 - **Đề xuất cải tiến:** Cung cấp đoạn code đã tối ưu hóa trong một khối code.
 - **Giải thích:** Nêu rõ các thay đổi và lý do chúng cải thiện hiệu năng.
 """
+    },
+
+    # 5. *** NEW PROMPT FOR POST LIST OVERVIEW ***
+    "summarize_post_list": {
+        "title": "📊 Tổng quan danh sách bài đăng",
+        "instruction": """
+## {title}
+Dựa trên danh sách các bài đăng (gồm tiêu đề và nội dung) được cung cấp, hãy đưa ra một bản phân tích tổng quan.
+- **Số lượng bài đăng đã phân tích:** Nêu rõ tổng số bài đăng.
+- **Chủ đề chính:** Xác định 2-3 chủ đề hoặc vấn đề nổi bật nhất được thảo luận.
+- **Ngôn ngữ & Công nghệ:** Liệt kê các ngôn ngữ lập trình hoặc công nghệ được đề cập nhiều nhất (ví dụ: Python, React, Docker).
+- **Phân loại nội dung:** Ước tính tỷ lệ phần trăm các loại nội dung (ví dụ: 40% câu hỏi, 30% chia sẻ code, 20% thảo luận, 10% hướng dẫn).
+- **Tóm tắt chung:** Viết một đoạn tóm tắt ngắn gọn về xu hướng chung của các bài đăng này.
+"""
     }
 }
 
@@ -107,12 +121,8 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
     final_prompt = f"""{SYSTEM_PROMPT}
 
 **Nội dung để phân tích ({language}):**
-```{language}
+```text
 {content}
-```
-
-**Yêu cầu của bạn:**
 {task_instruction}
 """
-    
     return final_prompt

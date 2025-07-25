@@ -619,6 +619,52 @@ class PostViewSet(viewsets.ModelViewSet):
         }
         return required_params_map.get(prompt_key, [])
 
+    # === NEW ACTION: GENERATE OVERVIEW FOR A LIST OF POSTS ===
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def generate_overview(self, request):
+        """
+        Nhận một danh sách ID bài đăng và tạo ra một bản tóm tắt tổng quan bằng AI.
+        """
+        post_ids = request.data.get('post_ids', [])
+
+        if not post_ids:
+            return Response({'error': 'post_ids list is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Giới hạn số lượng bài đăng để tránh quá tải
+        if len(post_ids) > 30:
+            return Response({'error': 'Cannot analyze more than 30 posts at once.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy các bài đăng từ DB
+        posts = Post.objects.filter(id__in=post_ids)
+        if not posts.exists():
+            return Response({'error': 'No valid posts found for the given IDs.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Tổng hợp nội dung từ các bài đăng thành một chuỗi duy nhất
+        aggregated_content = ""
+        for post in posts:
+            aggregated_content += f"--- START POST (ID: {post.id}) ---\n"
+            aggregated_content += f"TITLE: {post.title}\n"
+            aggregated_content += f"CONTENT: {post.content}\n"
+            aggregated_content += f"--- END POST (ID: {post.id}) ---\n\n"
+
+        # Xây dựng prompt bằng hàm đã có
+        final_prompt = prompts.build_prompt(
+            content=aggregated_content,
+            language='multiple posts', # Đánh dấu đây là nhiều bài
+            prompt_type='summarize_post_list',
+            user_prompt_text='' # Không cần user text
+        )
+
+        logger.info(f"Generating overview for {len(posts)} posts.")
+        
+        # Gọi AI (tận dụng hàm helper đã viết)
+        ai_response_text = self._get_ai_analysis(final_prompt)
+        if isinstance(ai_response_text, Response):
+            # Nếu _get_ai_analysis trả về lỗi, chuyển tiếp lỗi đó
+            return ai_response_text
+
+        return Response({'overview': ai_response_text}, status=status.HTTP_200_OK)
+
 
 
 

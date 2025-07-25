@@ -948,3 +948,114 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
+
+.overviewControlPanel {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.overviewButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.overviewButton:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.overviewButton:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.overviewError {
+  color: #dc3545;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Styles for Overview Modal */
+.overviewModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.overviewModal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.overviewModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.overviewModalHeader h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overviewModal .closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.overviewModalContent {
+  padding: 1.5rem;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+/* Style cho nội dung Markdown từ AI */
+.overviewModalContent h2 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.25rem;
+}
+.overviewModalContent ul {
+    padding-left: 20px;
+}
+.overviewModalContent li {
+    margin-bottom: 0.5rem;
+}
+.overviewModalContent strong {
+    color: #343a40;
+}
