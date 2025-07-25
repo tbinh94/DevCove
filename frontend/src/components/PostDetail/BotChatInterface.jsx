@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Send, Bot, User, MessageSquare, Code, Languages, Zap, FileText,
   AlertCircle, CheckCircle2, Minimize2, Maximize2, GitBranch, Shield, BookOpen, Search,
-  Feather, Clipboard, PlayCircle, Layers, Terminal, Package, RefreshCw, Box, HelpCircle
+  Feather, Clipboard, PlayCircle, Layers, Terminal, Package, RefreshCw, Box, HelpCircle, Menu
 } from 'lucide-react';
 import styles from './BotChatInterface.module.css'; // Import CSS module
 
@@ -26,67 +26,27 @@ const BotChatInterface = ({
   // Cập nhật quickOptions để khớp với prompt_type mới và phân loại rõ ràng
   const quickOptions = [
     {
-      group: 'Giải thích & Hướng dẫn',
+      group: 'Giải thích Code',
       options: [
-        { id: 'explain_code_flow', icon: <PlayCircle size={16} />, title: 'Giải thích luồng code', description: 'Giải thích ý tưởng / luồng chạy của đoạn code' },
-        { id: 'guide_library_usage', icon: <BookOpen size={16} />, title: 'Hướng dẫn dùng thư viện', description: 'Hướng dẫn cách dùng thư viện, framework hoặc API' },
-        { id: 'explain_cs_concept', icon: <Layers size={16} />, title: 'Giải thích khái niệm CS', description: 'Giải thích các khái niệm CS cơ bản (thuật toán, cấu trúc dữ liệu, OOP)' },
+        { id: 'explain_code_flow', icon: <PlayCircle size={16} />, title: 'Giải thích luồng code', description: 'Giải thích ý tưởng và luồng chạy của đoạn code' },
       ]
     },
     {
-      group: 'Sinh & Hoàn thiện Code',
+      group: 'Tạo Code',
       options: [
-        { id: 'generate_snippet', icon: <Code size={16} />, title: 'Tạo snippet mẫu', description: 'Tạo snippet mẫu cho chức năng thường gặp (CRUD, auth)' },
-        { id: 'complete_code', icon: <CheckCircle2 size={16} />, title: 'Hoàn thiện code', description: 'Hoàn thành nửa đoạn code dựa trên ngữ cảnh' },
-        { id: 'generate_full_code', icon: <Zap size={16} />, title: 'Sinh code theo yêu cầu', description: 'Sinh code theo yêu cầu (ví dụ REST API, component UI, tests)' },
+        { id: 'generate_snippet', icon: <Code size={16} />, title: 'Tạo snippet mẫu', description: 'Tạo đoạn code mẫu cho chức năng cơ bản' },
       ]
     },
     {
-      group: 'Tìm & Sửa lỗi (Debugging)',
+      group: 'Sửa lỗi',
       options: [
-        { id: 'analyze_log_trace', icon: <Terminal size={16} />, title: 'Phân tích log / stack trace', description: 'Xác định nguyên nhân lỗi từ log' },
-        { id: 'debug_code', icon: <AlertCircle size={16} />, title: 'Tìm & sửa lỗi code', description: 'Đưa ra giải pháp khắc phục hoặc gợi ý debug step-by-step' },
-        { id: 'check_edge_cases', icon: <Box size={16} />, title: 'Kiểm tra Edge-cases', description: 'Kiểm tra các trường hợp biên và xử lý ngoại lệ' },
+        { id: 'debug_code', icon: <AlertCircle size={16} />, title: 'Tìm & sửa lỗi', description: 'Phân tích và sửa lỗi trong code' },
       ]
     },
     {
-      group: 'Tối ưu hóa & Refactoring',
+      group: 'Tối ưu hóa',
       options: [
-        { id: 'optimize_performance', icon: <Zap size={16} />, title: 'Tối ưu hóa hiệu năng', description: 'Đề xuất cải thiện về hiệu năng (complexity, memory)' },
-        { id: 'refactor_code', icon: <RefreshCw size={16} />, title: 'Refactor code', description: 'Tự động refactor code cho dễ đọc, tuân chuẩn style guide' },
-        { id: 'analyze_code_smell', icon: <Feather size={16} />, title: 'Phân tích "code smell"', description: 'Phân tích "code smell" và gợi ý tái cấu trúc' },
-      ]
-    },
-    {
-      group: 'Sinh Test & Đảm bảo Chất lượng',
-      options: [
-        { id: 'generate_tests', icon: <MessageSquare size={16} />, title: 'Viết test', description: 'Viết unit test / integration test dựa trên đoạn code' },
-        { id: 'mocking_fixtures', icon: <Clipboard size={16} />, title: 'Gợi ý Mocking/Fixtures', description: 'Gợi ý kính thông qua mocking, fixtures, data setup' },
-        { id: 'check_code_coverage', icon: <Clipboard size={16} />, title: 'Kiểm tra Code Coverage', description: 'Kiểm tra code coverage, đề xuất thêm test case' },
-      ]
-    },
-    {
-      group: 'Tạo Tài liệu & Comment',
-      options: [
-        { id: 'generate_comments_docs', icon: <FileText size={16} />, title: 'Tạo comment/tài liệu', description: 'Sinh comment chi tiết, tạo document API, tóm tắt module' },
-      ]
-    },
-    {
-      group: 'Chuyển đổi Ngôn ngữ Lập trình',
-      options: [
-        { id: 'translate_code', icon: <Languages size={16} />, title: 'Chuyển đổi ngôn ngữ', description: 'Dịch snippet từ ngôn ngữ này sang ngôn ngữ khác' },
-      ]
-    },
-    {
-      group: 'Kiểm tra Bảo mật & Code Audit',
-      options: [
-        { id: 'security_audit', icon: <Shield size={16} />, title: 'Kiểm tra bảo mật', description: 'Phát hiện lỗ hổng OWASP, gợi ý best practices' },
-      ]
-    },
-    {
-      group: 'Tích hợp quy trình CI/CD',
-      options: [
-        { id: 'ci_cd_integration', icon: <GitBranch size={16} />, title: 'Cấu hình CI/CD', description: 'Gợi ý cấu hình pipeline (GitHub Actions, GitLab CI)' },
+        { id: 'optimize_performance', icon: <Zap size={16} />, title: 'Tối ưu hóa hiệu năng', description: 'Đề xuất cải thiện hiệu năng code' },
       ]
     },
   ];
@@ -320,11 +280,22 @@ const BotChatInterface = ({
                       handleSendCustomMessage(e);
                     }
                   }}
+
+                
                 />
-                <button type="submit" disabled={!currentMessage.trim() || isLoading} className={styles.sendButton}>
-                  {isLoading ? <div className={styles.loadingSpinner}></div> : <Send size={16} />}
-                </button>
+                <div className={styles.inputFormActions}>
+                  {!showQuickOptions && (
+                    <button type="button" onClick={() => setShowQuickOptions(true)} className={styles.optionsButton}>
+                      <Menu size={18} />
+                    </button>
+                  )}
+                  <button type="submit" disabled={!currentMessage.trim() || isLoading} className={styles.sendButton}>
+                    {isLoading ? <div className={styles.loadingSpinner}></div> : <Send size={16} />}
+                  </button>
+                </div>
               </form>
+
+
             </div>
           </>
         )}
