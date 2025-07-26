@@ -1082,3 +1082,152 @@
 .botChatBody::-webkit-scrollbar-thumb:hover {
   background: var(--accent-hover);
 }
+
+.commentText div[class*="ai-content-body"],
+.commentText div {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.commentText * {
+  color: inherit !important;
+}
+
+
+/* Style cho code inline (ví dụ `do_something()`) vẫn giữ lại */
+.commentText code {
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  background-color: rgba(66, 153, 225, 0.1) !important;
+  color: var(--accent) !important;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-xs);
+}
+
+.commentText .code-block-container {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 1em 0;
+    overflow: hidden;
+    background-color: var(--bg-tertiary);
+}
+
+.commentText .code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.commentText .lang-name {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.commentText .copy-btn {
+    background-color: var(--accent);
+    color: white; /* Đổi thành trắng để dễ đọc hơn */
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.commentText .copy-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.commentText .copy-btn.copied {
+    background-color: var(--success);
+}
+/* Định dạng chung cho container của khối code */
+.commentText .code-block-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin: 1.5em 0;
+    overflow: hidden;
+    background-color: var(--bg-tertiary); /* Nền mặc định */
+}
+
+/* Header của khối code (chứa tên ngôn ngữ và nút copy) */
+.commentText .code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Tên ngôn ngữ */
+.commentText .lang-name {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: monospace;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Nút Copy */
+.commentText .copy-btn {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-xs);
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.commentText .copy-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.commentText .copy-btn.copied {
+    background-color: var(--success);
+}
+
+/* FIX QUAN TRỌNG: Áp dụng style nền tối cho cả <pre> và <code> bên trong nó */
+/* Điều này đảm bảo nền tối luôn được hiển thị, bất kể thư viện syntax highlighting có ghi đè hay không */
+.commentText .code-block-container pre,
+.commentText .code-block-container pre > code {
+    margin: 0 !important;
+    padding: 1rem !important;
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.9em;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap !important; /* Cho phép xuống dòng tự động */
+    word-wrap: break-word !important;
+    border: none !important;
+}
+
+/* Style cho code inline (ví dụ: `useEffect`) để phân biệt với code block */
+/* Rule này đảm bảo không ảnh hưởng đến code bên trong .code-block-container */
+.commentText > p > code,
+.commentText > ul > li > code,
+.commentText > ol > li > code {
+  font-family: monospace;
+  background-color: rgba(66, 153, 225, 0.15) !important;
+  color: var(--accent-hover) !important;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.9em;
+}

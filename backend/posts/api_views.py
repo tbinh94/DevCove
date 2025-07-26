@@ -19,20 +19,20 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-from rest_framework.decorators import action # Đảm bảo dòng này CÓ
+from rest_framework.decorators import action
 
 # Import thư viện Gemini
 from google import genai
 client = genai.Client()
 
-import prompts # <-- Import file prompts mới
-from ai_formatter import AICommentFormatter # <-- Import formatter mới
+# =====>>>>> CHỈNH SỬA QUAN TRỌNG <<<<<=====
+import prompts
+from ai_formatter import AICommentFormatter # Đảm bảo import formatter
 from prompts import build_prompt, TASK_PROMPTS
-
+# ==========================================
 
 from django.db.models import Max, Q
-
-from rest_framework import permissions, status, viewsets # permissions is added here!
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
@@ -43,9 +43,7 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from django_filters.rest_framework import DjangoFilterBackend
-
 from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession
 from .serializers import (
     CommunityBasicSerializer,
@@ -63,6 +61,7 @@ from .serializers import (
     UserSerializer,
     VoteSerializer,
 )
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -284,54 +283,21 @@ class PostViewSet(viewsets.ModelViewSet):
     def ask_bot(self, request, pk=None):
         try:
             post = self.get_object()
-
-            # Kiểm tra spam protection
             five_minutes_ago = timezone.now() - timedelta(minutes=5)
+            # Spam protection
             if BotSession.objects.filter(post=post, created_at__gte=five_minutes_ago).exists():
-                return Response(
-                    {'error': 'An AI analysis for this post was requested recently. Please wait a few minutes.'},
-                    status=status.HTTP_429_TOO_MANY_REQUESTS
-                )
-
-            # Lấy parameters từ request
+                return Response({'error': 'An AI analysis for this post was requested recently. Please wait a few minutes.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            
             user_prompt_text = request.data.get('prompt_text', '').strip()
             prompt_type = request.data.get('prompt_type')
             if not prompt_type:
-                return Response(
-                    {'error': 'prompt_type is required.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({'error': 'prompt_type is required.'}, status=status.HTTP_400_BAD_REQUEST)
             if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
-                return Response({
-                    'error': f'Invalid prompt_type. Available: {list(TASK_PROMPTS)} + ["custom_analysis"]'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': f'Invalid prompt_type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            language = request.data.get('language', post.language if hasattr(post, 'language') else 'text')
-
-            # === VALIDATION ENHANCED ===
-            # Kiểm tra prompt_type có hợp lệ không
-            if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
-                return Response({
-                    'error': f'Invalid prompt_type. Available options: {list(TASK_PROMPTS.keys()) + ["custom_analysis"]}'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Validation cho custom_analysis
-            if prompt_type == 'custom_analysis' and not user_prompt_text:
-                return Response({
-                    'error': 'prompt_text is required for custom_analysis'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # === PARAMETER PROCESSING THEO TỪNG PROMPT TYPE ===
+            language = request.data.get('language', getattr(post, 'language', 'text'))
             additional_params = self._process_prompt_parameters(request, prompt_type, user_prompt_text, language)
             
-            # Validate required parameters cho specific prompt types
-            validation_error = self._validate_prompt_parameters(prompt_type, additional_params, request.data)
-            if validation_error:
-                return Response({'error': validation_error}, status=status.HTTP_400_BAD_REQUEST)
-
-            # === BUILD PROMPT ===
-            logger.debug(f"ask_bot payload prompt_type={prompt_type}, data={request.data}")
-
             final_prompt = prompts.build_prompt(
                 content=post.content,
                 language=language,
@@ -340,40 +306,27 @@ class PostViewSet(viewsets.ModelViewSet):
                 **additional_params
             )
 
-            # Log prompt for debugging
-            logger.info(f"Generated prompt for {prompt_type}: {final_prompt[:200]}...")
-
-            # === GET AI RESPONSE ===
             ai_response_text = self._get_ai_analysis(final_prompt)
             if isinstance(ai_response_text, Response):
                 return ai_response_text
-
-            # === FORMAT RESPONSE ===
+            
+            # =====>>>>> SỬA Ở ĐÂY <<<<<=====
+            # Luôn dùng formatter để tạo HTML
             formatter = AICommentFormatter()
             formatted_html = formatter.format_full_response(ai_response_text, post)
+            # ==============================
 
-            # === CREATE SUMMARY WITH DETAILED METADATA ===
-            summary = {
-                'prompt_type': prompt_type,
-                'language': language,
-                'user_prompt_length': len(user_prompt_text) if user_prompt_text else 0,
-                'response_length': len(ai_response_text),
-                'additional_params': additional_params,
-                'processing_timestamp': timezone.now().isoformat(),
-                'prompt_title': TASK_PROMPTS.get(prompt_type, {}).get('title', 'Custom Analysis') if prompt_type != 'custom_analysis' else 'Custom Analysis'
-            }
-
-            # === CREATE COMMENT & SIDE EFFECTS ===
             bot_comment = self._create_bot_comment(post, request.user, formatted_html)
             self._create_notification(post, request.user)
-            self._log_bot_session(post, request, ai_response_text, summary)
+            self._log_bot_session(post, request, ai_response_text, {})
 
-            # === BUILD RESPONSE ===
-            return self._build_success_response(bot_comment, summary, request)
+            serializer = CommentSerializer(bot_comment, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Critical error in ask_bot for post {pk}: {e}")
             return Response({'error': 'A critical error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def _process_prompt_parameters(self, request, prompt_type, user_prompt_text, language):
         """
@@ -626,20 +579,15 @@ class PostViewSet(viewsets.ModelViewSet):
         Nhận một danh sách ID bài đăng và tạo ra một bản tóm tắt tổng quan bằng AI.
         """
         post_ids = request.data.get('post_ids', [])
-
         if not post_ids:
             return Response({'error': 'post_ids list is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Giới hạn số lượng bài đăng để tránh quá tải
         if len(post_ids) > 30:
             return Response({'error': 'Cannot analyze more than 30 posts at once.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Lấy các bài đăng từ DB
         posts = Post.objects.filter(id__in=post_ids)
         if not posts.exists():
             return Response({'error': 'No valid posts found for the given IDs.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Tổng hợp nội dung từ các bài đăng thành một chuỗi duy nhất
         aggregated_content = ""
         for post in posts:
             aggregated_content += f"--- START POST (ID: {post.id}) ---\n"
@@ -647,23 +595,27 @@ class PostViewSet(viewsets.ModelViewSet):
             aggregated_content += f"CONTENT: {post.content}\n"
             aggregated_content += f"--- END POST (ID: {post.id}) ---\n\n"
 
-        # Xây dựng prompt bằng hàm đã có
         final_prompt = prompts.build_prompt(
             content=aggregated_content,
-            language='multiple posts', # Đánh dấu đây là nhiều bài
+            language='multiple posts',
             prompt_type='summarize_post_list',
-            user_prompt_text='' # Không cần user text
+            user_prompt_text=''
         )
-
         logger.info(f"Generating overview for {len(posts)} posts.")
         
-        # Gọi AI (tận dụng hàm helper đã viết)
         ai_response_text = self._get_ai_analysis(final_prompt)
         if isinstance(ai_response_text, Response):
-            # Nếu _get_ai_analysis trả về lỗi, chuyển tiếp lỗi đó
             return ai_response_text
+            
+        # =====>>>>> SỬA Ở ĐÂY <<<<<=====
+        # Sử dụng formatter cho kết quả overview
+        formatter = AICommentFormatter()
+        # Ở đây `post` có thể là `None` vì ta đang xử lý nhiều post
+        formatted_overview = formatter.format_full_response(ai_response_text, post=None) 
+        # ==============================
 
-        return Response({'overview': ai_response_text}, status=status.HTTP_200_OK)
+        # Trả về HTML đã được format
+        return Response({'overview': formatted_overview}, status=status.HTTP_200_OK)
 
 
 
@@ -1399,7 +1351,7 @@ def get_user_vote_data_for_posts(user, posts):
 @permission_classes([IsAuthenticated])
 def create_tag(request):
     """
-    Tạo một tag mới nếu nó chưa tồn tại, với logic chuẩn hóa đầu vào.
+    Tạo một tag mới nếu nó chưa tồn tại, với hỗ trợ ký tự đặc biệt.
     API này được gọi từ frontend khi người dùng nhập một tag mới.
     """
     original_name = request.data.get('name', '').strip()
@@ -1409,17 +1361,51 @@ def create_tag(request):
     if len(original_name) > 50:
         return Response({'error': 'Tag name cannot exceed 50 characters.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    normalized_name = slugify(original_name, allow_unicode=False)
-    
-    if not normalized_name:
-        return Response({'error': 'Invalid tag name after normalization.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Tạo slug tùy chỉnh hỗ trợ ký tự đặc biệt
+    def create_custom_slug(name):
+        """
+        Tạo slug tùy chỉnh cho tag, giữ lại các ký tự đặc biệt quan trọng
+        """
+        # Chuyển về lowercase
+        slug = name.lower()
         
-    tag, created = Tag.objects.get_or_create(
-        slug=normalized_name,
-        defaults={'name': original_name, 'slug': normalized_name}
-    )
-    
-    serializer = TagSerializer(tag)
-    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return Response(serializer.data, status=response_status)
+        # Thay thế khoảng trắng bằng dấu gạch ngang
+        slug = re.sub(r'\s+', '-', slug)
+        
+        # Giữ lại các ký tự: chữ cái, số, +, #, -, _, .
+        slug = re.sub(r'[^\w\+\#\-\.]', '', slug)
+        
+        # Loại bỏ dấu gạch ngang ở đầu và cuối
+        slug = slug.strip('-')
+        
+        return slug
 
+    custom_slug = create_custom_slug(original_name)
+    
+    if not custom_slug:
+        return Response({'error': 'Invalid tag name after processing.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # Kiểm tra xem tag đã tồn tại chưa (theo slug hoặc name)
+    existing_tag = Tag.objects.filter(
+        Q(slug=custom_slug) | Q(name__iexact=original_name)
+    ).first()
+    
+    if existing_tag:
+        serializer = TagSerializer(existing_tag)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # Tạo tag mới
+    try:
+        tag = Tag.objects.create(
+            name=original_name,
+            slug=custom_slug
+        )
+        serializer = TagSerializer(tag)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Error creating tag '{original_name}': {e}")
+        return Response(
+            {'error': 'Failed to create tag. Please try again.'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

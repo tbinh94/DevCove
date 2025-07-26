@@ -1,673 +1,243 @@
-/* Register Page CSS Module - Light Theme */
+/* Register Page - Dark Theme matching Homepage */
 
-/* CSS Reset and Variables */
-:root {
-  --reddit-orange: #ff4500;
-  --reddit-orange-hover: #ff6314;
-  --reddit-orange-dark: #cc3700;
-  --reddit-blue: #0079d3;
-  --reddit-blue-light: #7fbcf3;
-  --reddit-dark: #222222;
-  --reddit-gray: #787c7e;
-  --reddit-light-gray: #f6f7f8;
-  --reddit-white: #ffffff;
-  --reddit-off-white: #fafbfc;
-  --reddit-error: #ea0027;
-  --reddit-success: #46d160;
-  --reddit-warning: #ffb000;
-  
-  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.1);
-  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.12);
-  --shadow-reddit: 0 4px 20px rgba(255, 69, 0, 0.12);
-  
-  --radius-small: 8px;
-  --radius-medium: 12px;
-  --radius-large: 20px;
-  
-  --transition-fast: 0.2s ease;
-  --transition-medium: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Main container */
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 25%, #dee2e6 50%, #ced4da 100%);
+  background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  position: relative;
-  overflow: hidden;
+  padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  border-radius: 25px;
 }
 
-/* Animated background particles */
-.container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 20%, rgba(255, 69, 0, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(0, 121, 211, 0.06) 0%, transparent 40%),
-    radial-gradient(circle at 60% 20%, rgba(255, 69, 0, 0.04) 0%, transparent 30%);
-  animation: floatParticles 20s ease-in-out infinite;
-  z-index: 1;
-}
-
-@keyframes floatParticles {
-  0%, 100% { 
-    transform: translate(0, 0) rotate(0deg) scale(1); 
-    opacity: 0.5;
-  }
-  25% { 
-    transform: translate(10px, -15px) rotate(90deg) scale(1.1); 
-    opacity: 0.7;
-  }
-  50% { 
-    transform: translate(-5px, 10px) rotate(180deg) scale(0.9); 
-    opacity: 0.8;
-  }
-  75% { 
-    transform: translate(-15px, -5px) rotate(270deg) scale(1.05); 
-    opacity: 0.6;
-  }
-}
-
-/* Main form container */
 .form {
-  background: linear-gradient(135deg, #ffffff 0%, #fdfdfd 100%);
-  padding: 48px;
-  border-radius: var(--radius-large);
-  box-shadow: 
-    var(--shadow-strong),
-    var(--shadow-reddit),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-  border: 1px solid rgba(222, 226, 230, 0.8);
-  width: 100%;
-  max-width: 440px;
-  position: relative;
-  z-index: 2;
+  background: rgba(26, 31, 46, 0.95);
   backdrop-filter: blur(20px);
-  transition: var(--transition-medium);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
   overflow: hidden;
 }
 
-/* Top accent bar */
 .form::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, 
-    var(--reddit-orange) 0%, 
-    var(--reddit-orange-hover) 50%, 
-    var(--reddit-orange) 100%);
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4, #3b82f6);
   background-size: 200% 100%;
-  animation: shimmerAccent 3s ease-in-out infinite;
+  animation: shimmer 3s ease-in-out infinite;
 }
 
-@keyframes shimmerAccent {
+@keyframes shimmer {
   0%, 100% { background-position: -200% 0; }
   50% { background-position: 200% 0; }
 }
 
-/* Form hover effect */
-.form:hover {
-  transform: translateY(-5px) scale(1.01);
-  box-shadow: 
-    0 25px 70px rgba(0, 0, 0, 0.15),
-    0 12px 35px rgba(255, 69, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-}
-
-/* Brand section */
 .brand {
   text-align: center;
   margin-bottom: 32px;
-  position: relative;
 }
 
 .brandIcon {
-  font-size: 52px;
-  margin-bottom: 12px;
+  font-size: 48px;
   display: block;
-  color: var(--reddit-orange);
-  filter: drop-shadow(0 4px 12px rgba(255, 69, 0, 0.25));
-  animation: brandPulse 3s ease-in-out infinite;
-  cursor: pointer;
-  transition: var(--transition-medium);
-}
-
-.brandIcon:hover {
-  transform: scale(1.1) rotate(10deg);
-  filter: drop-shadow(0 6px 20px rgba(255, 69, 0, 0.4));
-}
-
-@keyframes brandPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));
 }
 
 .brandText {
-  font-size: 16px;
-  color: var(--reddit-gray);
+  color: #94a3b8;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.5px;
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-/* Form title */
 .title {
   text-align: center;
-  margin-bottom: 36px;
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--reddit-dark);
+  color: #f1f5f9;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 32px;
   position: relative;
-  letter-spacing: -0.8px;
 }
 
 .title::after {
   content: '';
   position: absolute;
-  bottom: -16px;
+  bottom: -12px;
   left: 50%;
   transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--reddit-orange), var(--reddit-orange-hover));
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgba(255, 69, 0, 0.3);
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  border-radius: 1px;
 }
 
-/* Form groups */
 .formGroup {
-  margin-bottom: 28px;
-  position: relative;
+  margin-bottom: 24px;
 }
 
-/* Labels */
 .label {
   display: block;
-  margin-bottom: 10px;
-  font-weight: 700;
-  color: var(--reddit-dark);
-  font-size: 14px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  position: relative;
-  transition: var(--transition-fast);
+  letter-spacing: 0.5px;
 }
 
-.label::before {
-  content: '';
-  position: absolute;
-  left: -20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  background: var(--reddit-orange);
-  border-radius: 50%;
-  opacity: 0;
-  transition: var(--transition-fast);
-}
-
-.label:hover::before {
-  opacity: 1;
-  left: -16px;
-}
-
-/* Input groups */
 .inputGroup {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.inputIcon {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-  color: var(--reddit-gray);
-  z-index: 3;
-  transition: var(--transition-medium);
-  opacity: 0.7;
-}
-
-/* Input fields */
-.input {
+.inputGroup input {
   width: 100%;
-  padding: 18px 24px 18px 54px;
-  border: 2px solid #e9ecef;
-  border-radius: var(--radius-medium);
-  font-size: 16px;
-  font-family: inherit;
+  padding: 16px 20px 16px 50px;
+  background: rgba(15, 20, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #f1f5f9;
+  font-size: 15px;
   font-weight: 500;
-  transition: var(--transition-medium);
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  color: var(--reddit-dark);
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    0 1px 3px rgba(0, 0, 0, 0.04);
-  position: relative;
-  z-index: 2;
-}
-
-.input::placeholder {
-  color: #adb5bd;
-  font-weight: 400;
-  transition: var(--transition-fast);
-}
-
-/* Input focus states */
-.input:focus {
-  outline: none;
-  border-color: var(--reddit-orange);
-  background: linear-gradient(135deg, #ffffff 0%, #fff8f5 100%);
-  box-shadow: 
-    0 0 0 4px rgba(255, 69, 0, 0.1),
-    inset 0 2px 4px rgba(255, 69, 0, 0.06),
-    0 8px 25px rgba(255, 69, 0, 0.12);
-  transform: translateY(-2px) scale(1.01);
-}
-
-.input:focus + .inputIcon {
-  color: var(--reddit-orange);
-  transform: translateY(-50%) scale(1.1);
-  opacity: 1;
-}
-
-.input:focus::placeholder {
-  color: #ced4da;
-  transform: translateY(-1px);
-}
-
-/* Input hover states */
-.input:hover {
-  border-color: var(--reddit-orange-hover);
-  transform: translateY(-1px);
-  box-shadow: 
-    inset 0 2px 4px rgba(255, 69, 0, 0.05),
-    0 4px 12px rgba(255, 69, 0, 0.08);
-}
-
-/* Validation states */
-.input.valid {
-  border-color: var(--reddit-success);
-  background: linear-gradient(135deg, #f8fff9 0%, #ffffff 100%);
-  box-shadow: 
-    0 0 0 3px rgba(70, 209, 96, 0.08),
-    inset 0 2px 4px rgba(70, 209, 96, 0.04);
-}
-
-.input.valid + .inputIcon {
-  color: var(--reddit-success);
-}
-
-.input.invalid {
-  border-color: var(--reddit-error);
-  background: linear-gradient(135deg, #fff8f8 0%, #ffffff 100%);
-  animation: inputShake 0.5s ease-in-out;
-  box-shadow: 
-    0 0 0 3px rgba(234, 0, 39, 0.08),
-    inset 0 2px 4px rgba(234, 0, 39, 0.04);
-}
-
-.input.invalid + .inputIcon {
-  color: var(--reddit-error);
-}
-
-@keyframes inputShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-}
-
-/* Submit button */
-.submitButton {
-  width: 100%;
-  padding: 18px 28px;
-  background: linear-gradient(135deg, var(--reddit-orange) 0%, var(--reddit-orange-hover) 50%, var(--reddit-orange) 100%);
-  color: white;
-  border: none;
-  border-radius: var(--radius-medium);
-  font-size: 16px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  cursor: pointer;
-  transition: var(--transition-medium);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 
-    0 8px 25px rgba(255, 69, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  margin-top: 16px;
-  background-size: 200% 100%;
-}
-
-.submitButton::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.3), 
-    transparent);
-  transition: left 0.6s ease;
-}
-
-.submitButton:hover {
-  background: linear-gradient(135deg, var(--reddit-orange-hover) 0%, var(--reddit-orange) 50%, var(--reddit-orange-dark) 100%);
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 
-    0 15px 40px rgba(255, 69, 0, 0.35),
-    0 8px 25px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  background-position: 100% 0;
-}
-
-.submitButton:hover::before {
-  left: 100%;
-}
-
-.submitButton:active {
-  transform: translateY(-1px) scale(0.98);
-  box-shadow: 
-    0 8px 20px rgba(255, 69, 0, 0.25),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-/* Button disabled state */
-.submitButton:disabled {
-  background: linear-gradient(135deg, #dee2e6 0%, #adb5bd 100%);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  opacity: 0.7;
-}
-
-.submitButton:disabled::before {
-  display: none;
-}
-
-/* Loading animation */
-@keyframes buttonLoading {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.submitButton:disabled::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top-color: white;
-  border-radius: 50%;
-  animation: buttonLoading 1s linear infinite;
-}
-
-/* Error messages */
-.errorList {
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
-  border: 1px solid var(--reddit-error);
-  border-radius: var(--radius-small);
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  list-style: none;
-  font-size: 14px;
-  color: var(--reddit-error);
-  box-shadow: 0 4px 12px rgba(234, 0, 39, 0.12);
-  position: relative;
-}
-
-.errorList::before {
-  content: '⚠️';
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  font-size: 16px;
-}
-
-.errorList li {
-  margin: 0;
-  font-weight: 500;
-  padding-left: 24px;
-}
-
-.errorList li:not(:last-child) {
-  margin-bottom: 8px;
-}
-
-/* Success messages */
-.successList {
-  background: linear-gradient(135deg, #f8fff9 0%, #e6ffe6 100%);
-  border: 1px solid var(--reddit-success);
-  border-radius: var(--radius-small);
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  list-style: none;
-  font-size: 14px;
-  color: var(--reddit-success);
-  box-shadow: 0 4px 12px rgba(70, 209, 96, 0.12);
-}
-
-/* Footer */
-.footer {
-  text-align: center;
-  margin-top: 32px;
-  padding-top: 28px;
-  border-top: 1px solid #e9ecef;
-  position: relative;
-}
-
-.footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--reddit-orange), transparent);
-}
-
-.footer p {
-  color: var(--reddit-gray);
-  font-size: 14px;
-  margin-bottom: 16px;
-  font-weight: 500;
-}
-
-/* Modern Link Styling */
-.footer a {
-  display: inline-block;
-  color: var(--reddit-orange);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 16px;
-  padding: 12px 24px;
-  border: 2px solid var(--reddit-orange);
-  border-radius: 8px;
-  background: rgba(255, 69, 0, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  transition: all 0.3s ease;
   backdrop-filter: blur(10px);
 }
 
-.footer a::before {
-  content: '';
+.inputGroup input::placeholder {
+  color: #64748b;
+}
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 20, 25, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.inputIcon {
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, var(--reddit-orange) 0%, var(--reddit-orange-hover) 100%);
-  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: -1;
+  left: 18px;
+  color: #64748b;
+  z-index: 2;
+  transition: color 0.3s ease;
 }
 
-.footer a:hover {
-  transform: translateY(-2px);
-  color: #ffffff;
-  border-color: var(--reddit-orange-hover);
-  box-shadow: 
-    0 8px 25px rgba(255, 69, 0, 0.25),
-    0 4px 12px rgba(0, 0, 0, 0.15);
+.inputGroup input:focus + .inputIcon {
+  color: #3b82f6;
 }
 
-.footer a:hover::before {
-  left: 0;
-}
-
-.footer a:active {
-  transform: translateY(0);
-  box-shadow: 
-    0 4px 15px rgba(255, 69, 0, 0.18),
-    0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-/* Password strength indicator */
-.passwordStrength {
-  margin-top: 12px;
-  opacity: 0;
-  animation: fadeInUp 0.3s ease forwards;
-}
-
-.strengthBar {
-  height: 6px;
-  background: #e9ecef;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 8px;
-  position: relative;
-}
-
-.strengthBar::before {
-  content: '';
+.togglePassword {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
-  animation: strengthShimmer 2s infinite;
-  width: 30%;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.3s ease;
 }
 
-@keyframes strengthShimmer {
-  0% { left: -30%; }
-  100% { left: 100%; }
+.togglePassword:hover {
+  color: #3b82f6;
 }
 
-.strengthFill {
-  height: 100%;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 3px;
-  position: relative;
-}
-
-.strengthFill.strength0,
-.strengthFill.strength1 {
-  width: 25%;
-  background: linear-gradient(90deg, var(--reddit-error), #ff6b6b);
-}
-
-.strengthFill.strength2 {
-  width: 50%;
-  background: linear-gradient(90deg, var(--reddit-warning), #ffa726);
-}
-
-.strengthFill.strength3 {
-  width: 75%;
-  background: linear-gradient(90deg, #26c6da, #42a5f5);
-}
-
-.strengthFill.strength4 {
+.submitButton {
   width: 100%;
-  background: linear-gradient(90deg, var(--reddit-success), #66bb6a);
-}
-
-.strengthText {
-  font-size: 12px;
-  color: var(--reddit-gray);
+  padding: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.submitButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.3);
 }
 
-/* Focus visible for accessibility */
-.submitButton:focus-visible,
-.footer a:focus-visible {
-  outline: 2px solid #ff4500;
-  outline-offset: 2px;
+.submitButton:active {
+  transform: translateY(0);
 }
 
-/* Responsive design */
+.submitButton:disabled {
+  background: linear-gradient(135deg, #374151, #4b5563);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.errorList {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  color: #fca5a5;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer p {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.footer a {
+  display: inline-block;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 12px 24px;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.footer a:hover {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .container {
-    padding: 20px 16px;
+    padding: 16px;
   }
   
   .form {
-    padding: 36px 28px;
-    border-radius: var(--radius-medium);
-    max-width: 100%;
-  }
-  
-  .title {
-    font-size: 28px;
-    margin-bottom: 28px;
-  }
-  
-  .brandIcon {
-    font-size: 44px;
-  }
-  
-  .input {
-    padding: 16px 20px 16px 50px;
-    font-size: 16px; /* Prevent zoom on iOS */
-  }
-  
-  .submitButton {
-    padding: 16px 24px;
-    font-size: 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  .form {
-    padding: 28px 24px;
-    margin: 0 8px;
+    padding: 32px 24px;
   }
   
   .title {
@@ -677,78 +247,14 @@
   .brandIcon {
     font-size: 40px;
   }
-  
-  .input {
-    padding: 14px 18px 14px 48px;
-  }
 }
 
-/* Light theme for all devices */
-@media (prefers-color-scheme: light) {
-  .container {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 25%, #dee2e6 50%, #ced4da 100%);
-  }
-  
+@media (max-width: 480px) {
   .form {
-    background: linear-gradient(135deg, #ffffff 0%, #fdfdfd 100%);
-    color: var(--reddit-dark);
-    border-color: rgba(222, 226, 230, 0.8);
+    padding: 24px 20px;
   }
   
-  .title {
-    color: var(--reddit-dark);
-  }
-  
-  .label {
-    color: var(--reddit-dark);
-  }
-  
-  .input {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border-color: #e9ecef;
-    color: var(--reddit-dark);
-  }
-  
-  .input:focus {
-    background: linear-gradient(135deg, #ffffff 0%, #fff8f5 100%);
-  }
-  
-  .footer {
-    border-top-color: #e9ecef;
-  }
-}
-
-/* Override dark mode for consistent light theme */
-@media (prefers-color-scheme: dark) {
-  .container {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 25%, #dee2e6 50%, #ced4da 100%);
-  }
-  
-  .form {
-    background: linear-gradient(135deg, #ffffff 0%, #fdfdfd 100%);
-    color: var(--reddit-dark);
-    border-color: rgba(222, 226, 230, 0.8);
-  }
-  
-  .title {
-    color: var(--reddit-dark);
-  }
-  
-  .label {
-    color: var(--reddit-dark);
-  }
-  
-  .input {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border-color: #e9ecef;
-    color: var(--reddit-dark);
-  }
-  
-  .input:focus {
-    background: linear-gradient(135deg, #ffffff 0%, #fff8f5 100%);
-  }
-  
-  .footer {
-    border-top-color: #e9ecef;
+  .inputGroup input {
+    padding: 14px 16px 14px 46px;
   }
 }

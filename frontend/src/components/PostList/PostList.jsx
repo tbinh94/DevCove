@@ -1,11 +1,18 @@
 // PostList.jsx - PHIÊN BẢN ĐẦY ĐỦ
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react'; // THÊM useRef
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ChevronUp, ChevronDown, MessageCircle, Bot, X } from 'lucide-react';
 import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
-import DOMPurify from 'dompurify'; // Cần để hiển thị Markdown an toàn
+import DOMPurify from 'dompurify';
+
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+  if ('target' in node) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
 
 const PostList = ({ showAllTags = false }) => {
   const { isAuthenticated } = useAuth();
@@ -19,12 +26,13 @@ const PostList = ({ showAllTags = false }) => {
   const [postsPerPage] = useState(10);
   const [totalPosts, setTotalPosts] = useState(0);
 
-  // === START: AI OVERVIEW STATES ===
   const [overview, setOverview] = useState(null);
   const [isOverviewLoading, setIsOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState(null);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
-  // === END: AI OVERVIEW STATES ===
+  
+  // TẠO REF ĐỂ THAM CHIẾU ĐẾN MODAL
+  const overviewModalRef = useRef(null);
 
   const urlParams = useMemo(() => {
     try {
@@ -42,7 +50,7 @@ const PostList = ({ showAllTags = false }) => {
     const fetchPosts = async () => {
       setLoading(true);
       setError(null);
-      setOverview(null); // Reset overview khi fetch posts mới
+      setOverview(null); 
       
       try {
         const params = {
@@ -54,9 +62,7 @@ const PostList = ({ showAllTags = false }) => {
         if (urlParams.tags) params.tags = urlParams.tags;
         if (urlParams.search) params.search = urlParams.search;
 
-        console.log('Fetching posts with params:', params);
         const data = await apiService.getPosts(params);
-
         const postData = Array.isArray(data) ? data : data.results || [];
         setPosts(postData);
         setTotalPosts(data.count || postData.length);
@@ -70,6 +76,16 @@ const PostList = ({ showAllTags = false }) => {
 
     fetchPosts();
   }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search]);
+  
+  // TẠO USEEFFECT ĐỂ TỰ ĐỘNG CUỘN
+  useEffect(() => {
+    if (isOverviewModalOpen && overviewModalRef.current) {
+        // Delay một chút để đảm bảo modal đã render hoàn toàn
+        setTimeout(() => {
+            overviewModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    }
+  }, [isOverviewModalOpen]);
 
   const handleVote = async (postId, type) => {
     if (!isAuthenticated) return;
@@ -89,7 +105,6 @@ const PostList = ({ showAllTags = false }) => {
     }
   };
 
-  // === START: AI OVERVIEW FUNCTION ===
   const handleGenerateOverview = async () => {
     if (!isAuthenticated || posts.length === 0) {
       if (!isAuthenticated) alert("Bạn cần đăng nhập để dùng tính năng này.");
@@ -102,7 +117,6 @@ const PostList = ({ showAllTags = false }) => {
 
     try {
       const postIds = posts.map(p => p.id);
-      // Gọi hàm API service đã được cập nhật
       const response = await apiService.generatePostListOverview({ post_ids: postIds });
       
       setOverview(response.overview);
@@ -115,7 +129,6 @@ const PostList = ({ showAllTags = false }) => {
       setIsOverviewLoading(false);
     }
   };
-  // === END: AI OVERVIEW FUNCTION ===
 
   const renderTags = (tags) => {
     if (!tags || tags.length === 0) return null;
@@ -178,7 +191,6 @@ const PostList = ({ showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      {/* === START: AI OVERVIEW UI === */}
       <div className={styles.overviewControlPanel}>
         <button 
           onClick={handleGenerateOverview} 
@@ -191,7 +203,6 @@ const PostList = ({ showAllTags = false }) => {
         </button>
         {overviewError && <p className={styles.overviewError}>{overviewError}</p>}
       </div>
-      {/* === END: AI OVERVIEW UI === */}
 
       {posts.map(post => (
         <div key={post.id} className={styles.postCard}>
@@ -222,19 +233,23 @@ const PostList = ({ showAllTags = false }) => {
       
       {totalPosts > postsPerPage && renderPagination()}
 
-      {/* === START: AI OVERVIEW MODAL === */}
       {isOverviewModalOpen && (
-        <div className={styles.overviewModalOverlay}>
+        // GẮN REF VÀO ĐÂY
+        <div ref={overviewModalRef} className={styles.overviewModalOverlay}>
           <div className={styles.overviewModal}>
             <div className={styles.overviewModalHeader}>
-              <h3>📊 Tổng quan AI</h3>
+              <h3>📊 DevAlly Overview</h3>
               <button onClick={() => setIsOverviewModalOpen(false)} className={styles.closeButton}><X size={24} /></button>
             </div>
-            <div className={styles.overviewModalContent} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(overview) }} />
+            <div className={styles.overviewModalContent} dangerouslySetInnerHTML={{ 
+                                                              __html: DOMPurify.sanitize(overview, {
+                                                                  ADD_TAGS: ['style', 'script'],
+                                                                  ADD_ATTR: ['onclick']
+                                                              })
+                                                          }} />
           </div>
         </div>
       )}
-      {/* === END: AI OVERVIEW MODAL === */}
     </div>
   );
 };

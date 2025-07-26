@@ -275,7 +275,7 @@ const BotChatInterface = ({
                       <Bot size={16} />
                     </div>
                     <div className={`${styles.botMessage} ${styles.loadingMessage}`}>
-                      Đang phân tích...
+                      Đang phân tích
                       <div className={styles.loadingDots}>
                         <span>.</span><span>.</span><span>.</span>
                       </div>

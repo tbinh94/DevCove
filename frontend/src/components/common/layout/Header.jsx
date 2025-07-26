@@ -135,10 +135,14 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
             </button>
 
             <div className={styles.logoWrapper}>
-              <Link className={styles.logoLink} to="/">
+              <div 
+                className={styles.logoLink} 
+                onClick={() => window.location.reload()}
+                style={{ cursor: 'pointer' }}
+              >
                 <img src={Logo} alt="DevCove Logo" className={styles.logoIcon} />
                 <span className={styles.logoText}>DevCove</span>
-              </Link>
+              </div>
             </div>
           </div>
 
@@ -155,7 +159,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                   title="Create a new post"
                 >
                   <Plus className={styles.buttonIcon} />
-                  <span className={styles.createPostButtonText}>Create Post</span>
+                  <span className={styles.createPostButtonText}>Create</span>
                 </button>
 
                 <div className={styles.notificationWrapper}>
@@ -225,7 +229,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                 <button onClick={() => navigate('/register')} className={styles.signUpButton}>Sign Up</button>
                 <button onClick={handleCreatePostClick} className={styles.createPostButton} title="Create a post (requires login)">
                   <Plus className={styles.buttonIcon} />
-                  <span className={styles.createPostButtonText}>Create Post</span>
                 </button>
               </div>
             )}
@@ -237,7 +240,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
         <div className={styles.modalOverlay} onClick={handleCreatePostClose}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>Create a Post</h2>
               <button onClick={handleCreatePostClose} className={styles.modalCloseButton} title="Close modal">
                 <X size={24} />
               </button>

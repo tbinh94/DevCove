@@ -4,8 +4,8 @@ const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 class APIService {
   constructor() {
     this.baseURL = BASE_URL;
-    this.csrfToken = null;
-    this.csrfPromise = null; // Prevent multiple concurrent CSRF requests
+    //this.csrfToken = null;
+    //this.csrfPromise = null; // Prevent multiple concurrent CSRF requests
   }
 
   // --- Core Methods ---
@@ -29,6 +29,17 @@ class APIService {
     }
     if (isStateChanging && this.csrfToken) {
       configHeaders['X-CSRFToken'] = this.csrfToken;
+    }
+
+    // Nếu là request thay đổi dữ liệu, hãy lấy token TRỰC TIẾP từ cookie
+    if (isStateChanging) {
+      const csrfToken = this.getCookie('csrftoken');
+      if (csrfToken) {
+        configHeaders['X-CSRFToken'] = csrfToken;
+      } else {
+        // Có thể thêm cảnh báo ở đây nếu không tìm thấy token
+        console.warn('CSRF token not found in cookie. The request might fail.');
+      }
     }
 
     // Configure body

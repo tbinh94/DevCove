@@ -1,96 +1,55 @@
-/* General container for the create post form */
+/* CreatePost.module.css - Dark Theme */
 .createPostContainer {
-  max-width: 800px;
-  margin: 40px auto;
   padding: 30px;
-  background-color: var(--color-white); /* Assuming a white background for the form area */
-  border-radius: 8px;
-  box-shadow: var(--shadow-default); /* Assuming a default shadow variable */
-  border: 1px solid var(--color-border); /* Assuming a border color variable */
-}
-
-/* Header section of the create post form */
-.header {
-  margin-bottom: 25px;
-  text-align: center;
+  background-color: #1a1d29;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .title {
   font-size: 28px;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 15px;
+  color: #ffffff;
+  margin-bottom: 25px;
+  text-align: center;
 }
 
-/* Messages (Error/Success) */
+/* Messages */
 .message {
   padding: 12px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
-  margin-top: 15px;
-  text-align: left;
+  margin-bottom: 20px;
 }
 
 .error {
-  background-color: var(--color-red-light);
-  color: var(--color-red-dark);
-  border: 1px solid var(--color-red);
+  background-color: #2d1b1b;
+  color: #ff6b6b;
+  border: 1px solid #ff4757;
 }
 
 .success {
-  background-color: var(--color-green-light);
-  color: var(--color-green-dark);
-  border: 1px solid var(--color-green);
+  background-color: #1b2d1b;
+  color: #51cf66;
+  border: 1px solid #37b24d;
 }
 
-/* Post Type Tabs */
-.postTypeTabs {
-  display: flex;
-  margin-bottom: 25px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tab {
-  flex: 1;
-  padding: 15px 0;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background-color: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  outline: none; /* Remove outline on focus */
-}
-
-.tab:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-gray-light);
-}
-
-.tab.active {
-  color: var(--color-primary); /* Reddit orange */
-  border-bottom-color: var(--color-primary);
-  font-weight: 700;
-}
-
-/* Form Styles */
+/* Form */
 .postForm {
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
 
 .formGroup {
-  margin-bottom: 20px;
+  position: relative;
 }
 
 .label {
   display: block;
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #e2e8f0;
   margin-bottom: 8px;
 }
 
@@ -98,18 +57,19 @@
 .textarea {
   width: 100%;
   padding: 12px 15px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
   font-size: 15px;
-  color: var(--color-text-primary);
-  background-color: var(--color-background); /* Light gray background */
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  color: #ffffff;
+  background-color: #2d3748;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .input:focus,
 .textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2); /* Light primary shadow */
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
   outline: none;
 }
 
@@ -119,373 +79,167 @@
   line-height: 1.5;
 }
 
-/* File Input specific styling */
+/* File Input */
 .fileInput {
   display: block;
   width: 100%;
-  padding: 10px 0; /* Add some vertical padding */
+  padding: 10px 0;
   font-size: 15px;
-  color: var(--color-text-primary);
+  color: #e2e8f0;
+  background-color: transparent;
+  border: none;
 }
 
-.fileInput::-webkit-file-upload-button {
-  visibility: hidden;
-}
-.fileInput::before {
-  content: 'Choose File';
-  display: inline-block;
-  background: var(--color-secondary-button); /* Light blue button */
-  color: var(--color-white);
+.fileInput::file-selector-button {
+  background: #4299e1;
+  color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 10px 15px;
-  outline: none;
-  white-space: nowrap;
-  -webkit-user-select: none;
-  cursor: pointer;
   font-weight: 500;
   font-size: 14px;
   margin-right: 10px;
-}
-.fileInput:hover::before {
-  background: var(--color-secondary-button-hover);
-}
-.fileInput:active::before {
-  background: var(--color-secondary-button-active);
-}
-
-.fileLabel {
-  margin-top: 10px;
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-/* Poll Options */
-.pollOption {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.pollOption .input {
-  flex-grow: 1;
-  margin-right: 10px;
-}
-
-.removeOptionBtn {
-  background: none;
-  border: none;
-  color: var(--color-red);
-  font-size: 24px;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  transition: background 0.2s;
 }
 
-.removeOptionBtn:hover {
-  opacity: 1;
-}
-
-.addOptionBtn {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  padding: 10px 15px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 10px;
-}
-
-.addOptionBtn:hover {
-  background-color: var(--color-primary);
-  color: var(--color-white);
-}
-
-.pollNote {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin-top: 10px;
-}
-
-/* Post Preview */
-.postPreview {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: var(--color-background-secondary); /* A slightly darker background for preview */
-  border: 1px solid var(--color-border-dark);
-  border-radius: 8px;
-  display: block; /* Always visible in React, controlled by content */
-}
-
-.previewTitle {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 10px;
-}
-
-.previewContent {
-  font-size: 15px;
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-  margin-bottom: 15px;
-  white-space: pre-wrap; /* Preserve whitespace and line breaks */
+.fileInput::file-selector-button:hover {
+  background: #3182ce;
 }
 
 .previewImage {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-top: 10px;
 }
 
-.previewLink {
-  color: var(--color-link);
-  font-size: 15px;
-  text-decoration: underline;
-  word-break: break-all;
+/* Tags */
+.tagsSuggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
-.previewPollOptions {
-  list-style-type: none;
+.suggestionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 15px;
+  cursor: pointer;
+  color: #e2e8f0;
+  transition: background 0.2s;
+}
+
+.suggestionItem:hover {
+  background-color: #4a5568;
+}
+
+.selectedTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.selectedTagItem {
+  background-color: #4299e1;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.removeTagBtn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
   padding: 0;
-  margin-top: 15px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
 }
 
-.previewPollOptions li {
-  background-color: var(--color-gray-light);
-  padding: 10px 15px;
-  border-radius: 4px;
-  margin-bottom: 8px;
+.removeTagBtn:hover {
+  opacity: 1;
+}
+
+/* Checkbox */
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  color: #e2e8f0;
   font-size: 15px;
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  margin-right: 8px;
+  transform: scale(1.1);
+  accent-color: #4299e1;
 }
 
 /* Submit Button */
 .submitBtn {
-  background-color: var(--color-primary); /* Reddit orange */
-  color: var(--color-white);
-  padding: 14px 25px;
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+  color: white;
+  padding: 14px 30px;
   border: none;
-  border-radius: 24px; /* More rounded button */
-  font-size: 17px;
-  font-weight: 700;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-top: 25px;
-  align-self: flex-end; /* Align to the right */
+  transition: all 0.2s ease;
+  align-self: flex-end;
   min-width: 150px;
 }
 
 .submitBtn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
+  background: linear-gradient(135deg, #3182ce, #2c5282);
+  transform: translateY(-1px);
 }
 
 .submitBtn:disabled {
-  background-color: var(--color-gray);
+  background: #4a5568;
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
+  transform: none;
 }
 
-/* Loading Overlay */
-.loadingOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1001; /* Above other content */
-}
-
-.loadingSpinner {
-  background-color: var(--color-white);
-  padding: 30px;
-  border-radius: 10px;
-  text-align: center;
-  box-shadow: var(--shadow-default);
-}
-
+/* Loading spinner */
 .spinner {
-  border: 5px solid rgba(var(--color-primary-rgb), 0.3);
-  border-top: 5px solid var(--color-primary);
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 15px;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Responsive adjustments */
+/* Responsive */
 @media (max-width: 768px) {
   .createPostContainer {
     margin: 20px;
     padding: 20px;
   }
-
+  
   .title {
     font-size: 24px;
   }
-
-  .tab {
-    font-size: 14px;
-    padding: 12px 0;
-  }
-
+  
   .submitBtn {
-    padding: 12px 20px;
-    font-size: 16px;
+    align-self: stretch;
   }
-}
-
-/* Define CSS Variables for theming (place these typically in a global CSS file or :root) */
-:root {
-  --color-primary: #FF4500; /* Reddit Orange */
-  --color-primary-dark: #cc3700;
-  --color-primary-light: #fff3ed;
-  --color-secondary-button: #0079d3; /* Reddit Blue */
-  --color-secondary-button-hover: #0060a9;
-  --color-secondary-button-active: #004b86;
-
-  --color-white: #ffffff;
-  --color-black: #000000;
-  --color-background: #f0f2f5; /* Light gray background for inputs */
-  --color-background-secondary: #fdfdfd; /* Slightly different background for preview */
-  --color-border: #e0e0e0;
-  --color-border-dark: #cccccc;
-  --color-text-primary: #1a1a1b;
-  --color-text-secondary: #878a8c;
-  --color-gray: #d3d3d3; /* For disabled buttons */
-  --color-gray-light: #f5f5f5; /* For hover states or background elements */
-  --color-link: #0079d3; /* Standard link color */
-
-  --color-red: #ea0027; /* For errors */
-  --color-red-light: #fbe0e0;
-  --color-red-dark: #7c0014;
-
-  --color-green: #46d160; /* For success */
-  --color-green-light: #e6fae8;
-  --color-green-dark: #2f8c3f;
-
-  --shadow-default: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --color-primary-rgb: 255, 69, 0; /* RGB for primary color for shadows */
-}
-
-/* Tags Multi‑select */
-.tagsContainer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tagOption {
-  display: flex;
-  align-items: center;
-  background-color: var(--color-gray-light);
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.tagOption input {
-  margin-right: 6px;
-  cursor: pointer;
-}
-
-.tagOption:hover {
-  background-color: var(--color-primary-light);
-}
-
-.tagLabel {
-  font-size: 14px;
-  color: var(--color-text-primary);
-}
-/* --- BỔ SUNG CSS CHO TAGS DROPDOWN --- */
-
-.tagsDropdownContainer {
-  position: relative;
-}
-
-.tagsDropdownButton {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 12px 15px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: 15px;
-  text-align: left;
-  color: var(--color-text-primary);
-  background-color: var(--color-background);
-  cursor: pointer;
-}
-
-.tagsDropdownButton:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
-  outline: none;
-}
-
-.tagsDropdown {
-  position: absolute;
-  top: 105%;
-  left: 0;
-  right: 0;
-  background-color: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  box-shadow: var(--shadow-default);
-  z-index: 10;
-  max-height: 250px;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.tagsContainer {
-  display: flex;
-  flex-direction: column; /* Thay đổi để hiển thị theo chiều dọc trong dropdown */
-}
-
-.tagOption {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.tagOption input {
-  margin-right: 10px; /* Tăng khoảng cách */
-  cursor: pointer;
-}
-
-.tagOption:hover {
-  background-color: var(--color-primary-light);
-}
-
-.tagLabel {
-  font-size: 15px;
-  color: var(--color-text-primary);
-}
-
-.noTags {
-    padding: 10px 12px;
-    color: var(--color-text-secondary);
 }

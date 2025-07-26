@@ -299,6 +299,7 @@
 
 /* Loading Message */
 .loadingMessage {
+  background-color: transparent;
   display: flex;
   align-items: center;
   gap: 5px;

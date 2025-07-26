@@ -950,12 +950,13 @@
 }
 
 .overviewControlPanel {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
   text-align: center;
+  box-shadow: var(--shadow-md);
 }
 
 .overviewButton {
@@ -966,36 +967,41 @@
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
-  background-color: #007bff;
+  background: var(--accent-gradient);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .overviewButton:hover:not(:disabled) {
-  background-color: #0056b3;
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent);
 }
 
 .overviewButton:disabled {
-  background-color: #6c757d;
+  background: var(--text-muted);
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .overviewError {
-  color: #dc3545;
-  margin-top: 0.5rem;
+  color: var(--accent-error);
+  margin-top: var(--space-md);
   font-size: 0.9rem;
 }
 
-/* Styles for Overview Modal */
+/* Styles for Overview Modal - THEME AWARE */
 .overviewModalOverlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1003,22 +1009,23 @@
 }
 
 .overviewModal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
   width: 90%;
   max-width: 700px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-xl);
 }
 
 .overviewModalHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e9ecef;
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .overviewModalHeader h3 {
@@ -1027,28 +1034,37 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: var(--text-primary);
 }
 
 .overviewModal .closeButton {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6c757d;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.overviewModal .closeButton:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
 }
 
 .overviewModalContent {
-  padding: 1.5rem;
+  padding: var(--space-xl);
   overflow-y: auto;
-  line-height: 1.6;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 
-/* Style cho nội dung Markdown từ AI */
+/* Style cho nội dung Markdown từ AI - THEME AWARE */
 .overviewModalContent h2 {
     font-size: 1.25rem;
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
-    border-bottom: 2px solid #007bff;
+    border-bottom: 2px solid var(--accent-primary);
     padding-bottom: 0.25rem;
+    color: var(--text-primary);
 }
 .overviewModalContent ul {
     padding-left: 20px;
@@ -1057,5 +1073,42 @@
     margin-bottom: 0.5rem;
 }
 .overviewModalContent strong {
-    color: #343a40;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* FIX: Override styles from bot-generated HTML to match the theme */
+.overviewModalContent div[class*="ai-content-body"],
+.overviewModalContent div {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.overviewModalContent * {
+  color: inherit !important;
+}
+
+.overviewModalContent pre {
+  background-color: var(--primary-bg) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 1rem !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-size: 0.9rem;
+}
+
+.overviewModalContent code {
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  background-color: rgba(33, 150, 243, 0.1) !important;
+  color: var(--accent-primary) !important;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-xs);
+}
+
+.overviewModalContent pre > code {
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0;
+  border-radius: 0;
 }

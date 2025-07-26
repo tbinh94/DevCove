@@ -7,6 +7,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import DOMPurify from 'dompurify';
 import BotChatInterface from './BotChatInterface';
 
+// Cấu hình DOMPurify một lần
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+  // Thêm thuộc tính target="_blank" vào tất cả các link <a>
+  if ('target' in node) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
+
 const PostDetail = () => {
     const { postId } = useParams();
     const { user, isAuthenticated } = useAuth();
@@ -38,13 +47,20 @@ const PostDetail = () => {
         const script = document.createElement('script');
         script.textContent = `
             function copyCode(elementId) {
-                const element = document.getElementById(elementId);
-                const text = element.textContent || element.innerText;
+                const container = document.getElementById(elementId);
+                if (!container) return;
                 
+                // Tìm thẻ code bên trong container
+                const codeElement = container.querySelector('pre > code');
+                const text = codeElement ? codeElement.textContent : '';
+                
+                if (!text) return;
+
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(text).then(function() {
                         showCopySuccess(elementId);
-                    }).catch(function() {
+                    }).catch(function(err) {
+                        console.error('Async: Could not copy text: ', err);
                         fallbackCopyTextToClipboard(text, elementId);
                     });
                 } else {
@@ -55,9 +71,8 @@ const PostDetail = () => {
             function fallbackCopyTextToClipboard(text, elementId) {
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
-                textArea.style.top = "0";
-                textArea.style.left = "0";
                 textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
                 
                 document.body.appendChild(textArea);
                 textArea.focus();
@@ -74,21 +89,25 @@ const PostDetail = () => {
             }
             
             function showCopySuccess(elementId) {
-                const codeBlock = document.getElementById(elementId).closest('.code-block-container');
-                const copyBtn = codeBlock.querySelector('.copy-btn');
+                const container = document.getElementById(elementId);
+                if (!container) return;
+
+                const copyBtn = container.querySelector('.copy-btn');
+                if (!copyBtn) return;
+
                 const copyText = copyBtn.querySelector('.copy-text');
                 const copyIcon = copyBtn.querySelector('.copy-icon');
                 
                 const originalText = copyText.textContent;
-                const originalIcon = copyIcon.textContent;
+                const originalIconHTML = copyIcon.innerHTML;
                 
                 copyText.textContent = 'Copied!';
-                copyIcon.textContent = '✅';
+                copyIcon.innerHTML = '✅';
                 copyBtn.classList.add('copied');
                 
                 setTimeout(() => {
                     copyText.textContent = originalText;
-                    copyIcon.textContent = originalIcon;
+                    copyIcon.innerHTML = originalIconHTML;
                     copyBtn.classList.remove('copied');
                 }, 2000);
             }
@@ -631,7 +650,14 @@ const PostDetail = () => {
                                         {comment.is_bot ? (
                                             <div
                                                 className={styles.commentText}
-                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.text) }}
+                                                dangerouslySetInnerHTML={{ 
+                                                    __html: DOMPurify.sanitize(comment.text, { 
+                                                        // Cho phép thẻ style và script
+                                                        ADD_TAGS: ['style', 'script'],
+                                                        // Cho phép thuộc tính onclick cho button
+                                                        ADD_ATTR: ['onclick'] 
+                                                    }) 
+                                                }}
                                             />
                                         ) : (
                                             <p className={styles.commentText}>{comment.text}</p>
