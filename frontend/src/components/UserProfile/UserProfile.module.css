@@ -67,14 +67,41 @@
   letter-spacing: 2px;
 }
 
-/* Username styling */
+/* Username and Helper Badge */
+.usernameContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px; /* was on username */
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
 .username {
-  margin: 0 0 8px 0;
+  margin: 0;
   font-size: 28px;
   font-weight: 600;
   color: #ffffff;
   text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
+
+.helperBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f7b733, #fc4a1a);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(247, 183, 51, 0.4);
+  cursor: help;
+  white-space: nowrap;
+}
+
 
 /* Bio styling */
 .bio {

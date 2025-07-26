@@ -10,18 +10,44 @@ class BotSessionSerializer(serializers.ModelSerializer):
         fields = ['id', 'post', 'request_payload', 'response_text', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer cho User model"""
+    """Serializer cho User model đã được cải tiến"""
+    is_weekly_helper = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'is_weekly_helper', 'avatar_url']
         read_only_fields = ['id', 'date_joined']
+
+    def get_is_weekly_helper(self, obj):
+        try:
+            return obj.profile.is_weekly_helper
+        except Profile.DoesNotExist:
+            return False
+
+    def get_avatar_url(self, obj):
+        request = self.context.get('request')
+        try:
+            if obj.profile.avatar and hasattr(obj.profile.avatar, 'url'):
+                return request.build_absolute_uri(obj.profile.avatar.url) if request else obj.profile.avatar.url
+        except Profile.DoesNotExist:
+            pass
+        return None
 
 
 class UserBasicSerializer(serializers.ModelSerializer):
     """Serializer cơ bản cho User (chỉ hiển thị thông tin cần thiết)"""
+    is_weekly_helper = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name']
+        fields = ['id', 'username', 'first_name', 'last_name', 'is_weekly_helper']
+
+    def get_is_weekly_helper(self, obj):
+        try:
+            return obj.profile.is_weekly_helper
+        except Profile.DoesNotExist:
+            return False
 
 
 class CommunitySerializer(serializers.ModelSerializer):
@@ -260,7 +286,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'avatar', 'avatar_url', 'bio', 'followers_count', 'following_count', 'is_following']
+        fields = ['id', 'user', 'avatar', 'avatar_url', 'bio', 'followers_count', 'following_count', 'is_following', 'is_weekly_helper']
         read_only_fields = ['id', 'user']
 
     def get_avatar_url(self, obj):

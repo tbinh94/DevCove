@@ -198,10 +198,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                         <span>Profile</span>
                       </button>
                       
-                      <button onClick={() => { navigate('/communities'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}>
-                        <span className={`${styles.dropdownIcon} ${styles.communityIcon}`}>👥</span>
-                        <span>Communities</span>
-                      </button>
                       
                       <button onClick={() => { navigate('/settings'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}>
                         <Settings className={styles.dropdownIcon} />

@@ -167,6 +167,7 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     bio = models.TextField(blank=True)
+    is_weekly_helper = models.BooleanField(default=False)
     
     def followers_count(self):
         return self.user.follower_set.count()

@@ -1,7 +1,7 @@
 // UserProfile.jsx - Updated with enhanced avatar display above username
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw, Award } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api'; 
 import styles from './UserProfile.module.css';
@@ -360,8 +360,16 @@ const UserProfile = () => {
             </div>
           </div>
           
-          {/* Username centered below avatar */}
-          <h2 className={styles.username}>{user.username}</h2>
+          {/* Username centered below avatar with Helper Badge */}
+          <div className={styles.usernameContainer}>
+            <h2 className={styles.username}>{user.username}</h2>
+            {user.is_weekly_helper && (
+              <span className={styles.helperBadge} title="This user is a Weekly Helper!">
+                <Award size={16} />
+                Weekly Helper
+              </span>
+            )}
+          </div>
           
           {/* Bio if available */}
           {profile?.bio && (

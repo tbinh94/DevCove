@@ -731,6 +731,45 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [SearchFilter]
     search_fields = ['username', 'first_name', 'last_name']
 
+    @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated])
+    def update_helper_status(self, request):
+        """
+        Tính toán lại trạng thái 'is_weekly_helper' cho tất cả người dùng.
+        Đây là một tác vụ nặng và nên được chạy định kỳ (ví dụ: qua cron job).
+        Một người dùng là "Weekly Helper" nếu họ bình luận trên bài viết của ít nhất 3 tác giả khác nhau
+        trong 7 ngày qua (không tính bài viết của chính họ).
+        """
+        one_week_ago = timezone.now() - timedelta(days=7)
+
+        # 1. Đặt lại tất cả helper về False để bắt đầu
+        Profile.objects.update(is_weekly_helper=False)
+
+        # 2. Tìm các ứng cử viên helper trong một truy vấn hiệu quả
+        helper_candidates = Comment.objects.filter(
+            created__gte=one_week_ago
+        ).exclude(
+            post__author=F('author')  # Loại trừ việc bình luận trên bài của chính mình
+        ).values(
+            'author'  # Nhóm theo người bình luận
+        ).annotate(
+            helped_authors_count=Count('post__author', distinct=True)
+        ).filter(
+            helped_authors_count__gte=3
+        )
+
+        # 3. Lấy ID của những người dùng đủ điều kiện
+        helper_user_ids = [item['author'] for item in helper_candidates]
+
+        # 4. Cập nhật hàng loạt các profile của những người dùng đủ điều kiện
+        updated_count = 0
+        if helper_user_ids:
+            updated_count = Profile.objects.filter(user_id__in=helper_user_ids).update(is_weekly_helper=True)
+
+        return Response({
+            "message": f"Đã cập nhật thành công trạng thái helper. {updated_count} người dùng được đánh dấu là helper.",
+            "status": "success"
+        })
+
     @action(detail=True, methods=['get'])
     def posts(self, request, username=None):
         """
@@ -832,12 +871,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticatedOrReadOnly])
     def profile(self, request, username=None):
         """
-        Get user profile with posts - FIXED for avatar URL
+        Get user profile with posts - REVISED to use serializers for consistency.
         """
         try:
             user = get_object_or_404(User, username=username)
 
-            # Get user's profile
+            # Get user's profile, create if it doesn't exist
             profile, created = Profile.objects.get_or_create(user=user)
 
             # Get user's posts
@@ -850,53 +889,25 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                     follower=request.user,
                     following=user
                 ).exists()
-
-            # Get follower/following counts
-            follower_count = Follow.objects.filter(following=user).count()
-            following_count = Follow.objects.filter(follower=user).count()
-
-            # Serialize posts with context
-            posts_serializer = PostSerializer(posts, many=True, context={'request': request})
-
-            # FIXED: Create avatar_url with better error handling
-            avatar_url = None
-            if profile.avatar:
-                try:
-                    # Build the full URL using request.build_absolute_uri
-                    avatar_url = request.build_absolute_uri(profile.avatar.url)
-                    print(f"DEBUG: Built avatar URL: {avatar_url}")  # Debug log
-                except (ValueError, AttributeError, Exception) as e:
-                    print(f"DEBUG: Error building avatar URL: {e}")  # Debug log
-                    avatar_url = None
-
-            # FIXED: Also try using the ProfileSerializer to get avatar_url
+            
+            # Use serializers to construct the response
+            user_serializer = UserSerializer(user, context={'request': request})
             profile_serializer = ProfileSerializer(profile, context={'request': request})
-            serialized_avatar_url = profile_serializer.data.get('avatar_url')
+            posts_serializer = PostSerializer(posts, many=True, context={'request': request})
             
-            print(f"DEBUG: Serializer avatar_url: {serialized_avatar_url}")  # Debug log
-            
-            # Use serializer's avatar_url if available, otherwise use manual one
-            final_avatar_url = serialized_avatar_url or avatar_url
-
-            return Response({
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'date_joined': user.date_joined,
-                    'follower_count': follower_count,
-                    'following_count': following_count,
-                },
-                'profile': {
-                    'bio': profile.bio,
-                    'avatar_url': final_avatar_url,  # FIXED: Use the processed avatar URL
-                    'joined_date': user.date_joined,
-                },
+            # Combine data into the expected structure for the frontend
+            response_data = {
+                'user': user_serializer.data,
+                'profile': profile_serializer.data,
                 'posts': posts_serializer.data,
                 'is_following': is_following
-            })
+            }
+
+            # For backward compatibility, ensure follower counts are also on user object if frontend expects it there.
+            response_data['user']['follower_count'] = profile_serializer.data.get('followers_count', 0)
+            response_data['user']['following_count'] = profile_serializer.data.get('following_count', 0)
+
+            return Response(response_data)
 
         except User.DoesNotExist:
             return Response(
@@ -904,9 +915,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            print(f"DEBUG: Error in profile view: {e}")  # Debug log
+            logger.error(f"Error in profile view for {username}: {e}", exc_info=True)
             return Response(
-                {'error': str(e)},
+                {'error': 'An internal server error occurred.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -1103,6 +1114,7 @@ def register_view(request):
             password=password,
             email=email
         )
+        Profile.objects.create(user=user)
 
         login(request, user)
         serializer = UserSerializer(user, context={'request': request})
