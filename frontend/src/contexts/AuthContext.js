@@ -109,21 +109,21 @@ export const AuthProvider = ({ children }) => {
     checkUserSession();
   }, []);
 
-  // Login function
+   // Login function - FIXED
   const login = async (credentials) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
-    
     try {
       const response = await apiService.login(credentials);
-      
-      if (response.success !== false) {
-        // Assuming successful login returns user data
+      // SỬA ĐỔI: Kiểm tra sự tồn tại của 'response.user' thay vì 'response.success'
+      if (response && response.user) {
         dispatch({ type: AuthActionTypes.SET_USER, payload: response.user });
         return { success: true, data: response };
       } else {
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: response.error });
-        return { success: false, error: response.error };
+        // Trường hợp API trả về lỗi có cấu trúc nhưng không phải exception
+        const errorMessage = response.error || "Login failed due to an unknown error.";
+        dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
       const errorMessage = error.message || "Login failed. Please check your credentials.";
@@ -132,20 +132,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
+  // Register function - FIXED
   const register = async (userData) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
-    
     try {
       const response = await apiService.register(userData);
-      
-      if (response.success !== false) {
+      // SỬA ĐỔI: Kiểm tra sự tồn tại của 'response.user' thay vì 'response.success'
+      if (response && response.user) {
         dispatch({ type: AuthActionTypes.SET_USER, payload: response.user });
         return { success: true, data: response };
       } else {
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: response.error });
-        return { success: false, error: response.error };
+        const errorMessage = response.error || "Registration failed due to an unknown error.";
+        dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
       const errorMessage = error.message || "Registration failed.";

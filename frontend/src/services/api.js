@@ -1,11 +1,11 @@
-// services/api.js - Optimized for clarity, efficiency, and maintainability
+// services/api.js - Fixed CSRF token handling
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class APIService {
   constructor() {
     this.baseURL = BASE_URL;
-    //this.csrfToken = null;
-    //this.csrfPromise = null; // Prevent multiple concurrent CSRF requests
+    this.csrfToken = null;
+    this.csrfPromise = null; // Prevent multiple concurrent CSRF requests
   }
 
   // --- Core Methods ---
@@ -24,21 +24,18 @@ class APIService {
       'X-Requested-With': 'XMLHttpRequest',
       ...headers,
     };
+    
     if (!isFormData && body) {
       configHeaders['Content-Type'] = 'application/json';
     }
-    if (isStateChanging && this.csrfToken) {
-      configHeaders['X-CSRFToken'] = this.csrfToken;
-    }
-
-    // Nếu là request thay đổi dữ liệu, hãy lấy token TRỰC TIẾP từ cookie
+    
+    // FIXED: Single CSRF token handling logic
     if (isStateChanging) {
-      const csrfToken = this.getCookie('csrftoken');
+      const csrfToken = this.getCookie('csrftoken') || this.csrfToken;
       if (csrfToken) {
         configHeaders['X-CSRFToken'] = csrfToken;
       } else {
-        // Có thể thêm cảnh báo ở đây nếu không tìm thấy token
-        console.warn('CSRF token not found in cookie. The request might fail.');
+        console.warn('CSRF token not found. The request might fail.');
       }
     }
 
@@ -83,18 +80,28 @@ class APIService {
   }
 
   async initCSRF() {
-    if (this.csrfToken) return this.csrfToken;
-
+    // Check if we already have a token
     this.csrfToken = this.getCookie('csrftoken');
     if (this.csrfToken) {
       return this.csrfToken;
     }
 
-    if (this.csrfPromise) return this.csrfPromise;
+    // If there's already a CSRF request in progress, wait for it
+    if (this.csrfPromise) {
+      return this.csrfPromise;
+    }
 
+    // Make a new CSRF request
     this.csrfPromise = (async () => {
       try {
-        await this.request('/csrf/', { method: 'GET' });
+        await fetch(`${this.baseURL}/csrf/`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          }
+        });
+        
         this.csrfToken = this.getCookie('csrftoken');
         if (!this.csrfToken) {
           console.warn('CSRF token not found in cookie after /csrf/ call.');
@@ -215,7 +222,7 @@ class APIService {
     return this.request(`/api/posts/${id}/`, { method: 'DELETE' });
   }
 
-  // === START: NEW AI OVERVIEW FUNCTION ===
+  // === AI OVERVIEW FUNCTION ===
   /**
    * Generates an AI-powered overview for a list of posts.
    * @param {object} payload - The request payload.
@@ -228,7 +235,6 @@ class APIService {
       body: payload,
     });
   }
-  // === END: NEW AI OVERVIEW FUNCTION ===
 
   // Tags
   async getTags(params = {}) {

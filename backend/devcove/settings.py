@@ -57,6 +57,8 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read the cookie
 
 # Các headers được phép
 CORS_ALLOW_HEADERS = [

@@ -735,39 +735,76 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     def update_helper_status(self, request):
         """
         Tính toán lại trạng thái 'is_weekly_helper' cho tất cả người dùng.
-        Đây là một tác vụ nặng và nên được chạy định kỳ (ví dụ: qua cron job).
-        Một người dùng là "Weekly Helper" nếu họ bình luận trên bài viết của ít nhất 3 tác giả khác nhau
-        trong 7 ngày qua (không tính bài viết của chính họ).
-        """
+        Một người dùng là "Weekly Helper" nếu họ bình luận trên ít nhất 5 bài viết
+        của người khác trong 7 ngày qua.
+        """      
         one_week_ago = timezone.now() - timedelta(days=7)
 
         # 1. Đặt lại tất cả helper về False để bắt đầu
         Profile.objects.update(is_weekly_helper=False)
 
-        # 2. Tìm các ứng cử viên helper trong một truy vấn hiệu quả
+        # 2. Debug: Kiểm tra số lượng comments trong 7 ngày qua
+        total_comments = Comment.objects.filter(created__gte=one_week_ago).count()
+        print(f"DEBUG: Total comments in last 7 days: {total_comments}")
+
+        # 3. Tìm các ứng cử viên helper dựa trên số lượng bài viết đã bình luận
         helper_candidates = Comment.objects.filter(
-            created__gte=one_week_ago
+            created__gte=one_week_ago,
+            is_bot=False  # Loại trừ bot comments
         ).exclude(
             post__author=F('author')  # Loại trừ việc bình luận trên bài của chính mình
         ).values(
             'author'  # Nhóm theo người bình luận
         ).annotate(
-            helped_authors_count=Count('post__author', distinct=True)
+            commented_posts_count=Count('post', distinct=True)  # Đếm số post riêng biệt
         ).filter(
-            helped_authors_count__gte=3
+            commented_posts_count__gte=5  # Điều kiện là >= 5 bài viết
         )
 
-        # 3. Lấy ID của những người dùng đủ điều kiện
-        helper_user_ids = [item['author'] for item in helper_candidates]
+        # 4. Debug: In ra thông tin các candidates
+        candidates_list = list(helper_candidates)
+        print(f"DEBUG: Helper candidates: {candidates_list}")
 
-        # 4. Cập nhật hàng loạt các profile của những người dùng đủ điều kiện
+        # 5. Lấy ID của những người dùng đủ điều kiện
+        helper_user_ids = [item['author'] for item in candidates_list]
+        print(f"DEBUG: Helper user IDs: {helper_user_ids}")
+
+        # 6. Đảm bảo Profile tồn tại cho tất cả users trước khi cập nhật
+        from django.contrib.auth.models import User
+        for user_id in helper_user_ids:
+            try:
+                user = User.objects.get(id=user_id)
+                profile, created = Profile.objects.get_or_create(user=user)
+                if created:
+                    print(f"DEBUG: Created profile for user {user.username}")
+            except User.DoesNotExist:
+                print(f"DEBUG: User with ID {user_id} does not exist")
+                continue
+
+        # 7. Cập nhật hàng loạt các profile của những người dùng đủ điều kiện
         updated_count = 0
         if helper_user_ids:
             updated_count = Profile.objects.filter(user_id__in=helper_user_ids).update(is_weekly_helper=True)
+            print(f"DEBUG: Updated {updated_count} profiles")
+            
+            # Debug: Verify the update
+            helper_profiles = Profile.objects.filter(user_id__in=helper_user_ids, is_weekly_helper=True)
+            verified_count = helper_profiles.count()
+            print(f"DEBUG: Verified {verified_count} profiles are now helpers")
+            
+            # Debug: List the helper usernames
+            helper_usernames = [p.user.username for p in helper_profiles]
+            print(f"DEBUG: Helper usernames: {helper_usernames}")
 
         return Response({
             "message": f"Đã cập nhật thành công trạng thái helper. {updated_count} người dùng được đánh dấu là helper.",
-            "status": "success"
+            "status": "success",
+            "debug_info": {
+                "total_comments_last_7_days": total_comments,
+                "candidates_found": len(candidates_list),
+                "profiles_updated": updated_count,
+                "helper_user_ids": helper_user_ids
+            }
         })
 
     @action(detail=True, methods=['get'])
