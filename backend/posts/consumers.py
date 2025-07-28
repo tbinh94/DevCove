@@ -3,84 +3,106 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
 from .models import Conversation, ChatMessage
+from .serializers import ChatMessageSerializer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        # === BẮT ĐẦU LOG GỠ LỖI ===
+        print("\n--- Yêu cầu kết nối WebSocket mới ---")
+        user = self.scope["user"]
+        print(f"User từ scope: {user}")
+        print(f"Trạng thái xác thực: {user.is_authenticated}")
+        # === KẾT THÚC LOG GỠ LỖI ===
+
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.room_group_name = f'chat_{self.conversation_id}'
         
-        # Check if user is authenticated
-        if not self.scope["user"].is_authenticated:
+        # Kiểm tra user đã đăng nhập chưa
+        if not user.is_authenticated:
+            print(f"[TỪ CHỐI] Lý do: User chưa được xác thực.")
             await self.close()
             return
             
-        # Check if user is participant in the conversation
-        if not await self.is_participant():
+        print(f"[THÀNH CÔNG] User '{user.username}' đã được xác thực.")
+        
+        # Kiểm tra user có phải là thành viên cuộc trò chuyện không
+        is_member = await self.is_participant()
+        if not is_member:
+            print(f"[TỪ CHỐI] Lý do: User '{user.username}' không phải thành viên của cuộc trò chuyện '{self.conversation_id}'.")
             await self.close()
             return
 
-        # Join room group
+        print(f"[THÀNH CÔNG] User '{user.username}' là thành viên. Chấp nhận kết nối.")
+
+        # Tham gia vào group
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
 
         await self.accept()
+        print(f"--- Kết nối WebSocket cho '{self.room_group_name}' đã được chấp nhận. ---")
+
 
     async def disconnect(self, close_code):
-        # Leave room group
+        print(f"--- WebSocket đã ngắt kết nối, mã lỗi: {close_code} ---")
         if hasattr(self, 'room_group_name'):
             await self.channel_layer.group_discard(
                 self.room_group_name,
                 self.channel_name
             )
-
-    # Receive message from WebSocket
+    @database_sync_to_async
+    def get_serialized_message(self, message_obj):
+        """
+        Hàm helper để chạy serializer trong môi trường bất đồng bộ.
+        """
+        # Dùng serializer để tạo ra dữ liệu nhất quán
+        return ChatMessageSerializer(message_obj).data
+    
     async def receive(self, text_data):
         try:
             text_data_json = json.loads(text_data)
-            message = text_data_json['message']
+            message_text = text_data_json['message']
 
-            # Save message to database
-            chat_message = await self.save_message(message)
-            
+            # Lưu tin nhắn vào DB
+            chat_message = await self.save_message(message_text)
+
             if chat_message:
-                # Send message to room group
+                # 2. DÙNG SERIALIZER ĐỂ TẠO PAYLOAD
+                message_payload = await self.get_serialized_message(chat_message)
+
+                # 3. Gửi payload đã được serialize đi
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         'type': 'chat_message',
-                        'message': {
-                            'id': chat_message.id,
-                            'text': chat_message.text,
-                            'sender_username': chat_message.sender.username,
-                            'created_at': chat_message.created_at.isoformat(),
-                            'sender': {
-                                'id': chat_message.sender.id,
-                                'username': chat_message.sender.username,
-                            }
-                        }
+                        'message': message_payload 
                     }
                 )
         except Exception as e:
-            print(f"Error in receive: {e}")
-            await self.send(text_data=json.dumps({
-                'error': 'Failed to send message'
-            }))
+            print(f"Lỗi trong receive: {e}")
+            await self.send(text_data=json.dumps({'error': 'Không thể gửi tin nhắn'}))
 
-    # Receive message from room group
     async def chat_message(self, event):
         message = event['message']
-
-        # Send message to WebSocket
+        # Dữ liệu từ serializer đã an toàn để gửi dưới dạng JSON
         await self.send(text_data=json.dumps(message))
 
     @database_sync_to_async
     def is_participant(self):
+        user = self.scope["user"]
+        print(f"  [Kiểm tra DB] Đang kiểm tra user '{user.username}' (ID: {user.id}) trong cuộc trò chuyện '{self.conversation_id}'")
         try:
             conversation = Conversation.objects.get(id=self.conversation_id)
-            return conversation.participants.filter(id=self.scope["user"].id).exists()
+            is_member = conversation.participants.filter(id=user.id).exists()
+            print(f"  [Kiểm tra DB] Tìm thấy cuộc trò chuyện. Kết quả kiểm tra thành viên: {is_member}")
+            return is_member
         except Conversation.DoesNotExist:
+            print(f"  [Kiểm tra DB] THẤT BẠI. Không tồn tại cuộc trò chuyện với ID '{self.conversation_id}'.")
+            return False
+        except Exception as e:
+            # Bắt các lỗi khác, ví dụ: id không phải là UUID hợp lệ
+            print(f"  [Kiểm tra DB] THẤT BẠI. Đã xảy ra lỗi không mong muốn: {e}")
             return False
 
     @database_sync_to_async
@@ -92,9 +114,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 sender=self.scope["user"],
                 text=message_text
             )
-            # Update conversation's updated_at timestamp
             conversation.save()
             return message
         except Exception as e:
-            print(f"Error saving message: {e}")
+            print(f"Lỗi khi lưu tin nhắn: {e}")
             return None

@@ -1,26 +1,30 @@
-# asgi.py
+# project_name/asgi.py
+
 import os
-from django.core.asgi import get_asgi_application
+import django
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
+from channels.auth import AuthMiddlewareStack
+from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'devcove.settings')
+# Đảm bảo import routing của app bạn
+import posts.routing 
 
-# Initialize Django ASGI application early to ensure the AppRegistry
-# is populated before importing code that may import ORM models.
-django_asgi_app = get_asgi_application()
+# Đặt biến môi trường cho settings của Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'devcove.settings') 
 
-# Import routing after Django is set up
-from posts.routing import websocket_urlpatterns
-from posts.middleware import JWTAuthMiddlewareStack
+# ===>> THAY ĐỔI QUAN TRỌNG <<===
+# Gọi django.setup() để đảm bảo tất cả các model và ứng dụng của Django
+# được tải và sẵn sàng trước khi import các thành phần khác.
+django.setup() 
+
+# Bây giờ mới lấy ứng dụng HTTP
+http_application = get_asgi_application()
 
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(
-        JWTAuthMiddlewareStack(
-            URLRouter(
-                websocket_urlpatterns
-            )
+    "http": http_application,
+    "websocket": AuthMiddlewareStack( # AuthMiddlewareStack bọc ngoài cùng
+        URLRouter(
+            posts.routing.websocket_urlpatterns # Danh sách các URL WebSocket của bạn
         )
     ),
 })

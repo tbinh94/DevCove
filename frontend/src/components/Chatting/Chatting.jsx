@@ -5,8 +5,8 @@ import apiService from '../../services/api';
 import styles from './Chatting.module.css';
 import { Send, Search, MessageSquare, PlusCircle, X } from 'lucide-react';
 
-// === NEW COMPONENT: Modal để chọn người dùng ===
 const NewChatModal = ({ users, onSelectUser, onClose, loading }) => {
+    // ... (Không thay đổi component này)
     return (
         <div className={styles.modalBackdrop}>
             <div className={styles.modalContent}>
@@ -36,7 +36,6 @@ const Chatting = () => {
     const { user } = useAuth();
     const location = useLocation();
     
-    // State quản lý
     const [conversations, setConversations] = useState([]);
     const [activeConversation, setActiveConversation] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -44,13 +43,10 @@ const Chatting = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [wsConnected, setWsConnected] = useState(false);
-
-    // === NEW STATE for Modal ===
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [chatCandidates, setChatCandidates] = useState([]);
     const [modalLoading, setModalLoading] = useState(false);
     
-    // Ref cho WebSocket và auto-scroll
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -80,115 +76,97 @@ const Chatting = () => {
         fetchConversations();
     }, [location.state]);
 
-    // Enhanced WebSocket connection handling
-    const connectWebSocket = (conversationId) => {
-        if (ws.current) {
-            ws.current.close();
-        }
+    // === SỬA LỖI TẠI ĐÂY: Logic kết nối và dọn dẹp được đơn giản hóa ===
 
-        // Clear any existing reconnect timeout
+    // Hàm này CHỈ tạo kết nối mới, không dọn dẹp cái cũ.
+    const connectWebSocket = (conversationId) => {
+        // Clear bất kỳ timeout nào đang chờ kết nối lại
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
         }
 
-        try {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/chat/${conversationId}/`;
-            
-            console.log('Attempting to connect to WebSocket:', wsUrl);
-            
-            ws.current = new WebSocket(wsUrl);
-            
-            ws.current.onopen = () => {
-                console.log("WebSocket connected for conversation:", conversationId);
-                setWsConnected(true);
-                setError(null);
-            };
-            
-            ws.current.onclose = (event) => {
-                console.log("WebSocket disconnected:", event.code, event.reason);
-                setWsConnected(false);
-                
-                // Only attempt to reconnect if it was an unexpected closure
-                if (event.code !== 1000 && activeConversation?.id === conversationId) {
-                    console.log("Attempting to reconnect in 3 seconds...");
-                    reconnectTimeoutRef.current = setTimeout(() => {
-                        connectWebSocket(conversationId);
-                    }, 3000);
-                }
-            };
-            
-            ws.current.onerror = (error) => {
-                console.error("WebSocket error:", error);
-                setWsConnected(false);
-                setError("Connection error. Messages may not send in real-time.");
-            };
-            
-            ws.current.onmessage = (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    console.log("Received message:", data);
-                    setMessages(prev => [...prev, data]);
-                } catch (err) {
-                    console.error("Error parsing WebSocket message:", err);
-                }
-            };
-        } catch (err) {
-            console.error("Error creating WebSocket connection:", err);
-            setError("Failed to establish real-time connection.");
-        }
+        //const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        //const wsUrl = `${protocol}//${window.location.host}/ws/chat/${conversationId}/`;
+        
+        // Kết nối thẳng đến backend Django ở cổng 8000 (hoặc cổng bạn đang chạy)
+        const wsUrl = `ws://localhost:8000/ws/chat/${conversationId}/`; 
+        
+        console.log('Attempting to connect to WebSocket:', wsUrl);
+        
+        const socket = new WebSocket(wsUrl);
+        
+        socket.onopen = () => {
+            console.log("WebSocket connected for conversation:", conversationId);
+            setWsConnected(true);
+            setError(null);
+        };
+        
+        socket.onclose = (event) => {
+            console.log("WebSocket disconnected:", event.code, event.reason);
+            setWsConnected(false);
+            if (event.code !== 1000 && activeConversation?.id === conversationId) {
+                console.log("Attempting to reconnect in 3 seconds...");
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    connectWebSocket(conversationId);
+                }, 3000);
+            }
+        };
+        
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            setWsConnected(false);
+            setError("Connection error. Messages may not send in real-time.");
+        };
+        
+        socket.onmessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                setMessages(prev => [...prev, data]);
+            } catch (err) {
+                console.error("Error parsing WebSocket message:", err);
+            }
+        };
+        
+        ws.current = socket; // Gán socket mới vào ref
     };
 
     useEffect(() => {
-        if (!activeConversation) {
-            // Clean up WebSocket if no active conversation
-            if (ws.current) {
-                ws.current.close();
-                ws.current = null;
-            }
-            setWsConnected(false);
-            return;
+        if (activeConversation) {
+            const fetchMessagesAndConnect = async () => {
+                try {
+                    console.log("Fetching messages for conversation:", activeConversation.id);
+                    const msgs = await apiService.getChatMessages(activeConversation.id);
+                    setMessages(msgs);
+                    // Kết nối WebSocket NGAY LẬP TỨC sau khi tải tin nhắn xong
+                    connectWebSocket(activeConversation.id);
+                } catch (err) {
+                    console.error("Failed to fetch messages:", err);
+                    setError("Failed to load messages.");
+                }
+            };
+
+            fetchMessagesAndConnect();
         }
 
-        const fetchMessagesAndConnect = async () => {
-            try {
-                // First fetch existing messages
-                console.log("Fetching messages for conversation:", activeConversation.id);
-                const msgs = await apiService.getChatMessages(activeConversation.id);
-                setMessages(msgs);
-                
-                // Then establish WebSocket connection with a small delay
-                setTimeout(() => {
-                    connectWebSocket(activeConversation.id);
-                }, 100);
-                
-            } catch (err) {
-                console.error("Failed to fetch messages:", err);
-                setMessages([]);
-                setError("Failed to load messages.");
-            }
-        };
-
-        fetchMessagesAndConnect();
-
-        // Cleanup function
+        // Cleanup function: Đây là nơi DUY NHẤT để đóng kết nối cũ.
+        // Nó sẽ chạy mỗi khi activeConversation thay đổi, TRƯỚC khi effect mới được chạy.
         return () => {
+            if (ws.current) {
+                console.log("Closing previous WebSocket connection.");
+                ws.current.close(1000, "Changing conversation"); // Mã 1000 là đóng bình thường
+                ws.current = null;
+            }
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
             }
-            if (ws.current) {
-                ws.current.close();
-                ws.current = null;
-            }
             setWsConnected(false);
         };
-    }, [activeConversation]);
+    }, [activeConversation]); // Chỉ phụ thuộc vào activeConversation
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // === MODAL FUNCTIONS ===
     const handleNewChatClick = async () => {
         setIsModalOpen(true);
         setModalLoading(true);
@@ -205,33 +183,22 @@ const Chatting = () => {
 
     const handleSelectUser = async (targetUserId) => {
         try {
-            console.log("Creating conversation with user:", targetUserId);
-            
-            // Close modal first
             setIsModalOpen(false);
-            
-            // Create or get conversation
             const newConversation = await apiService.getOrCreateConversation(targetUserId);
-            console.log("Conversation created/retrieved:", newConversation);
             
-            // Update conversations list
             setConversations(prev => {
                 const existing = prev.find(c => c.id === newConversation.id);
-                if (existing) {
-                    return prev; // Already exists
-                }
-                return [newConversation, ...prev];
+                return existing ? prev : [newConversation, ...prev];
             });
             
-            // Set as active conversation
             setActiveConversation(newConversation);
-
         } catch (err) {
             console.error("Failed to start conversation:", err);
             setError("Failed to start conversation. Please try again.");
         }
     };
-
+    
+    // ... (handleSendMessage và phần còn lại của component không đổi)
     const handleSendMessage = async (e) => {
         e.preventDefault();
         
@@ -255,12 +222,8 @@ const Chatting = () => {
                 text: newMessage,
             };
             
-            // Call the API service to send the message via HTTP.
             const sentMessage = await apiService.sendChatMessage(activeConversation.id, messageData);
-            
-            // Add the returned message object to the local state to update the UI
             setMessages(prev => [...prev, sentMessage]);
-            
             setNewMessage('');
             setError("Message sent (no real-time connection)");
         } catch (err) {
@@ -280,7 +243,6 @@ const Chatting = () => {
 
     return (
         <div className={styles.chatContainer}>
-            {/* Modal */}
             {isModalOpen && (
                 <NewChatModal 
                     users={chatCandidates}
@@ -290,7 +252,6 @@ const Chatting = () => {
                 />
             )}
 
-            {/* Error banner */}
             {error && (
                 <div className={styles.errorBanner}>
                     {error}
@@ -298,7 +259,6 @@ const Chatting = () => {
                 </div>
             )}
 
-            {/* Sidebar */}
             <div className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarTitle}>
@@ -330,7 +290,7 @@ const Chatting = () => {
                                 <div className={styles.conversationDetails}>
                                     <span className={styles.username}>{otherUser.username}</span>
                                     <span className={styles.lastMessage}>
-                                        {conv.last_message ? conv.last_message.text.substring(0, 25) + '...' : 'No messages yet.'}
+                                        {conv.last_message ? conv.last_message.text.substring(0, 25) + (conv.last_message.text.length > 25 ? '...' : '') : 'No messages yet.'}
                                     </span>
                                 </div>
                             </li>
@@ -339,7 +299,6 @@ const Chatting = () => {
                 </ul>
             </div>
 
-            {/* Chat Area */}
             <div className={styles.chatArea}>
                 {activeConversation ? (
                     <>
