@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language # MODIFIED: Import Language
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage # MODIFIED: Import Language
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -49,6 +49,32 @@ class UserBasicSerializer(serializers.ModelSerializer):
         except Profile.DoesNotExist:
             return False
 
+# === NEW CHAT SERIALIZERS START ===
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    """Serializer for a single chat message."""
+    sender = UserBasicSerializer(read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'conversation', 'sender', 'text', 'created_at']
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    """Serializer for a conversation, including participants and the last message."""
+    participants = UserBasicSerializer(many=True, read_only=True)
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ['id', 'participants', 'created_at', 'updated_at', 'last_message']
+
+    def get_last_message(self, obj):
+        """Get the last message sent in the conversation."""
+        last_msg = obj.messages.order_by('-created_at').first()
+        if last_msg:
+            return ChatMessageSerializer(last_msg).data
+        return None
 
 class CommunitySerializer(serializers.ModelSerializer):
     """Serializer cho Community model"""

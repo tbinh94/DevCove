@@ -229,13 +229,13 @@ class APIService {
    * @param {Array<number|string>} payload.post_ids - An array of post IDs to analyze.
    * @returns {Promise<object>} - The API response containing the overview.
    */
+
   async generatePostListOverview(payload) {
     return this.request('/api/posts/generate_overview/', {
       method: 'POST',
       body: payload,
     });
   }
-
   // Tags
   async getTags(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -250,6 +250,21 @@ class APIService {
   async getUserProfile(username) {
     return this.request(`/api/users/${username}/profile/`);
   }
+
+  async getChatCandidates() {
+  try {
+    return await this.request('/api/users/chat-candidates/', {
+      headers: {
+        'Authorization': `Bearer ${this.getCookie('access_token') || ''}`, // if you use JWT
+        // hoặc nếu dùng session auth thì không cần Authorization header
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching chat candidates:', error);
+    throw new APIError(error.status || 500, error.data || 'Failed to fetch chat candidates');
+  }
+}
+  
   async updateUserProfile(username, profileData) {
     if (!(profileData instanceof FormData)) {
       throw new Error('profileData must be an instance of FormData');
@@ -293,6 +308,38 @@ class APIService {
         body: payload,
     });
   }
+
+  // --- Chat ---
+
+  /**
+   * Fetches all conversations for the current user.
+   * @returns {Promise<Array<object>>} A list of conversations.
+   */
+  async getConversations() {
+    return this.request('/api/conversations/');
+  }
+
+  /**
+   * Gets or creates a one-on-one conversation with another user.
+   * @param {number} userId - The ID of the other user.
+   * @returns {Promise<object>} The conversation object.
+   */
+  async getOrCreateConversation(userId) {
+    return this.request('/api/conversations/get_or_create/', {
+      method: 'POST',
+      body: { user_id: userId },
+    });
+  }
+
+  /**
+   * Fetches the message history for a specific conversation.
+   * @param {string} conversationId - The UUID of the conversation.
+   * @returns {Promise<Array<object>>} A list of messages.
+   */
+  async getChatMessages(conversationId) {
+    return this.request(`/api/conversations/${conversationId}/messages/`);
+  }
+
 
   // --- Utility Accessor ---
   get utils() {

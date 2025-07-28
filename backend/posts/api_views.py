@@ -44,7 +44,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -60,6 +60,7 @@ from .serializers import (
     UserBasicSerializer,
     UserSerializer,
     VoteSerializer,
+    ConversationSerializer, ChatMessageSerializer
 )
 from dotenv import load_dotenv
 
@@ -731,6 +732,30 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [SearchFilter]
     search_fields = ['username', 'first_name', 'last_name']
 
+    def get_queryset(self):
+        """
+        Override get_queryset to ensure we always have a valid queryset
+        """
+        return User.objects.all()
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='chat-candidates')
+    def chat_candidates(self, request):
+        """
+        Returns a list of users the current user can start a chat with.
+        Excludes the current user.
+        """
+        try:
+            user = request.user
+            # Lấy tất cả user, loại trừ user hiện tại
+            queryset = User.objects.exclude(pk=user.pk).order_by('username')
+            serializer = UserSerializer(queryset, many=True, context={'request': request})
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Error fetching chat candidates: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated])
     def update_helper_status(self, request):
         """
@@ -830,7 +855,6 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def follow_status(self, request, username=None):
         """
@@ -853,7 +877,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(
                 {'error': f'User "{username}" not found'},
                 status=status.HTTP_404_NOT_FOUND
-        )
+            )
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def follow(self, request, username=None):
@@ -957,6 +981,113 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'An internal server error occurred.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# === NEW CONVERSATION VIEWSET START ===
+
+class ConversationViewSet(viewsets.ViewSet):
+    """
+    ViewSet for handling chat conversations and messages.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """Get all conversations for the current user."""
+        conversations = request.user.conversations.all().prefetch_related('participants', 'messages').order_by('-updated_at')
+        serializer = ConversationSerializer(conversations, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def get_or_create(self, request):
+        """
+        Get an existing conversation with another user or create a new one.
+        """
+        other_user_id = request.data.get('user_id')
+        if not other_user_id:
+            return Response({'error': 'user_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            other_user = get_object_or_404(User, id=other_user_id)
+            user = request.user
+
+            # Prevent creating conversation with yourself
+            if other_user == user:
+                return Response({'error': 'Cannot create conversation with yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Find existing conversation between the two users
+            conversation = Conversation.objects.annotate(
+                num_participants=Count('participants')
+            ).filter(
+                participants=user
+            ).filter(
+                participants=other_user
+            ).filter(
+                num_participants=2
+            ).first()
+
+            if not conversation:
+                conversation = Conversation.objects.create()
+                conversation.participants.add(user, other_user)
+
+            serializer = ConversationSerializer(conversation, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        """Retrieve all messages for a specific conversation."""
+        try:
+            conversation = get_object_or_404(Conversation, pk=pk)
+            # Ensure the user is a participant
+            if request.user not in conversation.participants.all():
+                return Response({'error': 'You are not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
+            
+            messages = conversation.messages.all().order_by('created_at')
+            # Implement pagination for messages if needed
+            serializer = ChatMessageSerializer(messages, many=True, context={'request': request})
+            return Response(serializer.data)
+            
+        except Conversation.DoesNotExist:
+            return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'])
+    def send_message(self, request, pk=None):
+        """Send a message to a conversation via HTTP (fallback for WebSocket)."""
+        try:
+            conversation = get_object_or_404(Conversation, pk=pk)
+            
+            # Ensure the user is a participant
+            if request.user not in conversation.participants.all():
+                return Response({'error': 'You are not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
+            
+            text = request.data.get('text', '').strip()
+            if not text:
+                return Response({'error': 'Message text is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create the message
+            message = ChatMessage.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                text=text
+            )
+            
+            # Update conversation timestamp
+            conversation.save()
+            
+            # Serialize and return the message
+            serializer = ChatMessageSerializer(message, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Conversation.DoesNotExist:
+            return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """

@@ -8,3 +8,4 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('posts.urls')), # Giữ dòng này để tất cả API đều có /api/
     ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

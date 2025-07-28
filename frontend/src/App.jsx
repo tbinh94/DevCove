@@ -14,6 +14,7 @@ import { Header, Footer, MainLayout, Sidebar } from './components/common/layout'
 import Settings from './components/users/Settings'; 
 import PasswordChange from './components/users/PasswordChange'; 
 import AuthTest from './AuthTest';
+import Chatting from './components/Chatting';
 
 // Main App Component
 const App = () => {
@@ -61,7 +62,8 @@ const App = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/post/:postId" element={<PostDetail />} />
           <Route path="/create-post" element={<CreatePost />} />
-          
+          <Route path="/chat" element={<Chatting />} />
+
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />
           <Route path="/profile" element={<UserProfile />} />

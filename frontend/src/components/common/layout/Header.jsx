@@ -1,6 +1,9 @@
+// src/components/Header/Header.jsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu } from 'lucide-react';
+// Thêm icon MessageSquare
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare } from 'lucide-react'; 
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -120,6 +123,11 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     );
   };
 
+  const handleChatClick = (e) => {
+    e.preventDefault();
+    navigate('/chat');
+  };
+
   return (
     <>
       <header className={styles.header}>
@@ -137,7 +145,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
             <div className={styles.logoWrapper}>
               <div 
                 className={styles.logoLink} 
-                onClick={() => window.location.reload()}
+                onClick={() => window.location.href = 'http://localhost:3000'}
                 style={{ cursor: 'pointer' }}
               >
                 <img src={Logo} alt="DevCove Logo" className={styles.logoIcon} />
@@ -160,6 +168,16 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                 >
                   <Plus className={styles.buttonIcon} />
                   <span className={styles.createPostButtonText}>Create</span>
+                </button>
+                
+                {/* NÚT CHAT MỚI */}
+                <button
+                  onClick={handleChatClick}
+                  className={styles.chatButton}
+                  title="Chat"
+                >
+                  <MessageSquare className={styles.buttonIcon} />
+                  <span className={styles.chatButtonText}>Chat</span>
                 </button>
 
                 <div className={styles.notificationWrapper}>

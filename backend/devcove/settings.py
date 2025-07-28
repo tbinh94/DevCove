@@ -23,8 +23,17 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'django_filters',
     'posts',
+    'channels',
 ]
-
+ASGI_APPLICATION = 'devcove.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 # Add these to your Django settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -122,7 +131,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'devcove.wsgi.application'
+# WSGI_APPLICATION = 'devcove.wsgi.application'
 
 """
 DATABASES = {

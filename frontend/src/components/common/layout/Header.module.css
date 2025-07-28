@@ -543,3 +543,38 @@
   .dropdownArrow { display: none; }
   .modalContent { width: 95%; }
 }
+
+.chatButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--color-primary-light); /* Hoặc màu bạn muốn */
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  text-decoration: none; /* Vì đây là Link */
+}
+
+.chatButton:hover {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.chatButton .buttonIcon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Ẩn chữ trên màn hình nhỏ để tiết kiệm không gian */
+@media (max-width: 768px) {
+  .chatButtonText {
+    display: none;
+  }
+  .chatButton {
+    padding: 8px;
+  }
+}
