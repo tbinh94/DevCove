@@ -340,6 +340,19 @@ class APIService {
     return this.request(`/api/conversations/${conversationId}/messages/`);
   }
 
+  /**
+   * Sends a chat message to a conversation via HTTP (as a fallback).
+   * @param {string} conversationId The ID of the conversation.
+   * @param {object} messageData The message payload, e.g., { text: "Hello" }.
+   * @returns {Promise<object>} The sent message object returned from the API.
+   */
+  async sendChatMessage(conversationId, messageData) {
+    return this.request(`/api/conversations/${conversationId}/send_message/`, {
+      method: 'POST',
+      body: messageData,
+    });
+  }
+
 
   // --- Utility Accessor ---
   get utils() {

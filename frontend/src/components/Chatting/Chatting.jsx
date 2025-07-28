@@ -253,17 +253,18 @@ const Chatting = () => {
             console.log("Sending message via API fallback");
             const messageData = {
                 text: newMessage,
-                conversation: activeConversation.id
             };
             
-            // You'll need to implement this API method
-            // const sentMessage = await apiService.sendChatMessage(activeConversation.id, messageData);
-            // setMessages(prev => [...prev, sentMessage]);
+            // Call the API service to send the message via HTTP.
+            const sentMessage = await apiService.sendChatMessage(activeConversation.id, messageData);
+            
+            // Add the returned message object to the local state to update the UI
+            setMessages(prev => [...prev, sentMessage]);
             
             setNewMessage('');
             setError("Message sent (no real-time connection)");
         } catch (err) {
-            console.error("Failed to send message:", err);
+            console.error("Failed to send message via fallback:", err);
             setError("Failed to send message. Please try again.");
         }
     };
