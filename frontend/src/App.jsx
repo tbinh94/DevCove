@@ -23,10 +23,11 @@ const App = () => {
     // Điều này đảm bảo mọi request POST/PUT/DELETE sau này đều sẽ có token
     apiService.utils.initCSRF();
   }, [])
+  document.body.classList.add('dark-theme');
   return (
   <AuthProvider>
     <Router>
-      <div style={{ minHeight: '100vh', backgroundColor: '#dae0e6' }}>
+      <div>
         <Routes>
           {/* Routes có MainLayout (sidebar + content) */}
           <Route path="/" element={<MainLayout />}>
