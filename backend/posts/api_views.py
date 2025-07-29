@@ -98,15 +98,25 @@ class PostViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['community', 'author']
     search_fields = ['title', 'content', 'tags__name']
-    ordering_fields = ['created_at', 'calculated_score']
-    ordering = ['-created_at']
+    
+    # <<< THAY ĐỔI 1: THÊM CÁC TRƯỜNG SẮP XẾP MỚI >>>
+    ordering_fields = ['created_at', 'calculated_score', 'title']
+    ordering = ['-created_at'] # Vẫn giữ mặc định là mới nhất
 
-    # THAY THẾ HÀM get_queryset CŨ BẰNG HÀM MỚI NÀY
+    # <<< THAY ĐỔI 2: CẬP NHẬT get_queryset ĐỂ TÍNH calculated_score >>>
     def get_queryset(self):
         # Bắt đầu với queryset cơ bản
         queryset = Post.objects.select_related('author', 'community') \
                                .prefetch_related('tags', 'votes') \
-                               .all().order_by('-created_at')
+                               .annotate(
+                                   # Tính toán điểm số trực tiếp trong DB query
+                                   calculated_score=Coalesce(Sum(Case(
+                                       When(votes__is_upvote=True, then=1),
+                                       When(votes__is_upvote=False, then=-1),
+                                       default=0,
+                                       output_field=IntegerField()
+                                   )), 0)
+                               ).all() # Bỏ order_by mặc định ở đây để OrderingFilter xử lý
 
         # Lấy tham số 'tags' từ URL (ví dụ: ?tags=cv,coding)
         tags_param = self.request.query_params.get('tags', None)
@@ -116,17 +126,14 @@ class PostViewSet(viewsets.ModelViewSet):
             tag_slugs = [slug.strip() for slug in tags_param.split(',')]
             
             # Lọc các bài viết có tag với slug nằm trong danh sách trên
-            # tags__slug__in là cú pháp của Django để lọc trên trường của quan hệ ManyToMany
             queryset = queryset.filter(tags__slug__in=tag_slugs).distinct()
 
-        # ===== THÊM FILTER CHO BOT REVIEWED =====
+        # Thêm filter cho bot reviewed
         bot_reviewed = self.request.query_params.get('bot_reviewed', None)
         if bot_reviewed is not None:
             if bot_reviewed.lower() in ['true', '1', 'yes']:
-                # Chỉ lấy posts đã được bot review
                 queryset = queryset.filter(comments__is_bot=True).distinct()
             elif bot_reviewed.lower() in ['false', '0', 'no']:
-                # Chỉ lấy posts chưa được bot review
                 queryset = queryset.exclude(comments__is_bot=True)
         
         return queryset

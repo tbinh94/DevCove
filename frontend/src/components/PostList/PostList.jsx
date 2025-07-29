@@ -1,7 +1,7 @@
 // PostList.jsx - PHIÊN BẢN ĐẦY ĐỦ
 import React, { useState, useEffect, useMemo, useRef } from 'react'; // THÊM useRef
-import { Link, useSearchParams, useLocation } from 'react-router-dom';
-import { ChevronUp, ChevronDown, MessageCircle, Bot, X } from 'lucide-react';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronUp, ChevronDown, MessageCircle, Bot, X, Zap, ChevronsUpDown, Calendar, ArrowDownAZ } from 'lucide-react';
 import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
@@ -16,13 +16,13 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
 
 const PostList = ({ showAllTags = false }) => {
   const { isAuthenticated } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams(); // THÊM setSearchParams
   const location = useLocation();
   
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10)); // Lấy page từ URL
   const [postsPerPage] = useState(10);
   const [totalPosts, setTotalPosts] = useState(0);
 
@@ -34,15 +34,17 @@ const PostList = ({ showAllTags = false }) => {
   // TẠO REF ĐỂ THAM CHIẾU ĐẾN MODAL
   const overviewModalRef = useRef(null);
 
+  // <<< THAY ĐỔI 1: LẤY CÁC THAM SỐ TỪ URL >>>
   const urlParams = useMemo(() => {
     try {
       return {
         tags: searchParams.get('tags'),
-        search: searchParams.get('search')
+        search: searchParams.get('search'),
+        ordering: searchParams.get('ordering') || '-created_at' // Mặc định là 'New'
       };
     } catch (error) {
       console.error('Error reading search params:', error);
-      return { tags: null, search: null };
+      return { tags: null, search: null, ordering: '-created_at' };
     }
   }, [searchParams]);
 
@@ -56,7 +58,7 @@ const PostList = ({ showAllTags = false }) => {
         const params = {
           page: currentPage,
           page_size: postsPerPage,
-          sort: 'new',
+          ordering: urlParams.ordering,
         };
 
         if (urlParams.tags) params.tags = urlParams.tags;
@@ -75,7 +77,8 @@ const PostList = ({ showAllTags = false }) => {
     };
 
     fetchPosts();
-  }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search]);
+  // <<< THAY ĐỔI 3: CẬP NHẬT DEPENDENCY ARRAY >>>
+  }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering]);
   
   // TẠO USEEFFECT ĐỂ TỰ ĐỘNG CUỘN
   useEffect(() => {
@@ -86,6 +89,18 @@ const PostList = ({ showAllTags = false }) => {
         }, 100);
     }
   }, [isOverviewModalOpen]);
+
+  // <<< THAY ĐỔI 4: TẠO HÀM XỬ LÝ THAY ĐỔI SẮP XẾP >>>
+  const handleSortChange = (newOrdering) => {
+    // Cập nhật search params, giữ lại các params khác như tags, search
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('ordering', newOrdering);
+      newParams.set('page', '1'); // Quay về trang 1 khi đổi sắp xếp
+      return newParams;
+    });
+    setCurrentPage(1); // Cập nhật state trang hiện tại
+  };
 
   const handleVote = async (postId, type) => {
     if (!isAuthenticated) return;
@@ -191,16 +206,41 @@ const PostList = ({ showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      <div className={styles.overviewControlPanel}>
+      {/* <<< THAY ĐỔI 5: THÊM CÁC NÚT SẮP XẾP VÀO GIAO DIỆN >>> */}
+      <div className={styles.controlsContainer}>
         <button 
           onClick={handleGenerateOverview} 
           disabled={isOverviewLoading || !isAuthenticated || posts.length === 0}
           className={styles.overviewButton}
           title={!isAuthenticated ? "Đăng nhập để sử dụng" : "Tạo tổng quan cho các bài đăng hiện tại bằng AI"}
         >
-          <Bot size={18} />
-          {isOverviewLoading ? 'Đang phân tích...' : 'Lấy tổng quan AI'}
+          <div className={styles.overviewButtonInner}>
+            <Bot size={18} />
+            {isOverviewLoading ? 'Đang phân tích...' : 'Lấy tổng quan AI'}
+          </div>
         </button>
+        
+        <div className={styles.sortControls}>
+            <button 
+                onClick={() => handleSortChange('-calculated_score')}
+                className={`${styles.sortButton} ${urlParams.ordering === '-calculated_score' ? styles.activeSort : ''}`}
+            >
+                <Zap size={16} /> Hot
+            </button>
+            <button 
+                onClick={() => handleSortChange('-created_at')}
+                className={`${styles.sortButton} ${urlParams.ordering === '-created_at' ? styles.activeSort : ''}`}
+            >
+                <Calendar size={16} /> New
+            </button>
+            <button 
+                onClick={() => handleSortChange('title')}
+                className={`${styles.sortButton} ${urlParams.ordering === 'title' ? styles.activeSort : ''}`}
+            >
+                <ArrowDownAZ size={16} /> A-Z
+            </button>
+        </div>
+
         {overviewError && <p className={styles.overviewError}>{overviewError}</p>}
       </div>
 
