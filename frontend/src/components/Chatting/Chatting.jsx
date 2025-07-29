@@ -6,7 +6,6 @@ import styles from './Chatting.module.css';
 import { Send, Search, MessageSquare, PlusCircle, X } from 'lucide-react';
 
 const NewChatModal = ({ users, onSelectUser, onClose, loading }) => {
-    // ... (Không thay đổi component này)
     return (
         <div className={styles.modalBackdrop}>
             <div className={styles.modalContent}>
@@ -37,6 +36,8 @@ const Chatting = () => {
     const location = useLocation();
     
     const [conversations, setConversations] = useState([]);
+    const [filteredConversations, setFilteredConversations] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [activeConversation, setActiveConversation] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -50,6 +51,52 @@ const Chatting = () => {
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
+
+    // Helper function to format timestamp safely
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return 'Now';
+        
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+            return 'Now';
+        }
+        
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Helper function to get other participant
+    const getOtherParticipant = (participants) => {
+        if (!user || !participants) return null;
+        return participants.find(p => p.id !== user.id);
+    };
+
+    // Filter conversations based on search query
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setFilteredConversations(conversations);
+        } else {
+            const filtered = conversations.filter(conv => {
+                const otherUser = getOtherParticipant(conv.participants);
+                if (!otherUser) return false;
+                
+                const username = otherUser.username.toLowerCase();
+                const query = searchQuery.toLowerCase().trim();
+                
+                return username.includes(query);
+            });
+            setFilteredConversations(filtered);
+        }
+    }, [conversations, searchQuery, user]);
+
+    // Handle search input change
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    // Clear search
+    const clearSearch = () => {
+        setSearchQuery('');
+    };
 
     useEffect(() => {
         const fetchConversations = async () => {
@@ -76,19 +123,11 @@ const Chatting = () => {
         fetchConversations();
     }, [location.state]);
 
-    // === SỬA LỖI TẠI ĐÂY: Logic kết nối và dọn dẹp được đơn giản hóa ===
-
-    // Hàm này CHỈ tạo kết nối mới, không dọn dẹp cái cũ.
     const connectWebSocket = (conversationId) => {
-        // Clear bất kỳ timeout nào đang chờ kết nối lại
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
         }
 
-        //const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        //const wsUrl = `${protocol}//${window.location.host}/ws/chat/${conversationId}/`;
-        
-        // Kết nối thẳng đến backend Django ở cổng 8000 (hoặc cổng bạn đang chạy)
         const wsUrl = `ws://localhost:8000/ws/chat/${conversationId}/`; 
         
         console.log('Attempting to connect to WebSocket:', wsUrl);
@@ -121,13 +160,39 @@ const Chatting = () => {
         socket.onmessage = (e) => {
             try {
                 const data = JSON.parse(e.data);
-                setMessages(prev => [...prev, data]);
+                console.log("Received WebSocket message:", data);
+                
+                // Ensure the message has all required fields and normalize the structure
+                const normalizedMessage = {
+                    id: data.id || `temp_${Date.now()}`,
+                    text: data.message || data.text,
+                    sender: data.sender || { username: data.sender_username },
+                    sender_username: data.sender_username || (data.sender ? data.sender.username : ''),
+                    created_at: data.created_at || new Date().toISOString(),
+                    conversation: data.conversation || activeConversation?.id
+                };
+                
+                setMessages(prev => {
+                    // Check if message already exists to prevent duplicates
+                    const exists = prev.some(msg => 
+                        (msg.id && msg.id === normalizedMessage.id) ||
+                        (msg.text === normalizedMessage.text && 
+                         msg.sender_username === normalizedMessage.sender_username &&
+                         Math.abs(new Date(msg.created_at) - new Date(normalizedMessage.created_at)) < 1000)
+                    );
+                    
+                    if (exists) {
+                        return prev;
+                    }
+                    
+                    return [...prev, normalizedMessage];
+                });
             } catch (err) {
                 console.error("Error parsing WebSocket message:", err);
             }
         };
         
-        ws.current = socket; // Gán socket mới vào ref
+        ws.current = socket;
     };
 
     useEffect(() => {
@@ -137,7 +202,6 @@ const Chatting = () => {
                     console.log("Fetching messages for conversation:", activeConversation.id);
                     const msgs = await apiService.getChatMessages(activeConversation.id);
                     setMessages(msgs);
-                    // Kết nối WebSocket NGAY LẬP TỨC sau khi tải tin nhắn xong
                     connectWebSocket(activeConversation.id);
                 } catch (err) {
                     console.error("Failed to fetch messages:", err);
@@ -148,12 +212,10 @@ const Chatting = () => {
             fetchMessagesAndConnect();
         }
 
-        // Cleanup function: Đây là nơi DUY NHẤT để đóng kết nối cũ.
-        // Nó sẽ chạy mỗi khi activeConversation thay đổi, TRƯỚC khi effect mới được chạy.
         return () => {
             if (ws.current) {
                 console.log("Closing previous WebSocket connection.");
-                ws.current.close(1000, "Changing conversation"); // Mã 1000 là đóng bình thường
+                ws.current.close(1000, "Changing conversation");
                 ws.current = null;
             }
             if (reconnectTimeoutRef.current) {
@@ -161,7 +223,7 @@ const Chatting = () => {
             }
             setWsConnected(false);
         };
-    }, [activeConversation]); // Chỉ phụ thuộc vào activeConversation
+    }, [activeConversation]);
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -198,17 +260,18 @@ const Chatting = () => {
         }
     };
     
-    // ... (handleSendMessage và phần còn lại của component không đổi)
     const handleSendMessage = async (e) => {
         e.preventDefault();
         
         if (!newMessage.trim()) return;
         
+        const messageText = newMessage.trim();
+        setNewMessage(''); // Clear input immediately for better UX
+        
         // Try WebSocket first
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
             try {
-                ws.current.send(JSON.stringify({ message: newMessage }));
-                setNewMessage('');
+                ws.current.send(JSON.stringify({ message: messageText }));
                 return;
             } catch (err) {
                 console.error("WebSocket send failed:", err);
@@ -219,22 +282,26 @@ const Chatting = () => {
         try {
             console.log("Sending message via API fallback");
             const messageData = {
-                text: newMessage,
+                text: messageText,
             };
             
             const sentMessage = await apiService.sendChatMessage(activeConversation.id, messageData);
-            setMessages(prev => [...prev, sentMessage]);
-            setNewMessage('');
+            
+            // Normalize the message structure
+            const normalizedMessage = {
+                ...sentMessage,
+                sender_username: sentMessage.sender ? sentMessage.sender.username : user.username,
+                created_at: sentMessage.created_at || new Date().toISOString()
+            };
+            
+            setMessages(prev => [...prev, normalizedMessage]);
             setError("Message sent (no real-time connection)");
         } catch (err) {
             console.error("Failed to send message via fallback:", err);
             setError("Failed to send message. Please try again.");
+            // Restore the message in input if sending failed
+            setNewMessage(messageText);
         }
-    };
-
-    const getOtherParticipant = (participants) => {
-        if (!user || !participants) return null;
-        return participants.find(p => p.id !== user.id);
     };
 
     if (loading) {
@@ -269,33 +336,54 @@ const Chatting = () => {
                     </div>
                     <div className={styles.searchWrapper}>
                         <Search size={18} className={styles.searchIcon} />
-                        <input type="text" placeholder="Search chats..." className={styles.searchInput} />
+                        <input 
+                            type="text" 
+                            placeholder="Search chats..." 
+                            className={styles.searchInput}
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                        />
+                        {searchQuery && (
+                            <button 
+                                onClick={clearSearch} 
+                                className={styles.clearSearchButton}
+                                type="button"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                 </div>
                 <ul className={styles.conversationList}>
-                    {conversations.map(conv => {
-                        const otherUser = getOtherParticipant(conv.participants);
-                        if (!otherUser) return null;
-                        return (
-                            <li 
-                                key={conv.id} 
-                                className={`${styles.conversationItem} ${activeConversation?.id === conv.id ? styles.active : ''}`}
-                                onClick={() => setActiveConversation(conv)}
-                            >
-                                <img 
-                                    src={otherUser.avatar_url || `https://ui-avatars.com/api/?name=${otherUser.username}&background=random`} 
-                                    alt={otherUser.username} 
-                                    className={styles.avatar} 
-                                />
-                                <div className={styles.conversationDetails}>
-                                    <span className={styles.username}>{otherUser.username}</span>
-                                    <span className={styles.lastMessage}>
-                                        {conv.last_message ? conv.last_message.text.substring(0, 25) + (conv.last_message.text.length > 25 ? '...' : '') : 'No messages yet.'}
-                                    </span>
-                                </div>
-                            </li>
-                        );
-                    })}
+                    {filteredConversations.length === 0 && searchQuery ? (
+                        <li className={styles.noResults}>
+                            <p>No chats found for "{searchQuery}"</p>
+                        </li>
+                    ) : (
+                        filteredConversations.map(conv => {
+                            const otherUser = getOtherParticipant(conv.participants);
+                            if (!otherUser) return null;
+                            return (
+                                <li 
+                                    key={conv.id} 
+                                    className={`${styles.conversationItem} ${activeConversation?.id === conv.id ? styles.active : ''}`}
+                                    onClick={() => setActiveConversation(conv)}
+                                >
+                                    <img 
+                                        src={otherUser.avatar_url || `https://ui-avatars.com/api/?name=${otherUser.username}&background=random`} 
+                                        alt={otherUser.username} 
+                                        className={styles.avatar} 
+                                    />
+                                    <div className={styles.conversationDetails}>
+                                        <span className={styles.username}>{otherUser.username}</span>
+                                        <span className={styles.lastMessage}>
+                                            {conv.last_message ? conv.last_message.text.substring(0, 25) + (conv.last_message.text.length > 25 ? '...' : '') : 'No messages yet.'}
+                                        </span>
+                                    </div>
+                                </li>
+                            );
+                        })
+                    )}
                 </ul>
             </div>
 
@@ -315,13 +403,13 @@ const Chatting = () => {
                                 const isSentByMe = senderUsername === user.username;
                                 return (
                                     <div 
-                                        key={msg.id || index}
+                                        key={msg.id || `msg_${index}`}
                                         className={`${styles.messageBubble} ${isSentByMe ? styles.sent : styles.received}`}
                                     >
                                         <div className={styles.messageContent}>
                                             <p>{msg.text || msg.message}</p>
                                             <span className={styles.timestamp}>
-                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatTimestamp(msg.created_at)}
                                             </span>
                                         </div>
                                     </div>
@@ -348,6 +436,9 @@ const Chatting = () => {
                         <MessageSquare size={64} />
                         <h2>Your Messages</h2>
                         <p>Select a conversation to start chatting, or start a new one.</p>
+                        {searchQuery && (
+                            <p>Search results for: "{searchQuery}"</p>
+                        )}
                     </div>
                 )}
             </div>

@@ -43,7 +43,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
         print(f"--- Kết nối WebSocket cho '{self.room_group_name}' đã được chấp nhận. ---")
 
-
     async def disconnect(self, close_code):
         print(f"--- WebSocket đã ngắt kết nối, mã lỗi: {close_code} ---")
         if hasattr(self, 'room_group_name'):
@@ -51,13 +50,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 self.channel_name
             )
+
     @database_sync_to_async
-    def get_serialized_message(self, message_obj):
+    def create_message_payload(self, message_obj):
         """
-        Hàm helper để chạy serializer trong môi trường bất đồng bộ.
+        Tạo payload message an toàn cho WebSocket (không dùng serializer để tránh lỗi UUID)
         """
-        # Dùng serializer để tạo ra dữ liệu nhất quán
-        return ChatMessageSerializer(message_obj).data
+        try:
+            return {
+                'id': str(message_obj.id),  # Chuyển UUID thành string
+                'text': message_obj.text,
+                'message': message_obj.text,  # Để tương thích với frontend
+                'sender_username': message_obj.sender.username,
+                'sender': {
+                    'id': message_obj.sender.id,
+                    'username': message_obj.sender.username
+                },
+                'created_at': message_obj.created_at.isoformat(),  # Chuyển datetime thành ISO string
+                'conversation': str(message_obj.conversation.id)
+            }
+        except Exception as e:
+            print(f"Lỗi khi tạo payload: {e}")
+            return None
     
     async def receive(self, text_data):
         try:
@@ -68,25 +82,42 @@ class ChatConsumer(AsyncWebsocketConsumer):
             chat_message = await self.save_message(message_text)
 
             if chat_message:
-                # 2. DÙNG SERIALIZER ĐỂ TẠO PAYLOAD
-                message_payload = await self.get_serialized_message(chat_message)
-
-                # 3. Gửi payload đã được serialize đi
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'chat_message',
-                        'message': message_payload 
-                    }
-                )
+                # Tạo payload an toàn không chứa UUID objects
+                message_payload = await self.create_message_payload(chat_message)
+                
+                if message_payload:
+                    # Gửi payload đã được serialize đi
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'chat_message',
+                            'message': message_payload 
+                        }
+                    )
+                else:
+                    print("Không thể tạo payload message")
+                    
+        except json.JSONDecodeError:
+            print("Lỗi decode JSON")
+            await self.send(text_data=json.dumps({'error': 'Invalid JSON format'}))
+        except KeyError:
+            print("Thiếu trường 'message' trong dữ liệu")
+            await self.send(text_data=json.dumps({'error': 'Message field is required'}))
         except Exception as e:
             print(f"Lỗi trong receive: {e}")
             await self.send(text_data=json.dumps({'error': 'Không thể gửi tin nhắn'}))
 
     async def chat_message(self, event):
+        """
+        Nhận message từ room group và gửi đến WebSocket
+        """
         message = event['message']
-        # Dữ liệu từ serializer đã an toàn để gửi dưới dạng JSON
-        await self.send(text_data=json.dumps(message))
+        
+        try:
+            # Gửi message đến client
+            await self.send(text_data=json.dumps(message))
+        except Exception as e:
+            print(f"Lỗi khi gửi message đến client: {e}")
 
     @database_sync_to_async
     def is_participant(self):
@@ -114,7 +145,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 sender=self.scope["user"],
                 text=message_text
             )
+            # Cập nhật thời gian của conversation
             conversation.save()
+            print(f"Đã lưu tin nhắn: ID={message.id}, Text='{message_text}', User='{self.scope['user'].username}'")
             return message
         except Exception as e:
             print(f"Lỗi khi lưu tin nhắn: {e}")
