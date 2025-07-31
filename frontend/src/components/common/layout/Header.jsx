@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// Thêm icon MessageSquare
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare } from 'lucide-react'; 
+// Thêm icon FlaskConical cho Sandbox
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical } from 'lucide-react'; 
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -127,6 +127,11 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     e.preventDefault();
     navigate('/chat');
   };
+  
+  // === NEW: Hàm xử lý khi nhấn nút Sandbox ===
+  const handleSandboxClick = () => {
+    navigate('/sandbox'); // Điều hướng tới trang /sandbox
+  };
 
   return (
     <>
@@ -170,7 +175,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                   <span className={styles.createPostButtonText}>Create</span>
                 </button>
                 
-                {/* NÚT CHAT MỚI */}
+                {/* NÚT CHAT */}
                 <button
                   onClick={handleChatClick}
                   className={styles.chatButton}
@@ -178,6 +183,16 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                 >
                   <MessageSquare className={styles.buttonIcon} />
                   <span className={styles.chatButtonText}>Chat</span>
+                </button>
+                
+                {/* === NEW: NÚT SANDBOX === */}
+                <button
+                  onClick={handleSandboxClick}
+                  className={styles.sandboxButton} // Thêm class mới cho styling
+                  title="Code Sandbox"
+                >
+                  <FlaskConical className={styles.buttonIcon} />
+                  <span className={styles.sandboxButtonText}>Sandbox</span>
                 </button>
 
                 <div className={styles.notificationWrapper}>

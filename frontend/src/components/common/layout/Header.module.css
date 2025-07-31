@@ -578,3 +578,44 @@
     padding: 8px;
   }
 }
+.sandboxButton {
+  display: flex;
+  align-items: center;
+  background-color: #3a3a3a; /* Màu nền khác biệt một chút */
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s, border-color 0.2s;
+  margin-left: 8px; /* Thêm khoảng cách với nút bên trái */
+}
+
+.sandboxButton:hover {
+  background-color: #4a4a4a;
+  border-color: #777;
+}
+
+.sandboxButton .buttonIcon {
+  margin-right: 6px;
+  width: 18px;
+  height: 18px;
+}
+
+.sandboxButtonText {
+  display: block;
+}
+
+/* Ẩn chữ trên màn hình nhỏ */
+@media (max-width: 768px) {
+  .sandboxButtonText {
+    display: none;
+  }
+  .sandboxButton .buttonIcon {
+    margin-right: 0;
+  }
+  .sandboxButton {
+    padding: 8px;
+  }
+}

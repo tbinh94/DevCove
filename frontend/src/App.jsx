@@ -15,6 +15,7 @@ import Settings from './components/users/Settings';
 import PasswordChange from './components/users/PasswordChange'; 
 import AuthTest from './AuthTest';
 import Chatting from './components/Chatting';
+import SandboxPage from './components/pages/SandboxPage/SandboxPage';
 
 // Main App Component
 const App = () => {
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/post/:postId" element={<PostDetail />} />
           <Route path="/create-post" element={<CreatePost />} />
           <Route path="/chat" element={<Chatting />} />
+          <Route path="/sandbox" element={<SandboxPage />} />
 
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />
