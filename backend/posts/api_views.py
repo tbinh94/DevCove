@@ -20,6 +20,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from rest_framework.decorators import action
+from django.http import HttpResponse
 
 # Import thư viện Gemini
 from google import genai
@@ -66,8 +67,6 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Import dotenv để tải biến môi trường từ file .env (khuyên dùng)
-from dotenv import load_dotenv
 
 
 
@@ -314,7 +313,7 @@ class PostViewSet(viewsets.ModelViewSet):
                 **additional_params
             )
 
-            ai_response_text = self._get_ai_analysis(final_prompt)
+            ai_response_text = get_ai_response(final_prompt)
             if isinstance(ai_response_text, Response):
                 return ai_response_text
             
@@ -392,25 +391,6 @@ class PostViewSet(viewsets.ModelViewSet):
                 return 'platform_name is required for ci_cd_integration'
         
         return None
-
-    def _get_ai_analysis(self, prompt: str):
-        """Gets AI analysis from Gemini API using the final prompt string."""
-        load_dotenv()
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt 
-            )
-            
-            ai_text = response.text
-            if not ai_text or not ai_text.strip():
-                return Response({'error': 'AI returned an empty response.'}, status=status.HTTP_502_BAD_GATEWAY)
-            
-            return ai_text
-            
-        except Exception as e:
-            logger.error(f"AI service failed: {e}")
-            return Response({'error': f'AI service failed: {str(e)}'}, status=status.HTTP_502_BAD_GATEWAY)
 
     def _create_bot_comment(self, post, user, formatted_response):
         """Create bot comment with formatted response."""
@@ -1596,3 +1576,70 @@ def create_tag(request):
             {'error': 'Failed to create tag. Please try again.'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+def get_ai_response(prompt: str):
+    """Gets AI analysis from Gemini API using the final prompt string."""
+    load_dotenv()
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt 
+        )
+
+        ai_text = response.text
+        if not ai_text or not ai_text.strip():
+            logger.warning("AI returned an empty response.")
+            return None # Trả về None để dễ xử lý lỗi
+
+        return ai_text
+
+    except Exception as e:
+        logger.error(f"AI service failed: {e}")
+        # Không trả về Response ở đây để hàm có thể tái sử dụng linh hoạt
+        return None
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_refactor_code_view(request):
+    """
+    API endpoint để nhận code ĐỘNG từ sandbox của người dùng, gửi đến AI,
+    và trả về code đã được sửa một cách an toàn.
+    """
+    user_code = request.data.get('code')
+    recommendation = request.data.get('recommendation_text')
+
+    if not user_code or not recommendation:
+        # Đối với lỗi, chúng ta vẫn có thể dùng Response của DRF để trả về JSON
+        from rest_framework.response import Response 
+        return Response(
+            {'error': '`code` and `recommendation_text` are required.'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    final_prompt = build_prompt(
+        content=user_code,
+        language='javascript',
+        prompt_type='refactor_code',
+        recommendation_text=recommendation
+    )
+    
+    fixed_code_raw = get_ai_response(final_prompt)
+
+    if fixed_code_raw is None:
+        from rest_framework.response import Response
+        return Response(
+            {'error': 'AI service failed to generate a fix.'}, 
+            status=status.HTTP_502_BAD_GATEWAY
+        )
+
+    code_match = re.search(r'```(?:javascript|js)?\n(.*?)```', fixed_code_raw, re.DOTALL)
+    
+    if code_match:
+        fixed_code = code_match.group(1).strip()
+    else:
+        fixed_code = fixed_code_raw.strip()
+
+    # === THAY ĐỔI CỐT LÕI NẰM Ở ĐÂY ===
+    # Sử dụng HttpResponse gốc của Django để đảm bảo trả về HTML thô.
+    # Nó sẽ không thực hiện bất kỳ quá trình JSON serialization nào.
+    return HttpResponse(f"<code>{fixed_code}</code>", content_type='text/html')

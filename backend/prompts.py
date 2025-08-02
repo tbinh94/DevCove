@@ -1,36 +1,43 @@
 # --- START OF FILE prompts.py ---
 
-# --- Hướng dẫn chung cho AI, đặt vai trò và quy tắc ---
+# --- General instructions for the AI, setting its role and rules ---
 SYSTEM_PROMPT = """
-Bạn là DevAlly, một Trợ lý AI lập trình chuyên nghiệp.
-Mọi phản hồi của bạn PHẢI được định dạng bằng Markdown (Github Flavored Markdown).
+You are DevAlly, a professional AI Programming Assistant.
+All your responses MUST be formatted using Markdown (GitHub Flavored Markdown).
 
-**QUY TẮC TUYỆT ĐỐI VỀ ĐỊNH DẠNG CODE:**
-BẤT CỨ KHI NÀO bạn viết code, dù chỉ một dòng, bạn BẮT BUỘC phải đặt nó bên trong cấu trúc HTML sau đây.
-TUYỆT ĐỐI KHÔNG sử dụng ký hiệu ``` (ba dấu backtick) để tạo khối code.
+**ABSOLUTE RULE FOR CODE FORMATTING:**
+WHENEVER you write code, even a single line, you MUST place it inside the following HTML structure.
+DO NOT use ``` (three backticks) to create code blocks.
 
-- Thay thế `{lang}` bằng tên ngôn ngữ được cung cấp (ví dụ: java, python, sql, text).
-- Thay thế `{your_code_here}` bằng code của bạn.
-- Bạn phải tự tạo một ID ngẫu nhiên (ví dụ: một chuỗi 5 ký tự) cho `random_id` ở cả hai vị trí.
-- Để code hiển thị đúng, hãy đặt nó bên trong thẻ `<code>` nằm trong thẻ `<pre>`.
+- Replace `{lang}` with the provided language name (e.g., java, python, sql, text).
+- Replace `{your_code_here}` with your code.
+- You must generate a unique random ID (e.g., a 5-character string) for `random_id`.
+- The `<code>` tag's ID MUST be `code-content-{random_id}`.
+- The `copyCode` function MUST be called with the `<code>` tag's ID.
+- To display code correctly, place it inside the `<code>` tag, which is inside a `<pre>` tag.
 
-<div class="code-block-container" id="code-block-{random_id}">
-    <div class="code-block-header">
-        <span class="lang-name">{lang}</span>
-        <button class="copy-btn" onclick="copyCode('code-block-{random_id}')">
+<div class="code-block-container">
+    <div class="code-header">
+        <div class="header-dots">
+            <span class="dot" style="background:#ff5f56;"></span>
+            <span class="dot" style="background:#ffbd2e;"></span>
+            <span class="dot" style="background:#27c93f;"></span>
+        </div>
+        <span class="code-language">{lang}</span>
+        <button class="copy-btn" onclick="copyCode('code-content-{random_id}')">
             <span class="copy-icon">📋</span>
             <span class="copy-text">Copy</span>
         </button>
     </div>
-    <pre class="code-content"><code class="language-{lang}">{your_code_here}</code></pre>
+    <pre><code id="code-content-{random_id}" class="language-{lang}">{your_code_here}</code></pre>
 </div>
 """
 
-# --- Các mẫu prompt cho từng nhiệm vụ cụ thể ---
+# --- Prompt templates for specific tasks ---
 TASK_PROMPTS = {
-    # 1. Giải thích Code
+    # 1. Explain Code
     "explain_code_flow": {
-        "title": "Giải thích ý tưởng & Luồng chạy của Code",
+        "title": "Explain Code Idea & Flow",
         "instruction": """
 Hãy giải thích ý tưởng tổng thể và luồng hoạt động (flow) của đoạn code được cung cấp.
 - **Mục đích chính:** Nêu rõ mục đích của đoạn code.
@@ -39,9 +46,9 @@ Hãy giải thích ý tưởng tổng thể và luồng hoạt động (flow) c�
 """
     },
 
-    # 2. Tạo Code
+    # 2. Generate Code
     "generate_snippet": {
-        "title": "Tạo Snippet Code Mẫu",
+        "title": "Generate Sample Code Snippet",
         "instruction": """
 Tạo một snippet code mẫu cho chức năng `{functionality}` bằng ngôn ngữ `{language}`.
 - Cung cấp đoạn code hoàn chỉnh theo đúng cấu trúc HTML bắt buộc.
@@ -49,9 +56,9 @@ Tạo một snippet code mẫu cho chức năng `{functionality}` bằng ngôn n
 """
     },
 
-    # 3. Sửa lỗi
+    # 3. Debug
     "debug_code": {
-        "title": "Debug Code & Đề xuất Giải pháp",
+        "title": "Debug Code & Propose Solution",
         "instruction": """
 Kiểm tra đoạn code được cung cấp để tìm lỗi.
 - **Nguyên nhân:** Mô tả lỗi được tìm thấy.
@@ -60,9 +67,9 @@ Kiểm tra đoạn code được cung cấp để tìm lỗi.
 """
     },
 
-    # 4. Tối ưu hóa
+    # 4. Optimize
     "optimize_performance": {
-        "title": "Tối ưu hóa Hiệu năng",
+        "title": "Optimize Performance",
         "instruction": """
 Đề xuất các cải tiến để tối ưu hóa hiệu năng của đoạn code.
 - **Đánh giá hiện trạng:** Nhận xét về hiệu năng hiện tại.
@@ -82,24 +89,46 @@ Dựa trên danh sách các bài đăng (gồm tiêu đề và nội dung) đư�
 - **Phân loại nội dung:** Ước tính tỷ lệ phần trăm các loại nội dung (ví dụ: 40% câu hỏi, 30% chia sẻ code, 20% thảo luận, 10% hướng dẫn).
 - **Tóm tắt chung:** Viết một đoạn tóm tắt ngắn gọn về xu hướng chung của các bài đăng này.
 """
+    },
+    # 6. Sửa Code theo gợi ý
+    "refactor_code": {
+    "title": "Áp dụng Sửa lỗi & Tái cấu trúc Code",
+    "instruction": """
+Bạn là một chuyên gia tái cấu trúc code. Dựa trên đoạn code và gợi ý được cung cấp, hãy sửa lại code.
+YÊU CẦU TUYỆT ĐỐI:
+Chỉ trả về duy nhất đoạn code hoàn chỉnh đã được sửa.
+KHÔNG thêm bất kỳ lời giải thích, lời chào, hay định dạng markdown nào khác như ```.
+Đoạn code cần sửa:
+{code}
+Áp dụng gợi ý sau: "{recommendation_text}"
+"""
     }
 }
 
-# Prompt mặc định khi người dùng tự gõ câu hỏi hoặc yêu cầu chung chung
+
+# Default prompt when the user types a question or general request
 CUSTOM_PROMPT_TEMPLATE = """
 Hãy trả lời trực tiếp và ngắn gọn yêu cầu sau của người dùng: "{user_request}"
 """
 
-# --- Hàm xây dựng prompt cuối cùng ---
+# --- Function to build the final prompt ---
 def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text: str = None, **kwargs) -> str:
     """
-    Xây dựng chuỗi prompt cuối cùng để gửi đến AI.
+    Constructs the final prompt string to send to the AI.
     """
-    
+
     if prompt_type == "summarize_post_list":
         task_data = TASK_PROMPTS[prompt_type]
-        # Đối với summarize, không có code nên không cần truyền ngôn ngữ
+        # For summarize, no code is involved, so no need to pass the language
         return f"{SYSTEM_PROMPT}\n\n{task_data['instruction']}\n\n**Dữ liệu các bài đăng (dạng JSON):**\n```json\n{content}\n```"
+
+    if prompt_type == 'refactor_code':
+        task_data = TASK_PROMPTS[prompt_type]
+        # Đối với refactor, 'content' chính là code cần sửa
+        # và 'recommendation_text' nằm trong kwargs
+        instruction = task_data['instruction'].format(code=content, recommendation_text=kwargs.get('recommendation_text', ''))
+        # Prompt này không cần SYSTEM_PROMPT phức tạp vì chỉ cần raw code output
+        return instruction
 
     if prompt_type == 'custom_analysis' and user_prompt_text:
         task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text)
@@ -113,20 +142,20 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
         except KeyError:
             task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text or "Phân tích nội dung này.")
     
-    # Cung cấp nội dung và ngôn ngữ một cách rõ ràng để AI áp dụng vào template HTML
+    # Provide content and language clearly for the AI to apply to the HTML template
     final_prompt = f"""{SYSTEM_PROMPT}
 
 {task_instruction}
 
-**Nội dung để phân tích (ngôn ngữ: {language or 'text'}):**
+**Content to analyze (language: {language or 'text'}):**
 ---
 {content}
 ---
 
-QUAN TRỌNG: Hãy chắc chắn rằng bạn:
-1. Sử dụng đúng tên ngôn ngữ `{language or 'text'}` trong cấu trúc HTML cho khối code.
-2. Đặt code bên trong thẻ `<code>` nằm trong thẻ `<pre>` như trong ví dụ.
-3. Tạo ID ngẫu nhiên duy nhất cho mỗi code block.
-4. Đặt code trực tiếp trong thẻ `<code>` mà không có wrapper bổ sung.
+IMPORTANT: Make sure you:
+1. Use the correct language name `{language or 'text'}` in the HTML structure for the code block.
+2. Place the code inside the `<code>` tag which is inside the `<pre>` tag as shown in the example.
+3. Generate a unique random ID for each code block.
+4. Call `copyCode` with the ID of the `<code>` tag, which must be in the format `code-content-your_random_id`.
 """
     return final_prompt

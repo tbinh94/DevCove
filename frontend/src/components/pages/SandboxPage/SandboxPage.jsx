@@ -1,6 +1,6 @@
 // src/pages/SandboxPage/SandboxPage.jsx
 import React from 'react';
-import JSSandbox from './JSSandbox'; // Import component JSSandbox đã tạo trước đó
+import JSSandbox from './UltraSmartSandbox'; // Import component JSSandbox đã tạo trước đó
 import styles from './SandboxPage.module.css';
 
 const SandboxPage = () => {

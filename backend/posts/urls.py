@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import api_views
-
+from .api_views import ai_refactor_code_view  # Import hàm get_ai_response từ api_views
 # Khởi tạo router
 router = DefaultRouter()
 router.register(r"posts", api_views.PostViewSet, basename="posts")
@@ -36,6 +36,8 @@ urlpatterns = [
     path('tags/toggle/',   api_views.toggle_tag_filter, name='api_toggle_tag_filter'),
     path('tags/create/', api_views.create_tag, name='create-tag'),
     
+    path('ai/refactor-code/', ai_refactor_code_view, name='ai_refactor_code'),
+
     # Include tất cả các URL do router tạo ra vào cuối danh sách này
     path('', include(router.urls)),
 ]

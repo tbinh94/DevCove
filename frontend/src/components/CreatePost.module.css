@@ -243,3 +243,174 @@
     align-self: stretch;
   }
 }
+
+/* AI Review Section Styling - Enhanced Dark Theme */
+
+/* AI Review Form Group */
+.formGroup:has(#ai-review-prompt) {
+  background: linear-gradient(135deg, rgba(66, 153, 225, 0.05), rgba(49, 130, 206, 0.05));
+  border: 1px solid rgba(66, 153, 225, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 25px 0;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.formGroup:has(#ai-review-prompt):hover {
+  border-color: rgba(66, 153, 225, 0.4);
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.1);
+}
+
+/* AI Review Label with Icon */
+.formGroup:has(#ai-review-prompt) .label {
+  color: #4299e1;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.formGroup:has(#ai-review-prompt) .label::before {
+  content: "🤖";
+  font-size: 18px;
+  filter: brightness(1.2);
+}
+
+/* AI Review Select Dropdown */
+#ai-review-prompt {
+  background: linear-gradient(135deg, #2d3748, #1a202c);
+  border: 2px solid #4a5568;
+  border-radius: 10px;
+  padding: 15px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  
+  /* Custom dropdown arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 50px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234299e1'%3e%3cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 1.2em;
+}
+
+#ai-review-prompt:focus {
+  border-color: #4299e1;
+  box-shadow: 0 0 0 4px rgba(66, 153, 225, 0.15), 0 4px 12px rgba(66, 153, 225, 0.2);
+  outline: none;
+  background: linear-gradient(135deg, #2d3748, #1a202c);
+}
+
+#ai-review-prompt:hover:not(:disabled) {
+  border-color: #63b3ed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+}
+
+/* Disabled state */
+#ai-review-prompt:disabled {
+  background: linear-gradient(135deg, #2d3748, #1a202c);
+  border-color: #4a5568;
+  color: #718096;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#ai-review-prompt:disabled::before {
+  filter: grayscale(1);
+}
+
+/* Dropdown options styling */
+#ai-review-prompt option {
+  background: #2d3748;
+  color: #e2e8f0;
+  padding: 12px;
+  font-weight: 500;
+  border: none;
+}
+
+#ai-review-prompt option:hover,
+#ai-review-prompt option:focus {
+  background: #4a5568;
+  color: #ffffff;
+}
+
+/* Default option styling */
+#ai-review-prompt option[value=""] {
+  color: #a0aec0;
+  font-style: italic;
+}
+
+/* Selected option highlight */
+#ai-review-prompt option:checked {
+  background: #4299e1;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Loading state for the AI Review section */
+.formGroup:has(#ai-review-prompt) #ai-review-prompt:disabled {
+  position: relative;
+}
+
+.formGroup:has(#ai-review-prompt) #ai-review-prompt:disabled::after {
+  content: "";
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #4a5568;
+  border-top: 2px solid #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Responsive adjustments for AI Review */
+@media (max-width: 768px) {
+  .formGroup:has(#ai-review-prompt) {
+    padding: 15px;
+    margin: 20px 0;
+  }
+  
+  .formGroup:has(#ai-review-prompt) .label {
+    font-size: 15px;
+  }
+  
+  #ai-review-prompt {
+    padding: 12px 15px;
+    padding-right: 45px;
+    font-size: 14px;
+  }
+  
+  #ai-review-prompt {
+    background-position: right 15px center;
+    background-size: 1em;
+  }
+}
+
+/* Animation for the AI Review section appearing */
+.formGroup:has(#ai-review-prompt) {
+  animation: aiReviewSlideIn 0.4s ease-out;
+}
+
+@keyframes aiReviewSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

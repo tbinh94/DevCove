@@ -308,7 +308,9 @@ class APIService {
         body: payload,
     });
   }
-
+  async getAvailablePrompts() {
+    return this.request('/api/posts/available_prompt_types/');
+  }
   // --- Chat ---
 
   /**
@@ -353,7 +355,26 @@ class APIService {
     });
   }
 
-
+  // Bot
+  /**
+   * Yêu cầu AI sửa một đoạn code dựa trên một đề xuất cụ thể.
+   * @param {string} code - Đoạn code cần sửa.
+   * @param {string} recommendation - Hướng dẫn/đề xuất để AI áp dụng.
+   * @returns {Promise<object>} - Phản hồi từ API, dự kiến chứa code đã sửa.
+   */
+  async getAiCodeFix(code, recommendation) {
+    // Chúng ta có thể tạo một endpoint mới hoặc tái sử dụng ask_bot nếu nó linh hoạt
+    // Ở đây, tôi giả định một endpoint mới để code rõ ràng hơn
+    // Bạn cũng có thể điều chỉnh endpoint ask_bot để không yêu cầu postId
+    return this.request('/api/ai/refactor-code/', { // Giả sử có endpoint mới
+      method: 'POST',
+      body: {
+        code: code,
+        prompt_type: 'refactor_code', // Một prompt_type mới
+        recommendation_text: recommendation
+      },
+    });
+  }
   // --- Utility Accessor ---
   get utils() {
     return {
