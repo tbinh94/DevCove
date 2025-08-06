@@ -1,134 +1,202 @@
-# --- START OF FILE prompts.py ---
+# --- START OF FILE: prompts.py ---
 
-# --- General instructions for the AI, setting its role and rules ---
+# SYSTEM_PROMPT được đơn giản hóa triệt để.
+# AI giờ đây chỉ cần tập trung vào việc tạo ra Markdown chất lượng.
+# Toàn bộ việc tạo HTML phức tạp sẽ do ai_formatter.py xử lý.
+# Điều này giúp giảm đáng kể lỗi định dạng từ AI và tăng tính nhất quán.
+
 SYSTEM_PROMPT = """
 You are DevAlly, a professional AI Programming Assistant.
-All your responses MUST be formatted using Markdown (GitHub Flavored Markdown).
+Your entire response MUST be formatted using GitHub Flavored Markdown.
 
-**ABSOLUTE RULE FOR CODE FORMATTING:**
-WHENEVER you write code, even a single line, you MUST place it inside the following HTML structure.
-DO NOT use ``` (three backticks) to create code blocks.
+**CRITICAL RULE FOR CODE:**
+WHENEVER you provide code, even a single line, you MUST place it inside a fenced code block with the appropriate language identifier.
 
-- Replace `{lang}` with the provided language name (e.g., java, python, sql, text).
-- Replace `{your_code_here}` with your code.
-- You must generate a unique random ID (e.g., a 5-character string) for `random_id`.
-- The `<code>` tag's ID MUST be `code-content-{random_id}`.
-- The `copyCode` function MUST be called with the `<code>` tag's ID.
-- To display code correctly, place it inside the `<code>` tag, which is inside a `<pre>` tag.
+CORRECT Examples:
+```javascript
+console.log('Hello World!');
+```
 
-<div class="code-block-container">
-    <div class="code-header">
-        <div class="header-dots">
-            <span class="dot" style="background:#ff5f56;"></span>
-            <span class="dot" style="background:#ffbd2e;"></span>
-            <span class="dot" style="background:#27c93f;"></span>
-        </div>
-        <span class="code-language">{lang}</span>
-        <button class="copy-btn" onclick="copyCode('code-content-{random_id}')">
-            <span class="copy-icon">📋</span>
-            <span class="copy-text">Copy</span>
-        </button>
-    </div>
-    <pre><code id="code-content-{random_id}" class="language-{lang}">{your_code_here}</code></pre>
-</div>
+```python
+print("Hello World!")
+```
+
+```html
+<div>Hello World!</div>
+```
+
+```css
+.container { background: #1e1e1e; }
+```
+
+**LANGUAGE IDENTIFIERS TO USE:**
+- For JavaScript: use `javascript` (not `js`)
+- For TypeScript: use `typescript` (not `ts`)
+- For Python: use `python` (not `py`)
+- For HTML: use `html`
+- For CSS: use `css`
+- For Bash/Shell: use `bash`
+- For JSON: use `json`
+- For SQL: use `sql`
+
+NEVER use generic identifiers like `text` or leave the language blank.
+The application's backend will automatically handle the visual formatting, syntax highlighting, and interactive features for these code blocks.
 """
 
-# --- Prompt templates for specific tasks ---
 TASK_PROMPTS = {
-    # 1. Explain Code
-    "explain_code_flow": {
-        "title": "Explain Code Idea & Flow",
-        "instruction": """
+# 1. Explain Code
+"explain_code_flow": {
+"title": "Explain Code Idea & Flow",
+"instruction": """
 Hãy giải thích ý tưởng tổng thể và luồng hoạt động (flow) của đoạn code được cung cấp.
-- **Mục đích chính:** Nêu rõ mục đích của đoạn code.
-- **Các thành phần chính:** Liệt kê và mô tả ngắn gọn các hàm hoặc module quan trọng.
-- **Luồng dữ liệu/logic:** Diễn giải cách dữ liệu được xử lý hoặc logic được thực thi theo từng bước chính.
-"""
-    },
 
-    # 2. Generate Code
-    "generate_snippet": {
-        "title": "Generate Sample Code Snippet",
-        "instruction": """
-Tạo một snippet code mẫu cho chức năng `{functionality}` bằng ngôn ngữ `{language}`.
-- Cung cấp đoạn code hoàn chỉnh theo đúng cấu trúc HTML bắt buộc.
-- Bao gồm các comment giải thích ngắn gọn trong code.
-"""
-    },
+## 🎯 Mục đích chính
+Nêu rõ mục đích chính của đoạn code.
 
-    # 3. Debug
-    "debug_code": {
-        "title": "Debug Code & Propose Solution",
-        "instruction": """
-Kiểm tra đoạn code được cung cấp để tìm lỗi.
-- **Nguyên nhân:** Mô tả lỗi được tìm thấy.
-- **Giải pháp:** Cung cấp đoạn code đã sửa trong cấu trúc HTML bắt buộc.
-- **Các bước debug:** Gợi ý các bước debug step-by-step nếu cần.
-"""
-    },
+## 🧩 Các thành phần chính
+Liệt kê và mô tả ngắn gọn các hàm hoặc module quan trọng.
 
-    # 4. Optimize
-    "optimize_performance": {
-        "title": "Optimize Performance",
-        "instruction": """
+## 🔄 Luồng dữ liệu/logic
+Diễn giải cách dữ liệu được xử lý hoặc logic được thực thi theo từng bước chính.
+
+Đảm bảo tất cả code examples phải được đặt trong fenced code blocks với ngôn ngữ phù hợp.
+"""
+},
+# 2. Generate Code
+"generate_snippet": {
+"title": "Generate Sample Code Snippet",
+"instruction": """
+## 🚀 Code Generation Request
+
+Tạo một snippet code mẫu cho chức năng **{functionality}** bằng ngôn ngữ **{language}**.
+
+Requirements:
+- Cung cấp đoạn code hoàn chỉnh và có thể chạy được
+- Bao gồm các comment giải thích ngắn gọn trong code
+- Code phải được đặt trong fenced code block với ngôn ngữ chính xác
+- Nếu cần thiết, cung cấp ví dụ sử dụng
+
+Đảm bảo sử dụng đúng language identifier cho fenced code blocks.
+"""
+},
+# 3. Debug
+"debug_code": {
+"title": "Debug Code & Propose Solution",
+"instruction": """
+## 🐛 Code Debugging Analysis
+
+Kiểm tra đoạn code được cung cấp để tìm lỗi và đưa ra giải pháp.
+
+## 🔍 Nguyên nhân lỗi
+Mô tả chi tiết lỗi được tìm thấy và nguyên nhân gây ra.
+
+## ✅ Code đã sửa
+Cung cấp đoạn code đã được sửa lỗi:
+
+## 📝 Giải thích thay đổi
+Nêu rõ những thay đổi đã thực hiện và lý do.
+
+## 🔧 Các bước debug
+Gợi ý các bước debug step-by-step cho tương lai.
+
+Lưu ý: Tất cả code phải được đặt trong fenced code blocks với ngôn ngữ chính xác.
+"""
+},
+# 4. Optimize
+"optimize_performance": {
+"title": "Optimize Performance",
+"instruction": """
+## ⚡ Performance Optimization Analysis
+
 Đề xuất các cải tiến để tối ưu hóa hiệu năng của đoạn code.
-- **Đánh giá hiện trạng:** Nhận xét về hiệu năng hiện tại.
-- **Đề xuất cải tiến:** Cung cấp đoạn code đã tối ưu hóa trong cấu trúc HTML bắt buộc.
-- **Giải thích:** Nêu rõ các thay đổi và lý do chúng cải thiện hiệu năng.
-"""
-    },
 
-    # 5. POST LIST OVERVIEW
-    "summarize_post_list": {
-        "title": "DevAlly Overview",
-        "instruction": """
+## 📊 Đánh giá hiện trạng
+Nhận xét về hiệu năng hiện tại và các vấn đề tiềm ẩn.
+
+## 🚀 Code tối ưu hóa
+Cung cấp đoạn code đã được tối ưu hóa:
+
+## 💡 Giải thích cải tiến
+Nêu rõ các thay đổi và lý do chúng cải thiện hiệu năng.
+
+## 📈 Lợi ích dự kiến
+Mô tả những cải thiện về hiệu năng mong đợi.
+
+Đảm bảo tất cả code được đặt trong fenced code blocks với ngôn ngữ phù hợp.
+"""
+},
+# 5. POST LIST OVERVIEW
+"summarize_post_list": {
+"title": "DevAlly Overview",
+"instruction": """
+## 📊 DevAlly Content Analysis Overview
+
 Dựa trên danh sách các bài đăng (gồm tiêu đề và nội dung) được cung cấp, hãy đưa ra một bản phân tích tổng quan.
-- **Số lượng bài đăng đã phân tích:** Nêu rõ tổng số bài đăng.
-- **Chủ đề chính:** Xác định 2-3 chủ đề hoặc vấn đề nổi bật nhất được thảo luận.
-- **Ngôn ngữ & Công nghệ:** Liệt kê các ngôn ngữ lập trình hoặc công nghệ được đề cập nhiều nhất (ví dụ: Python, React, Docker).
-- **Phân loại nội dung:** Ước tính tỷ lệ phần trăm các loại nội dung (ví dụ: 40% câu hỏi, 30% chia sẻ code, 20% thảo luận, 10% hướng dẫn).
-- **Tóm tắt chung:** Viết một đoạn tóm tắt ngắn gọn về xu hướng chung của các bài đăng này.
+
+## 📈 Thống kê cơ bản
+- **Số lượng bài đăng:** [Số lượng]
+- **Thời gian phân tích:** [Thời gian]
+
+## 🎯 Chủ đề chính
+Xác định 2-3 chủ đề hoặc vấn đề nổi bật nhất được thảo luận.
+
+## 💻 Ngôn ngữ & Công nghệ
+Liệt kê các ngôn ngữ lập trình hoặc công nghệ được đề cập nhiều nhất.
+
+## 📂 Phân loại nội dung
+Ước tính tỷ lệ phần trăm các loại nội dung (ví dụ: 40% câu hỏi, 30% chia sẻ code, 20% thảo luận, 10% hướng dẫn).
+
+## 📝 Tóm tắt chung
+Viết một đoạn tóm tắt ngắn gọn về xu hướng chung của các bài đăng này.
+
+Nếu có code examples trong phân tích, đảm bảo sử dụng fenced code blocks với ngôn ngữ chính xác.
 """
-    },
-    # 6. Sửa Code theo gợi ý
-    "refactor_code": {
-    "title": "Áp dụng Sửa lỗi & Tái cấu trúc Code",
-    "instruction": """
+},
+# 6. Sửa Code theo gợi ý
+"refactor_code": {
+"title": "Áp dụng Sửa lỗi & Tái cấu trúc Code",
+"instruction": """
 Bạn là một chuyên gia tái cấu trúc code. Dựa trên đoạn code và gợi ý được cung cấp, hãy sửa lại code.
-YÊU CẦU TUYỆT ĐỐI:
-Chỉ trả về duy nhất đoạn code hoàn chỉnh đã được sửa.
-KHÔNG thêm bất kỳ lời giải thích, lời chào, hay định dạng markdown nào khác như ```.
-Đoạn code cần sửa:
+
+**YÊU CẦU TUYỆT ĐỐI:**
+- Chỉ trả về duy nhất đoạn code hoàn chỉnh đã được sửa
+- Code phải được đặt trong fenced code block với ngôn ngữ chính xác
+- KHÔNG thêm bất kỳ lời giải thích, lời chào, hay định dạng nào khác
+
+**Đoạn code cần sửa:**
 {code}
-Áp dụng gợi ý sau: "{recommendation_text}"
+
+**Áp dụng gợi ý sau:** "{recommendation_text}"
+
+Trả về code đã sửa với đúng language identifier trong fenced code block.
 """
-    }
+}
 }
 
-
-# Default prompt when the user types a question or general request
 CUSTOM_PROMPT_TEMPLATE = """
-Hãy trả lời trực tiếp và ngắn gọn yêu cầu sau của người dùng: "{user_request}"
+## 🤖 DevAlly Custom Analysis
+
+Hãy trả lời trực tiếp và chi tiết yêu cầu sau của người dùng: 
+
+**"{user_request}"**
+
+Nếu câu trả lời có chứa code, đảm bảo sử dụng fenced code blocks với ngôn ngữ chính xác.
 """
 
-# --- Function to build the final prompt ---
 def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text: str = None, **kwargs) -> str:
     """
     Constructs the final prompt string to send to the AI.
+    Enhanced with better language detection and formatting.
     """
-
     if prompt_type == "summarize_post_list":
         task_data = TASK_PROMPTS[prompt_type]
-        # For summarize, no code is involved, so no need to pass the language
         return f"{SYSTEM_PROMPT}\n\n{task_data['instruction']}\n\n**Dữ liệu các bài đăng (dạng JSON):**\n```json\n{content}\n```"
 
     if prompt_type == 'refactor_code':
         task_data = TASK_PROMPTS[prompt_type]
-        # Đối với refactor, 'content' chính là code cần sửa
-        # và 'recommendation_text' nằm trong kwargs
         instruction = task_data['instruction'].format(code=content, recommendation_text=kwargs.get('recommendation_text', ''))
-        # Prompt này không cần SYSTEM_PROMPT phức tạp vì chỉ cần raw code output
-        return instruction
+        # Include system prompt for consistency
+        return f"{SYSTEM_PROMPT}\n\n{instruction}"
 
     if prompt_type == 'custom_analysis' and user_prompt_text:
         task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text)
@@ -140,22 +208,31 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
         try:
             task_instruction = instruction_template.format(**kwargs)
         except KeyError:
+            # Fallback for prompts with dynamic placeholders that might be missing
             task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text or "Phân tích nội dung này.")
+
+    # Enhanced language mapping for better detection
+    language_map = {
+        'js': 'javascript',
+        'ts': 'typescript', 
+        'py': 'python',
+        'sh': 'bash',
+        'yml': 'yaml',
+        'md': 'markdown'
+    }
     
-    # Provide content and language clearly for the AI to apply to the HTML template
+    detected_language = language_map.get(language.lower() if language else '', language or 'text')
+    
+    # Final prompt construction
     final_prompt = f"""{SYSTEM_PROMPT}
 
 {task_instruction}
 
-**Content to analyze (language: {language or 'text'}):**
----
+**Content to analyze (detected language: {detected_language}):**
+```{detected_language}
 {content}
----
+```
 
-IMPORTANT: Make sure you:
-1. Use the correct language name `{language or 'text'}` in the HTML structure for the code block.
-2. Place the code inside the `<code>` tag which is inside the `<pre>` tag as shown in the example.
-3. Generate a unique random ID for each code block.
-4. Call `copyCode` with the ID of the `<code>` tag, which must be in the format `code-content-your_random_id`.
+Remember: Use proper fenced code blocks with specific language identifiers for all code in your response.
 """
     return final_prompt

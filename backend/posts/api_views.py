@@ -302,27 +302,51 @@ class PostViewSet(viewsets.ModelViewSet):
             if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
                 return Response({'error': f'Invalid prompt_type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            language = request.data.get('language', getattr(post, 'language', 'text'))
+            # >>>>> START: THAY ĐỔI CỐT LÕI ĐỂ SỬA LỖI <<<<<
+            
+            # 1. Ưu tiên ngôn ngữ từ request (frontend gửi lên)
+            language = request.data.get('language', 'text').lower()
+
+            # 2. Nếu ngôn ngữ là 'text' hoặc không xác định, hãy thử suy luận từ prompt_type
+            # Các prompt này gần như chắc chắn sẽ trả về code.
+            code_generating_prompts = [
+                'explain_code_flow', 'generate_snippet', 'debug_code', 
+                'optimize_performance', 'refactor_code'
+            ]
+            if language == 'text' and prompt_type in code_generating_prompts:
+                # Mặc định là 'javascript' vì đây là ngôn ngữ chính cho sandbox
+                language = 'javascript'
+                
+            # Fallback cuối cùng nếu post có trường language
+            if language == 'text' and hasattr(post, 'language') and post.language:
+                language = post.language.lower()
+
+            # <<<<< END: THAY ĐỔI CỐT LÕI ĐỂ SỬA LỖI >>>>>
+
             additional_params = self._process_prompt_parameters(request, prompt_type, user_prompt_text, language)
             
             final_prompt = prompts.build_prompt(
                 content=post.content,
-                language=language,
+                language=language, # Giờ language sẽ đúng là 'javascript'
                 prompt_type=prompt_type,
                 user_prompt_text=user_prompt_text,
                 **additional_params
             )
 
             ai_response_text = get_ai_response(final_prompt)
-            if isinstance(ai_response_text, Response):
-                return ai_response_text
+            if not ai_response_text:
+                return Response({'error': 'AI service failed to respond.'}, status=status.HTTP_502_BAD_GATEWAY)
             
-            # =====>>>>> SỬA Ở ĐÂY <<<<<=====
-            # Luôn dùng formatter để tạo HTML
+            # Logic "vá" markdown giờ sẽ hoạt động chính xác vì `language` là 'javascript'
+            runnable_languages = ['javascript', 'js', 'html']
+            if language in runnable_languages:
+                ai_response_text = re.sub(r'```(\s*)\n', f'```{language}\n', ai_response_text, count=1)
+
+            # Formatter sẽ nhận được markdown đã được sửa và tạo nút "Run"
             formatter = AICommentFormatter()
             formatted_html = formatter.format_full_response(ai_response_text, post)
-            # ==============================
 
+            # ... (Phần còn lại của hàm không đổi)
             bot_comment = self._create_bot_comment(post, request.user, formatted_html)
             self._create_notification(post, request.user)
             self._log_bot_session(post, request, ai_response_text, {})
@@ -331,8 +355,9 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error(f"Critical error in ask_bot for post {pk}: {e}")
-            return Response({'error': 'A critical error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Critical error in ask_bot for post {pk}: {e}", exc_info=True)
+            return Response({'error': 'A critical server error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
     def _process_prompt_parameters(self, request, prompt_type, user_prompt_text, language):
@@ -591,7 +616,7 @@ class PostViewSet(viewsets.ModelViewSet):
         )
         logger.info(f"Generating overview for {len(posts)} posts.")
         
-        ai_response_text = self._get_ai_analysis(final_prompt)
+        ai_response_text = get_ai_response(final_prompt)
         if isinstance(ai_response_text, Response):
             return ai_response_text
             

@@ -353,151 +353,8 @@ class UltraCodeAnalyzer {
 }
 
 const UltraSmartSandbox = () => {
-  const [code, setCode] = useState(`<!-- Ultra Smart Sandbox - Auto-detects Everything! -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Sandbox Demo</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 40px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-      text-align: center;
-      max-width: 500px;
-      transform: translateY(0);
-      transition: transform 0.3s ease;
-    }
-    
-    .card:hover {
-      transform: translateY(-10px);
-    }
-    
-    .title {
-      font-size: 2.5em;
-      font-weight: bold;
-      background: linear-gradient(45deg, #667eea, #764ba2);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 20px;
-    }
-    
-    .demo-button {
-      background: linear-gradient(45deg, #667eea, #764ba2);
-      color: white;
-      border: none;
-      padding: 15px 30px;
-      border-radius: 50px;
-      font-size: 16px;
-      cursor: pointer;
-      margin: 10px;
-      transition: all 0.3s ease;
-    }
-    
-    .demo-button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-    }
-    
-    .counter {
-      font-size: 3em;
-      font-weight: bold;
-      color: #667eea;
-      margin: 20px 0;
-    }
-    
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-    
-    .pulse {
-      animation: pulse 2s infinite;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="title pulse">🚀 Ultra Smart Sandbox</div>
-    <p>This sandbox auto-detects and runs HTML, CSS, and JavaScript!</p>
-    
-    <div class="counter" id="counter">0</div>
-    
-    <button class="demo-button" onclick="increment()">
-      ➕ Increment
-    </button>
-    <button class="demo-button" onclick="decrement()">
-      ➖ Decrement
-    </button>
-    <button class="demo-button" onclick="reset()">
-      🔄 Reset
-    </button>
-    
-    <div style="margin-top: 30px;">
-      <p>✨ Features detected: HTML5, CSS3, JavaScript</p>
-      <p>🎯 Execution: Full HTML Document</p>
-    </div>
-  </div>
+  const [code, setCode] = useState(`// Paste your code here or click "Run in Sandbox" from a post!`); // Cập nhật placeholder
 
-  <script>
-    let count = 0;
-    const counterEl = document.getElementById('counter');
-    
-    function updateCounter() {
-      counterEl.textContent = count;
-      counterEl.className = count === 0 ? 'counter' : 'counter pulse';
-      console.log('Counter updated:', count);
-    }
-    
-    function increment() {
-      count++;
-      updateCounter();
-      console.log('✅ Incremented to:', count);
-    }
-    
-    function decrement() {
-      count--;
-      updateCounter();
-      console.log('➖ Decremented to:', count);
-    }
-    
-    function reset() {
-      count = 0;
-      updateCounter();
-      console.log('🔄 Reset counter');
-    }
-    
-    // Initialize
-    console.log('🚀 Ultra Smart Sandbox initialized!');
-    console.log('📊 Features: HTML5 + CSS3 + JavaScript ES6+');
-    
-    // Demo of modern JS features
-    const features = ['Auto-detection', 'HTML+CSS+JS', 'Smart execution', 'Error handling'];
-    console.log('🎯 Sandbox features:', features);
-    
-    // Async demo
-    setTimeout(() => {
-      console.log('⏰ Async operation completed after 2 seconds');
-    }, 2000);
-  </script>
-</body>
-</html>`);
   
   const [output, setOutput] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -547,6 +404,61 @@ const UltraSmartSandbox = () => {
     }
 };
 
+  // >>>>> START: THAY ĐỔI CHÍNH <<<<<
+  // useEffect để nhận code từ sessionStorage và tự động chạy
+  // useEffect để nhận code từ sessionStorage và tự động chạy - CẢI THIỆN
+  useEffect(() => {
+    const codeFromStorage = sessionStorage.getItem('sandbox_code');
+    const languageFromStorage = sessionStorage.getItem('sandbox_code_language');
+
+    if (codeFromStorage) {
+      // 1. Cập nhật code trong editor
+      setCode(codeFromStorage);
+      
+      // 2. Xóa items khỏi storage để không chạy lại khi refresh
+      sessionStorage.removeItem('sandbox_code');
+      sessionStorage.removeItem('sandbox_code_language');
+      
+      // 3. Hiển thị thông tin về code được import
+      const language = languageFromStorage || 'unknown';
+      setOutput([{ 
+        type: 'info', 
+        message: `🚀 Code imported from post (${language.toUpperCase()}). Auto-running...` 
+      }]);
+      
+      setTimeout(() => {
+        // Auto-run imported code
+        if (iframeRef.current) {
+          setHasError(false);
+          setOutput(prev => [...prev, { 
+            type: 'info', 
+            message: '🔄 Analyzing imported code and preparing execution...' 
+          }]);
+          setIsRunning(true);
+          
+          const analysis = UltraCodeAnalyzer.analyzeCode(codeFromStorage);
+          const srcDoc = createUltraSmartIframeSrcDoc(analysis);
+          iframeRef.current.srcdoc = srcDoc;
+          
+          if (analysis.codeType.includes('html') || analysis.codeType === 'css_only') {
+            setTimeout(() => setIsRunning(false), 500);
+          } else {
+            iframeRef.current.onload = () => {
+              setTimeout(() => {
+                iframeRef.current.contentWindow.postMessage({
+                  code: codeFromStorage,
+                  strategy: analysis.executionStrategy
+                }, '*');
+              }, 100);
+            };
+          }
+        }
+      }, 300); // Slightly longer delay for better UX
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Chỉ chạy một lần khi component mount
+
+  // useEffect để phân tích code khi nó thay đổi
   useEffect(() => {
     if (code.trim()) {
       const analysis = UltraCodeAnalyzer.analyzeCode(code);
@@ -832,25 +744,98 @@ const UltraSmartSandbox = () => {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My Page</title>
-  <style> body { font-family: Arial, sans-serif; } </style>
+  <title>My Interactive Page</title>
+  <style> 
+    body { 
+      font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello World!</h1>
+  <div class="card">
+    <h1>Hello from Sandbox! 🚀</h1>
+    <button onclick="alert('Button clicked!')">Click me!</button>
+  </div>
 </body>
 </html>`,
     css: `.card {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  color: white;
 }
-.button { background: #007bff; color: white; }`,
-    js: `// Modern JavaScript Demo
-console.log('🚀 Starting demo...');
+
+.button { 
+  background: #007bff; 
+  color: white; 
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.button:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+}`,
+    js: `// Modern JavaScript Demo with AI-enhanced features
+console.log('🚀 Starting interactive demo...');
+
+// Create dynamic content
 const root = document.getElementById('root');
 if (root) {
-  root.innerHTML = '<h2>Interactive Demo Loaded!</h2>';
+  root.innerHTML = \`
+    <div style="padding: 20px; font-family: Arial, sans-serif;">
+      <h2 style="color: #333;">🎯 Interactive JavaScript Demo</h2>
+      <div id="counter-display" style="font-size: 2em; margin: 20px 0;">Count: 0</div>
+      <button id="increment-btn" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Increment ➕
+      </button>
+      <button id="reset-btn" style="padding: 10px 20px; margin: 5px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Reset 🔄
+      </button>
+      <div id="log" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace;"></div>
+    </div>
+  \`;
+
+  // Interactive counter logic
+  let count = 0;
+  const display = document.getElementById('counter-display');
+  const logDiv = document.getElementById('log');
+  
+  const updateDisplay = () => {
+    display.textContent = \`Count: \${count}\`;
+    logDiv.innerHTML += \`<div>[\${new Date().toLocaleTimeString()}] Count updated to: \${count}</div>\`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+  };
+
+  document.getElementById('increment-btn').onclick = () => {
+    count++;
+    updateDisplay();
+    console.log(\`✅ Count incremented to: \${count}\`);
+  };
+
+  document.getElementById('reset-btn').onclick = () => {
+    count = 0;
+    updateDisplay();
+    logDiv.innerHTML = '<div>Log cleared and counter reset! 🔄</div>';
+    console.log('🔄 Counter reset to 0');
+  };
 }
-console.log('✅ Demo ready!');`
+
+console.log('✅ Interactive demo ready! Try the buttons above.');`
   };
 
   return (
@@ -875,10 +860,10 @@ console.log('✅ Demo ready!');`
                 onChange={(e) => { setCode(templates[e.target.value] || ''); e.target.value = ''; }}
                 style={{ backgroundColor: '#4a4a4a', color: 'white', border: '1px solid #666', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', marginRight: '8px' }}
               >
-                <option value="">📋 Templates</option>
-                <option value="html">🌐 HTML Page</option>
-                <option value="css">🎨 CSS Styles</option>
-                <option value="js">⚡ JavaScript</option>
+                <option value="">📋 Quick Templates</option>
+                <option value="html">🌐 Interactive HTML</option>
+                <option value="css">🎨 Modern CSS</option>
+                <option value="js">⚡ Interactive JS</option>
               </select>
               <button onClick={handleRunCode} style={{ ...styles.runButton, opacity: isRunning ? 0.6 : 1 }} disabled={isRunning}>
                 {isRunning ? '⏳ Processing...' : '🚀 Ultra Run'}
@@ -891,7 +876,8 @@ console.log('✅ Demo ready!');`
             value={code}
             onChange={handleCodeChange}
             style={styles.textarea}
-            placeholder="// Paste your HTML, CSS, or JS code here. The sandbox will auto-detect and run it! 🚀"
+            placeholder="// Paste your HTML, CSS, or JS code here. The sandbox will auto-detect and run it! 🚀
+// Or click 'Run in Sandbox' from any code block in posts!"
           />
         </div>
         
@@ -909,17 +895,26 @@ console.log('✅ Demo ready!');`
         </div>
       </div>
       
-       {/* Console Output */}
+      {/* Console Output - Enhanced error handling */}
       <div style={styles.output}>
         {hasError && (
           <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#4d2a2a', borderRadius: '4px' }}>
             <div style={{ color: '#ff8a80', fontSize: '12px', fontWeight: 'bold' }}>
-              ️️️⚠️ Đã phát hiện lỗi khi chạy code.
+              ⚠️ Code execution error detected.
             </div>
             <div style={{ color: '#ffc1b8', fontSize: '11px', marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
-              <span>Bạn có muốn AI thử sửa lỗi này không?</span>
+              <span>Would you like AI to help fix this error?</span>
               <button
-                style={{ opacity: fixingRecommendation ? 0.5 : 1, cursor: fixingRecommendation ? 'not-allowed' : 'pointer', marginLeft: '10px', background: '#007bff', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px' }}
+                style={{ 
+                  opacity: fixingRecommendation ? 0.5 : 1, 
+                  cursor: fixingRecommendation ? 'not-allowed' : 'pointer', 
+                  marginLeft: '10px', 
+                  background: '#007bff', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px' 
+                }}
                 onClick={() => handleApplyAiFix("Find and fix the errors in this code so it can run successfully.")}
                 disabled={!!fixingRecommendation}
               >
@@ -933,13 +928,24 @@ console.log('✅ Demo ready!');`
           output.map((line, index) => (
             <div key={index} style={{ marginBottom: '4px' }}>
               <span style={getLogStyle(line.type)}>
-                {line.type === 'error' ? '❌' : line.type === 'warning' ? '⚠️' : line.type === 'info' ? 'ℹ️' : line.type === 'success' ? '✅' : '▶'} {line.message}
+                {line.type === 'error' ? '❌' : 
+                 line.type === 'warning' ? '⚠️' : 
+                 line.type === 'info' ? 'ℹ️' : 
+                 line.type === 'success' ? '✅' : '▶'} {line.message}
               </span>
-              {line.stack && ( <div style={styles.errorStack}>{line.stack.split('\n').slice(0, 4).join('\n')}</div> )}
+              {line.stack && ( 
+                <div style={styles.errorStack}>
+                  {line.stack.split('\n').slice(0, 4).join('\n')}
+                </div> 
+              )}
             </div>
           ))
         ) : (
-          <div style={{ color: '#888' }}>Console output, errors, and smart tips will appear here...</div>
+          <div style={{ color: '#888' }}>
+            Console output, errors, and smart tips will appear here...
+            <br />
+            <small style={{ color: '#666' }}>💡 Try running some code or import from a post!</small>
+          </div>
         )}
       </div>
     </div>
