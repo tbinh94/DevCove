@@ -39,6 +39,14 @@ const PostDetail = () => {
     
     const [showBotComments, setShowBotComments] = useState(true);
 
+
+    // Đảm nhận function của nút Copy và Run trong phần bình luận
+    /*
+    Hàm handleCommentAreaClick đảm nhận việc xử lý sự kiện click trên nút "Run".
+    Khi người dùng nhấn nút "Run", hàm này sẽ lấy nội dung của khối code (codeTag.innerText) và ngôn ngữ lập trình.
+    Sau đó, nó lưu nội dung code và ngôn ngữ vào sessionStorage với các khóa sandbox_code và sandbox_language.
+    Cuối cùng, hàm mở một cửa sổ mới với URL /sandbox để thực thi đoạn code.
+    */
     useEffect(() => {
         const handleCommentAreaClick = (event) => {
             const button = event.target.closest('button[data-action]');
@@ -53,11 +61,12 @@ const PostDetail = () => {
                 return;
             }
 
-            // Logic cho nút Copy (không đổi)
+            // --- START: LOGIC CHO NÚT COPY ĐÃ SỬA ---
             if (action === 'copy') {
                 navigator.clipboard.writeText(codeTag.innerText).then(() => {
-                    const iconSpan = button.querySelector('.copy-icon');
-                    const textSpan = button.querySelector('.copy-text');
+                    // SỬA LỖI: Sử dụng selector đúng (.btn-icon, .btn-text)
+                    const iconSpan = button.querySelector('.btn-icon');
+                    const textSpan = button.querySelector('.btn-text');
                     if (!textSpan || !iconSpan) return;
 
                     const originalIcon = iconSpan.innerHTML;
@@ -76,38 +85,34 @@ const PostDetail = () => {
                     console.error('Failed to copy text: ', err);
                 });
             }
+            // --- END: LOGIC CHO NÚT COPY ĐÃ SỬA ---
 
-            // ----- START: THÊM LOGIC CHO NÚT RUN -----
+
+            // Logic cho nút Run (đã hoạt động đúng)
             if (action === 'run') {
                 const codeText = codeTag.innerText;
                 
-                // >>>>> TỐI ƯU HÓA: LẤY NGÔN NGỮ TỪ HEADER CỦA KHỐI CODE <<<<<
                 const container = button.closest('.code-block-container');
                 const langElement = container?.querySelector('.code-language');
                 const language = langElement ? langElement.textContent.toLowerCase() : 'javascript';
-                // >>>>> KẾT THÚC TỐI ƯU HÓA <<<<<
+                
                 try {
-                    // Lưu code vào sessionStorage để trang sandbox có thể truy cập
                     sessionStorage.setItem('sandbox_code', codeText);
-                    
-                    // Mở trang sandbox trong một tab mới
-                    window.open('/sandbox', '_blank');
+                    sessionStorage.setItem('sandbox_language', language); // Có thể gửi ngôn ngữ để sandbox biết cách chạy
+                    window.open('/sandbox', '_blank'); // mở sandbox runner trong tab mới
 
                 } catch (err) {
                     console.error('Failed to prepare sandbox run:', err);
                     alert('Could not open the sandbox. Please check the console for errors.');
                 }
             }
-            // ----- END: THÊM LOGIC CHO NÚT RUN -----
         };
 
-        // Gắn listener vào container của các comment
         const commentContainer = document.getElementById('comments-list-container');
         if (commentContainer) {
             commentContainer.addEventListener('click', handleCommentAreaClick);
         }
 
-        // Dọn dẹp listener khi component bị unmount
         return () => {
             if (commentContainer) {
                 commentContainer.removeEventListener('click', handleCommentAreaClick);
@@ -158,6 +163,7 @@ const PostDetail = () => {
     const sanitizeBotComment = (commentText) => {
         return DOMPurify.sanitize(commentText, { 
             ADD_TAGS: ['style', 'button'],
+            // Thêm data-action và data-target-id vào danh sách cho phép
             ADD_ATTR: ['class', 'id', 'title', 'style', 'data-action', 'data-target-id'],
         });
     };
@@ -230,7 +236,8 @@ const PostDetail = () => {
                 setShowSuccessModal(false);
                 navigate('/');
             }, 2000);
-        } catch (err) {
+        } catch (err)
+        {
             console.error('Failed to delete post:', err);
             alert(err.message || 'Đã xảy ra lỗi khi xóa bài đăng.');
         }
@@ -254,22 +261,18 @@ const PostDetail = () => {
         return `${days} ngày trước`;
     };
 
-    // >>>>> HÀM QUAN TRỌNG ĐÃ ĐƯỢC SỬA LỖI <<<<<
     const handleSendBotMessage = async (promptText, promptType) => {
         setBotLoading(true);
         setBotError(null);
         setLatestBotResponse(null);
 
         try {
-             // ----- THAY ĐỔI Ở ĐÂY -----
-            // Luôn gửi 'javascript' nếu post có vẻ là code, hoặc lấy từ post.language
-            // Điều này đảm bảo backend nhận được thông tin chính xác nhất.
             const languageForBot = post.language || 'javascript'; 
             
             const payload = {
                 prompt_type: promptType,
                 prompt_text: promptText,
-                language: languageForBot, // Gửi ngôn ngữ đã được xác định
+                language: languageForBot,
             };
 
             const newBotComment = await apiService.askBot(post.id, payload);
@@ -351,10 +354,7 @@ const PostDetail = () => {
             </div>
         );
     }
-    // >>>>> GUARD CLAUSE QUAN TRỌNG NHẤT <<<<<
-    // Sau khi loading xong và không có lỗi, nếu `post` vẫn là null,
-    // tức là không tìm thấy bài đăng. Hiển thị thông báo và dừng lại.
-    // Điều này ngăn code chạy xuống các dòng truy cập `post.comments`.
+
     if (!post) {
         return (
             <div className={styles.errorContainer}>
@@ -481,7 +481,6 @@ const PostDetail = () => {
                                 <span>{filteredComments.length}</span>
                             </button>
 
-                            {/* Cập nhật nút Ask Bot để mở modal */}
                             <button
                                 onClick={handleOpenChatModal}
                                 disabled={botLoading || !isAuthenticated}
@@ -544,7 +543,6 @@ const PostDetail = () => {
                         </h2>
                     </div>
                     
-                    {/* Comment Form */}
                     {isAuthenticated ? (
                         <div className={styles.commentFormContainer}>
                             <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
@@ -580,7 +578,6 @@ const PostDetail = () => {
                         </div>
                     )}
                     
-                    {/* Comments List */}
                     <div id="comments-list-container" className={styles.commentsList}>
                 {filteredComments.length > 0 ? (
                     filteredComments.map((comment) => (
@@ -704,11 +701,10 @@ const PostDetail = () => {
                 onSendMessage={handleSendBotMessage}
                 isLoading={botLoading}
                 error={botError}
-                addBotResponse={latestBotResponse} // This prop is not directly used for display in BotChatInterface but for internal state management if needed.
+                addBotResponse={latestBotResponse}
             />
         </div>
     );
 };
 
 export default PostDetail;
-

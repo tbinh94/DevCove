@@ -1,3 +1,5 @@
+# --- START OF FILE ai_formatter.py (Corrected) ---
+
 import markdown2
 from bs4 import BeautifulSoup
 import uuid
@@ -65,18 +67,16 @@ class AICommentFormatter:
         self._style_headings(soup)
         self._style_code_blocks(soup)
 
-        # Get CSS and JS
+        # Get CSS
         css_styles = self._get_css_styles()
-        copy_script = self._get_copy_script()
 
-        # Create the final report
+        # Create the final report (NO SCRIPT TAG - Logic is handled by React)
         return f"""
         <div class="ai-analysis-report">
             <style>{css_styles}</style>
             <div class="ai-content-body">
                 {str(soup)}
             </div>
-            <script>{copy_script}</script>
         </div>
         """
 
@@ -222,8 +222,9 @@ class AICommentFormatter:
             header_div = BeautifulSoup(header_div_str, 'html.parser')
             h2.replace_with(header_div)
 
+    # Hàm thêm nút Run Và Copy cho các khối code
     def _style_code_blocks(self, soup):
-        """Enhanced code block styling with improved language detection and Run button"""
+        """Enhanced code block styling with data attributes for React instead of onclick."""
         for pre in soup.find_all('pre'):
             if pre.find_parent('div', class_='code-block-container'):
                 continue
@@ -232,32 +233,25 @@ class AICommentFormatter:
             if not code_tag:
                 continue
 
-            # Enhanced language detection
             language = self._detect_language_from_code_tag(code_tag)
-            
-            # Normalize language using aliases
             language = self.language_aliases.get(language.lower(), language.lower())
-            
-            # Create display name
             display_language = self._get_display_language_name(language)
-            
-            # Check if code is runnable
             is_runnable = language.lower() in self.runnable_languages
 
             block_id = f"code-content-{uuid.uuid4().hex}"
             code_tag['id'] = block_id
             
-            # Create Run button if language is runnable
+            # Create Run button if language is runnable, using data attributes
             run_button_html = ""
             if is_runnable:
                 run_button_html = f"""
-                <button class="run-btn" onclick="runCode(this, '{block_id}', '{language}')" title="Run this code">
+                <button class="run-btn" data-action="run" data-target-id="{block_id}" title="Run this code">
                     <span class="btn-icon">▶️</span>
                     <span class="btn-text">Run</span>
                 </button>
                 """
 
-            # Create header with macOS-style dots, language, and buttons
+            # Create header with data attributes on buttons for React event handling
             header_html = f"""
             <div class="code-header">
                 <div class="header-dots">
@@ -268,7 +262,7 @@ class AICommentFormatter:
                 <span class="code-language">{display_language}</span>
                 <div class="header-buttons">
                     {run_button_html}
-                    <button class="copy-btn" onclick="copyCode(this, '{block_id}')" title="Copy code">
+                    <button class="copy-btn" data-action="copy" data-target-id="{block_id}" title="Copy code">
                         <span class="btn-icon">📋</span>
                         <span class="btn-text">Copy</span>
                     </button>
@@ -628,80 +622,4 @@ class AICommentFormatter:
         }
         """
 
-    def _get_copy_script(self) -> str:
-        """JavaScript for copy functionality - Run button kept but without execution logic"""
-        return """
-        function copyCode(button, elementId) {
-            const codeTag = document.getElementById(elementId);
-            if (!codeTag) {
-                console.error('Code element not found:', elementId);
-                return;
-            }
-
-            const codeText = codeTag.innerText || codeTag.textContent;
-            
-            navigator.clipboard.writeText(codeText).then(() => {
-                const iconSpan = button.querySelector('.btn-icon');
-                const textSpan = button.querySelector('.btn-text');
-                
-                if (!textSpan || !iconSpan) return;
-
-                const originalIcon = iconSpan.innerHTML;
-                const originalText = textSpan.textContent;
-
-                iconSpan.innerHTML = '✅';
-                textSpan.textContent = 'Copied!';
-                button.classList.add('copied');
-                
-                setTimeout(() => {
-                    iconSpan.innerHTML = originalIcon;
-                    textSpan.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = codeText;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    const textSpan = button.querySelector('.btn-text');
-                    if (textSpan) {
-                        textSpan.textContent = 'Copied!';
-                        setTimeout(() => {
-                            textSpan.textContent = 'Copy';
-                        }, 2000);
-                    }
-                } catch (fallbackErr) {
-                    console.error('Fallback copy failed:', fallbackErr);
-                }
-                document.body.removeChild(textArea);
-            });
-        }
-
-        function runCode(button, elementId, language) {
-            // Run button placeholder - logic will be implemented later
-            const iconSpan = button.querySelector('.btn-icon');
-            const textSpan = button.querySelector('.btn-text');
-            
-            const originalIcon = iconSpan.innerHTML;
-            const originalText = textSpan.textContent;
-            
-            // Visual feedback
-            iconSpan.innerHTML = '⚡';
-            textSpan.textContent = 'Running...';
-            button.classList.add('running');
-            
-            // Placeholder for future run logic
-            console.log('Run button clicked for language:', language, 'elementId:', elementId);
-            
-            // Reset button
-            setTimeout(() => {
-                iconSpan.innerHTML = originalIcon;
-                textSpan.textContent = originalText;
-                button.classList.remove('running');
-            }, 1500);
-        }
-        """
+    # The _get_copy_script method has been removed as it's no longer needed.
