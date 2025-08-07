@@ -1,8 +1,7 @@
-/* Settings.module.css */
-
+/* Settings.module.css - Dark Theme Only */
 .settingsContainer {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   padding: 2rem;
   display: flex;
   justify-content: center;
@@ -25,15 +24,15 @@
 }
 
 .authForm {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 30, 46, 0.8);
   backdrop-filter: blur(20px);
   border-radius: 24px;
   padding: 3rem;
   width: 100%;
   max-width: 480px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   position: relative;
   z-index: 1;
@@ -49,7 +48,7 @@
   font-weight: 700;
   color: #ffffff;
   margin-bottom: 0.5rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .formSubtitle {
@@ -218,25 +217,13 @@
 
 /* Animations */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes shake {
@@ -251,51 +238,15 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .settingsContainer {
-    padding: 1rem;
-  }
-  
-  .authForm {
-    padding: 2rem;
-    margin: 0 0.5rem;
-  }
-  
-  .formHeader h2 {
-    font-size: 1.75rem;
-  }
-  
-  .avatarPreview {
-    width: 80px;
-    height: 80px;
-  }
+  .settingsContainer { padding: 1rem; }
+  .authForm { padding: 2rem; margin: 0 0.5rem; }
+  .formHeader h2 { font-size: 1.75rem; }
+  .avatarPreview { width: 80px; height: 80px; }
 }
 
 @media (max-width: 480px) {
-  .authForm {
-    padding: 1.5rem;
-  }
-  
-  .formHeader h2 {
-    font-size: 1.5rem;
-  }
-  
-  .formInput {
-    padding: 0.75rem;
-  }
-  
-  .btn {
-    padding: 0.75rem 1.5rem;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .settingsContainer {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  }
-  
-  .authForm {
-    background: rgba(30, 30, 46, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
+  .authForm { padding: 1.5rem; }
+  .formHeader h2 { font-size: 1.5rem; }
+  .formInput { padding: 0.75rem; }
+  .btn { padding: 0.75rem 1.5rem; }
 }
