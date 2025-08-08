@@ -1,24 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-// Giả lập API service. Trong thực tế, bạn sẽ import từ file của mình.
-// import apiService from '../../../services/api';
-const apiService = {
-    getAiCodeFix: async (code, prompt) => {
-        console.log("🤖 Mock AI Service Called for fix...");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        let fixedCode = code.trim();
-        let fixDescription = "# AI FIX: Analyzed the code and applied a general fix.";
-        if (/import matplotlib/i.test(fixedCode) && !/plt\.show\(\)/i.test(fixedCode)) {
-            fixDescription = "# AI FIX: The chart was not displayed. Added `plt.show()` to render it.";
-            fixedCode += "\n\n# Hiển thị biểu đồ\nplt.show()";
-        }
-        const language = /import/i.test(fixedCode) ? 'python' : 'javascript';
-        const fixedCodeResponse = `\`\`\`${language}\n# --- ${fixDescription} ---\n\n${fixedCode}\n\`\`\``;
-        console.log("🤖 Mock AI Service Responded.");
-        return fixedCodeResponse;
-    }
-};
-
+// Sử dụng API service thật
+import apiService from '../../../services/api';
 
 // CSS styles (condensed)
 const styles = {
@@ -129,7 +112,7 @@ const styles = {
   },
 };
 
-// Lớp phân tích code siêu thông minh (đã tích hợp nhận diện thư viện)
+// Lớp phân tích code siêu thông minh (giữ nguyên)
 class UltraCodeAnalyzer {
     static analyzeCode(code) {
         const pythonPatterns = {
@@ -138,7 +121,8 @@ class UltraCodeAnalyzer {
             def: /^\s*def\s+.*:/m,
             class: /^\s*class\s+.*:/m,
             imports: /^\s*(from|import)\s/m,
-            libraries: /import\s+(numpy|pandas|matplotlib|requests|json|math|random|os|sys|datetime|re)\b/m,
+            // Cập nhật regex để bắt cả các thư viện chuẩn của Pyodide
+            libraries: /import\s+(numpy|pandas|matplotlib|requests|scipy|scikit-learn)\b/m,
         };
 
         let isPython = Object.values(pythonPatterns).some(pattern => pattern.test(code));
@@ -149,7 +133,7 @@ class UltraCodeAnalyzer {
             executionStrategy = 'python_pyodide';
             
             features.hasLibraries = pythonPatterns.libraries.test(code);
-            features.libraryList = (code.match(/import\s+(numpy|pandas|matplotlib|requests|json|math|random|os|sys|datetime|re)\b/g) || [])
+            features.libraryList = (code.match(/import\s+(numpy|pandas|matplotlib|requests|scipy|scikit-learn)\b/g) || [])
                 .map(m => m.replace('import ', ''));
         } else {
             const jsPatterns = {
@@ -167,28 +151,13 @@ class UltraCodeAnalyzer {
                 features[feature] = pattern.test(code);
             }
 
-            if (features.htmlDocument) {
-                codeType = 'html_document';
-                executionStrategy = 'html_full';
-            } else if (features.htmlTags) {
-                codeType = 'html_fragment';
-                executionStrategy = 'html_fragment';
-            } else if (features.cssRules && !features.htmlTags) {
-                codeType = 'css_only';
-                executionStrategy = 'css_inject';
-            } else if (features.reactJsx) {
-                codeType = 'react_jsx';
-                executionStrategy = 'react';
-            } else if (features.esModule || features.topLevelAwait) {
-                codeType = 'es_module';
-                executionStrategy = 'module';
-            } else if (features.asyncFunction) {
-                codeType = 'async_js';
-                executionStrategy = 'async';
-            } else if (features.domManipulation) {
-                codeType = 'dom_js';
-                executionStrategy = 'dom';
-            }
+            if (features.htmlDocument) codeType = 'html_document';
+            else if (features.htmlTags) codeType = 'html_fragment';
+            else if (features.cssRules && !features.htmlTags) codeType = 'css_only';
+            else if (features.reactJsx) codeType = 'react_jsx';
+            else if (features.esModule || features.topLevelAwait) codeType = 'es_module';
+            else if (features.asyncFunction) codeType = 'async_js';
+            else if (features.domManipulation) codeType = 'dom_js';
         }
         return { features, executionStrategy, complexity, codeType };
     }
@@ -223,24 +192,17 @@ const UltraSmartSandbox = () => {
     const codeToRun = useRef(null);
     const [lastError, setLastError] = useState(null);
 
-    // START OF FIX: Đã sửa lỗi AI không tự động cập nhật code
     const handleApplyAiFix = async () => {
-        // Chỉ cần kiểm tra xem có lỗi không. Nút đã bị vô hiệu hóa trong JSX.
         if (!lastError) return;
-        
         const detailedPrompt = `Error: ${lastError.message}${lastError.stack ? `\nStack: ${lastError.stack}` : ''}\n\nFix this code:`;
         setFixingRecommendation(detailedPrompt);
         setOutput(prev => [...prev, { type: 'info', message: `🤖 AI is analyzing the error...` }]);
-
         try {
             const response = await apiService.getAiCodeFix(code, detailedPrompt);
-            const markdownMatch = response.match(/```(?:python|javascript|html|css)?\s*\n([\s\S]*?)\n?```/);
-            
-            if (markdownMatch && markdownMatch[1]) {
-                setCode(markdownMatch[1].trim());
-            } else {
-                setCode(response); // Fallback
-            }
+            const fixedCode = response.fixed_code || response;
+            const markdownMatch = fixedCode.match(/```(?:python|javascript|html|css)?\s*\n([\s\S]*?)\n?```/);
+            if (markdownMatch && markdownMatch[1]) setCode(markdownMatch[1].trim());
+            else setCode(fixedCode);
             setOutput(prev => [...prev, { type: 'success', message: '✅ AI fix has been applied!' }]);
         } catch (error) {
             setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
@@ -248,7 +210,6 @@ const UltraSmartSandbox = () => {
             setFixingRecommendation(null);
         }
     };
-    // END OF FIX
 
     useEffect(() => {
         const codeFromStorage = sessionStorage.getItem('sandbox_code');
@@ -260,7 +221,6 @@ const UltraSmartSandbox = () => {
             setOutput([{ type: 'info', message: `🚀 Code imported from post (${language.toUpperCase()}). Auto-running...` }]);
             setTimeout(() => handleRunCode(codeFromStorage), 300);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -269,25 +229,9 @@ const UltraSmartSandbox = () => {
         }
     }, [code]);
 
-    // START OF INTEGRATION: Tích hợp logic tạo iframe Python có khả năng cài thư viện
-    const createPythonIframe = (hasLibraries, libraryList) => {
-        const jsInstallBlock = hasLibraries ? `
-            addToLog('info', '📦 Installing ${libraryList.length} ${libraryList.length > 1 ? "libraries" : "library"}...');
-            await pyodide.loadPackage(['micropip']);
-            const pythonInstallScript = \`
-import micropip
-${libraryList.map(lib => `
-try:
-    await micropip.install('${lib}')
-    print(f"📦 ${lib} installed successfully.")
-except Exception as e:
-    import sys
-    print(f"⚠️ Installation of ${lib} failed: {e}", file=sys.stderr)
-`).join('\\n')}
-\`;
-            await pyodide.runPythonAsync(pythonInstallScript);
-        ` : '';
-
+    // START OF FIX: Cập nhật logic tạo Iframe Python
+    const createPythonIframe = () => {
+        // Việc cài đặt sẽ được xử lý động, không cần truyền tham số vào đây nữa.
         return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Python Sandbox</title>
 <style>body{font-family:sans-serif;margin:10px;background:#f8f9fa}#output{white-space:pre-wrap;font-family:monospace}.error{color:#cc0000}</style>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script></head>
@@ -299,6 +243,7 @@ const addToLog = (type, message, stack = null) => {
     String(message || '').split('\\n').filter(line => line.trim() !== '').forEach(line => logs.push({ type, message: line, stack }));
 };
 function custom_js_input(prompt_text = '') { const r = window.prompt(prompt_text); if (r === null) throw new Error("Input cancelled by user."); return r; }
+
 async function main() {
     try {
         let pyodide = await loadPyodide();
@@ -307,20 +252,38 @@ async function main() {
         pyodide.setStderr({ batched: (str) => addToLog('error', str) });
         pyodide.globals.set('js_input', custom_js_input);
         await pyodide.runPythonAsync('import __main__\\n__builtins__.input = __main__.js_input');
-        ${jsInstallBlock}
-        addToLog('info', 'Python environment ready with input() support');
+        
         window.parent.postMessage({ type: 'pyodide_ready' }, '*');
+
         window.addEventListener('message', async (event) => {
             if (!event.data?.code) return;
-            addToLog('info', '🚀 Executing Python code...'); postLogs(); let success = true;
+            
+            const { code, libraries } = event.data;
+            let success = true;
+
             try {
-                await pyodide.runPythonAsync(event.data.code);
+                // 1. Cài đặt các thư viện được yêu cầu (nếu có)
+                if (libraries && libraries.length > 0) {
+                    addToLog('info', \`📦 Installing \${libraries.join(', ')}...\`);
+                    postLogs(); // Gửi log cài đặt ngay lập tức
+                    await pyodide.loadPackage(libraries);
+                    addToLog('success', \`✅ Libraries installed successfully.\`);
+                }
+                
+                // 2. Chạy code của người dùng
+                addToLog('info', '🚀 Executing Python code...'); 
+                postLogs();
+                await pyodide.runPythonAsync(code);
                 addToLog('success', '✅ Code executed successfully');
+
             } catch (err) {
                 success = false;
                 const errorMessage = err.message.includes('JavascriptError:') ? err.message.split('\\n').pop().trim() : err.message;
                 addToLog('error', errorMessage, err.stack);
-            } finally { postLogs(); window.parent.postMessage({ type: 'execution_complete', success }, '*'); }
+            } finally { 
+                postLogs(); 
+                window.parent.postMessage({ type: 'execution_complete', success }, '*'); 
+            }
         });
     } catch (err) {
         addToLog('error', 'Failed to load Pyodide: ' + err.message);
@@ -330,57 +293,15 @@ async function main() {
 main();
 <\/script></body></html>`;
     };
+    // END OF FIX
 
     const createJavaScriptIframe = (codeToUse, codeType) => {
-        if (codeType === 'html_fragment') {
-             codeToUse = `<!DOCTYPE html><html><head><title>Preview</title></head><body>${codeToUse}</body></html>`;
-        } else if (codeType === 'css_only') {
-             codeToUse = `<!DOCTYPE html><html><head><title>CSS Preview</title><style>${codeToUse}</style></head><body><div>CSS Applied</div></body></html>`;
-        }
-
-        if (codeType.includes('html') || codeType === 'css_only') {
-            return codeToUse.replace('</head>', `<script>
-                const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400);
-                const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') });
-                console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info');
-                window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack }));
-                window.addEventListener('load', () => setTimeout(() => { postLogs(); window.parent.postMessage({ type: 'execution_complete', success: true }, '*'); }, 200));
-            <\/script></head>`);
-        }
-
-        return `<!DOCTYPE html><html><head><title>JS Sandbox</title></head><body><div id="root"></div><script type="module">
-            const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400);
-            const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') });
-            console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info');
-            window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack }));
-            window.addEventListener('message', async (event) => {
-                if (!event.data?.code) return;
-                logs.push({ type: 'info', message: '🚀 Executing JS code...' }); postLogs(); let success = true;
-                try {
-                    const { code, strategy } = event.data;
-                    if (strategy === 'module') {
-                        const blob = new Blob([code], { type: 'text/javascript' });
-                        const url = URL.createObjectURL(blob);
-                        await import(url);
-                        URL.revokeObjectURL(url);
-                    } else if (strategy === 'async') {
-                        await (Object.getPrototypeOf(async function(){}).constructor)(code)();
-                    } else {
-                        (new Function(code))();
-                    }
-                    logs.push({ type: 'success', message: '✅ Code executed successfully' });
-                } catch (error) {
-                    success = false;
-                    logs.push({ type: 'error', message: \`\${error.name}: \${error.message}\`, stack: error.stack });
-                } finally {
-                    postLogs();
-                    event.source.postMessage({ type: 'execution_complete', success }, event.origin);
-                }
-            });
-            window.parent.postMessage({ type: 'js_ready' }, '*');
-        <\/script></body></html>`;
+        // Logic này không thay đổi
+        if (codeType === 'html_fragment') codeToUse = `<!DOCTYPE html><html><head><title>Preview</title></head><body>${codeToUse}</body></html>`;
+        else if (codeType === 'css_only') codeToUse = `<!DOCTYPE html><html><head><title>CSS Preview</title><style>${codeToUse}</style></head><body><div>CSS Applied</div></body></html>`;
+        if (codeType.includes('html') || codeType === 'css_only') return codeToUse.replace('</head>', `<script>const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('load', () => setTimeout(() => { postLogs(); window.parent.postMessage({ type: 'execution_complete', success: true }, '*'); }, 200)); <\/script></head>`);
+        return `<!DOCTYPE html><html><head><title>JS Sandbox</title></head><body><div id="root"></div><script type="module">const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('message', async (event) => { if (!event.data?.code) return; logs.push({ type: 'info', message: '🚀 Executing JS code...' }); postLogs(); let success = true; try { const { code, strategy } = event.data; if (strategy === 'module') { const blob = new Blob([code], { type: 'text/javascript' }); const url = URL.createObjectURL(blob); await import(url); URL.revokeObjectURL(url); } else if (strategy === 'async') { await (Object.getPrototypeOf(async function(){}).constructor)(code)(); } else { (new Function(code))(); } logs.push({ type: 'success', message: '✅ Code executed successfully' }); } catch (error) { success = false; logs.push({ type: 'error', message: \`\${error.name}: \${error.message}\`, stack: error.stack }); } finally { postLogs(); event.source.postMessage({ type: 'execution_complete', success }, event.origin); } }); window.parent.postMessage({ type: 'js_ready' }, '*'); <\/script></body></html>`;
     };
-    // END OF INTEGRATION
 
     useEffect(() => {
         const handleMessage = (event) => {
@@ -388,10 +309,8 @@ main();
             const { data } = event;
             if (data?.type === 'pyodide_ready' || data?.type === 'js_ready') {
                 if (codeToRun.current) {
-                    const message = data.type === 'pyodide_ready' ? 
-                        { code: codeToRun.current } : 
-                        { code: codeToRun.current.code, strategy: codeToRun.current.strategy };
-                    iframeRef.current.contentWindow.postMessage(message, '*');
+                    // Gửi message object đầy đủ, bao gồm cả thư viện cho Python
+                    iframeRef.current.contentWindow.postMessage(codeToRun.current, '*');
                     codeToRun.current = null;
                 }
             } else if (data?.type === 'execution_complete') {
@@ -399,10 +318,7 @@ main();
                 if (data.success === false) setHasError(true);
             } else if (Array.isArray(data)) {
                 const errorLog = data.find(log => log.type === 'error');
-                if (errorLog) {
-                    setHasError(true);
-                    setLastError(errorLog);
-                }
+                if (errorLog) { setHasError(true); setLastError(errorLog); }
                 setOutput(prev => [...prev, ...data]);
             }
         };
@@ -410,6 +326,7 @@ main();
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
+    // START OF FIX: Cập nhật logic chạy code
     const handleRunCode = (codeOverride) => {
         const codeToExecute = typeof codeOverride === 'string' ? codeOverride : code;
         if (iframeRef.current && !isRunning && codeToExecute.trim()) {
@@ -421,24 +338,27 @@ main();
             const newIframeType = analysis.codeType;
             const currentIframeType = iframeRef.current.dataset.type;
 
+            // Xây dựng message object để gửi đi
+            const message = analysis.codeType === 'python'
+                ? { code: codeToExecute, libraries: analysis.features.libraryList || [] }
+                : { code: codeToExecute, strategy: analysis.executionStrategy };
+
             if (currentIframeType !== newIframeType) {
                 if (analysis.codeType === 'python') {
-                    iframeRef.current.srcdoc = createPythonIframe(analysis.features.hasLibraries, analysis.features.libraryList);
-                    codeToRun.current = codeToExecute;
+                    iframeRef.current.srcdoc = createPythonIframe();
+                    codeToRun.current = message; // Lưu message object đầy đủ
                 } else {
                     iframeRef.current.srcdoc = createJavaScriptIframe(codeToExecute, analysis.codeType);
-                    codeToRun.current = analysis.codeType.includes('html') || analysis.codeType === 'css_only' ? 
-                        null : { code: codeToExecute, strategy: analysis.executionStrategy };
+                    codeToRun.current = analysis.codeType.includes('html') || analysis.codeType === 'css_only' ? null : message;
                 }
                 iframeRef.current.dataset.type = newIframeType;
             } else {
-                const message = analysis.codeType === 'python' ? 
-                    { code: codeToExecute } : 
-                    { code: codeToExecute, strategy: analysis.executionStrategy };
+                // Gửi message object đầy đủ ngay cả khi iframe được tái sử dụng
                 iframeRef.current.contentWindow.postMessage(message, '*');
             }
         }
     };
+    // END OF FIX
 
     const handleClear = () => {
         setHasError(false); setLastError(null); setOutput([]);
@@ -496,7 +416,6 @@ main();
                     <iframe ref={iframeRef} sandbox="allow-scripts allow-same-origin allow-modals allow-popups" style={styles.iframe} title="Ultra Smart Sandbox Preview" />
                 </div>
             </div>
-
             <div style={styles.output}>
                 {hasError && lastError && (
                     <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.3)', borderRadius: '4px' }}>
