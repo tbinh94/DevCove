@@ -355,7 +355,7 @@ console.log(greeting);
         const detailedPrompt = `Error: ${lastError.message}${lastError.stack ? `\nStack: ${lastError.stack}` : ''}\n\nFix this code:`;
         
         setFixingRecommendation(detailedPrompt);
-        setOutput(prev => [...prev, { type: 'info', message: `🤖 AI is analyzing the error...` }]);
+        setOutput(prev => [...prev, { type: 'info', message: `🤖 DevAlly is analyzing the error...` }]);
         
         try {
             const response = await apiService.getAiCodeFix(originalCode, detailedPrompt);
@@ -375,7 +375,7 @@ console.log(greeting);
                     ...removedLines.map(line => `- ${line}`),
                     ...addedLines.map(line => `+ ${line}`)
                 ].join('\n');
-                const diffOutput = { type: 'ai_diff', content: diffText, message: '🤖 AI has suggested the following changes:' };
+                const diffOutput = { type: 'ai_diff', content: diffText, message: '🤖 DevAlly has suggested the following changes:' };
                 setOutput(prev => [...prev, diffOutput]);
                 setProposedFix(fixedCode);
             } else {
@@ -724,7 +724,7 @@ plt.show()`
                     <div style={styles.header}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <span style={styles.brandTitle}>
-                                ✨ Ultra Smart Sandbox
+                                ✨ DevForge Sandbox
                             </span>
                             <div style={{ ...styles.codeTypeIndicator, backgroundColor: typeInfo.color }}>
                                 {typeInfo.label}
@@ -811,7 +811,7 @@ console.log('Ready to create something amazing? ✨');"
                                 onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
                                 onMouseOut={e => e.target.style.transform = 'scale(1)'}
                             >
-                                🪄 Fix with AI
+                                🪄 Let DevAlly help you with this bug!
                             </button>
                         </div>
                     </div>
