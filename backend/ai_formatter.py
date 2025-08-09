@@ -43,8 +43,7 @@ class AICommentFormatter:
         
         # Languages that support running in browser/sandbox
         self.runnable_languages = [
-            'javascript', 'js', 'html', 'css', 'python', 'py', 
-            'typescript', 'ts', 'json', 'markdown', 'md'
+            'javascript', 'js', 'python', 'py'
         ]
 
     def format_full_response(self, ai_text: str, post=None) -> str:
@@ -291,57 +290,224 @@ class AICommentFormatter:
         return self._detect_language_from_content_heuristics(code_content)
 
     def _detect_language_from_content_heuristics(self, code_content):
-        """Use heuristics to detect programming language from code content."""
+        """
+        Improved heuristics to detect programming language from code content.
+        Uses weighted scoring system to avoid false positives.
+        """
         if not code_content or not code_content.strip():
             return 'text'
         
         code_lower = code_content.lower().strip()
+        code_lines = code_content.split('\n')
         
-        # JavaScript/Node.js patterns
-        if any(pattern in code_lower for pattern in [
-            'console.log', 'function(', '=>', 'const ', 'let ', 'var ',
-            'document.', 'window.', '.addEventListener', 'require(',
-            'npm ', 'node ', 'express', 'react', 'vue', 'angular'
-        ]):
-            return 'javascript'
+        # Language scoring system
+        scores = {
+            'go': 0,
+            'javascript': 0,
+            'typescript': 0,
+            'python': 0,
+            'html': 0,
+            'css': 0,
+            'json': 0,
+            'java': 0,
+            'csharp': 0,
+            'rust': 0,
+            'cpp': 0
+        }
         
-        # TypeScript patterns
-        elif any(pattern in code_lower for pattern in [
-            'interface ', 'type ', ': string', ': number', ': boolean',
-            '<T>', 'extends ', 'implements ', 'enum ', 'namespace '
-        ]):
-            return 'typescript'
+        # Go-specific patterns (HIGH WEIGHT)
+        go_patterns = [
+            ('package main', 10),
+            ('func main()', 10),
+            ('import (', 8),
+            ('type ', 6),
+            ('struct {', 8),
+            ('var ', 6),
+            (':=', 7),
+            ('fmt.', 8),
+            ('json:"', 7),
+            ('net/http', 9),
+            ('encoding/json', 9),
+            ('log.', 6),
+            ('func (', 7)
+        ]
         
-        # Python patterns
-        elif any(pattern in code_lower for pattern in [
-            'def ', 'import ', 'from ', 'print(', 'if __name__',
-            'self.', 'class ', 'elif ', 'isinstance(', 'len(',
-            'range(', 'enumerate(', 'lambda ', 'yield '
-        ]):
-            return 'python'
+        # JavaScript-specific patterns (HIGH WEIGHT)
+        js_patterns = [
+            ('console.log', 8),
+            ('document.', 9),
+            ('window.', 9),
+            ('.addEventListener', 9),
+            ('require(', 7),
+            ('module.exports', 8),
+            ('const ', 4),  # Lower weight as Go also uses const
+            ('let ', 6),
+            ('var ', 2),    # Lower weight as many languages use var
+            ('=>', 5),      # Arrow functions
+            ('function(', 7),
+            ('async ', 6),
+            ('await ', 6),
+            ('import ', 3)  # Lower weight as many languages use import
+        ]
+        
+        # TypeScript-specific patterns
+        ts_patterns = [
+            ('interface ', 10),
+            (': string', 8),
+            (': number', 8),
+            (': boolean', 8),
+            ('extends ', 6),
+            ('implements ', 8),
+            ('enum ', 9),
+            ('<T>', 7),
+            ('namespace ', 9)
+        ]
+        
+        # Python-specific patterns
+        python_patterns = [
+            ('def ', 8),
+            ('if __name__', 10),
+            ('self.', 8),
+            ('elif ', 9),
+            ('isinstance(', 9),
+            ('range(', 8),
+            ('enumerate(', 9),
+            ('lambda ', 8),
+            ('yield ', 9),
+            ('print(', 6),
+            ('import ', 3),
+            ('from ', 4)
+        ]
         
         # HTML patterns
-        elif any(pattern in code_lower for pattern in [
-            '<html', '<head', '<body', '<div', '<span', '<p>',
-            '<!doctype', '<script', '<style', '<link', '<meta'
-        ]):
-            return 'html'
+        html_patterns = [
+            ('<!doctype', 10),
+            ('<html', 9),
+            ('<head>', 8),
+            ('<body>', 8),
+            ('<div', 6),
+            ('<script', 7),
+            ('<style', 7)
+        ]
         
         # CSS patterns
-        elif re.search(r'[a-zA-Z-]+\s*:\s*[^;]+;', code_content):
-            return 'css'
+        css_patterns = [
+            ('background:', 7),
+            ('color:', 6),
+            ('font-', 6),
+            ('margin:', 7),
+            ('padding:', 7),
+            ('display:', 7),
+            ('position:', 7),
+            ('width:', 5),
+            ('height:', 5)
+        ]
         
-        # JSON patterns
-        elif (code_lower.strip().startswith('{') and code_lower.strip().endswith('}')) or \
-             (code_lower.strip().startswith('[') and code_lower.strip().endswith(']')):
+        # Java patterns
+        java_patterns = [
+            ('public class', 10),
+            ('public static void main', 10),
+            ('System.out.', 9),
+            ('String[] args', 9),
+            ('public ', 4),
+            ('private ', 4),
+            ('protected ', 6),
+            ('extends ', 5),
+            ('implements ', 6)
+        ]
+        
+        # C# patterns
+        csharp_patterns = [
+            ('using System', 10),
+            ('namespace ', 7),
+            ('Console.WriteLine', 9),
+            ('public class', 6),
+            ('static void Main', 10),
+            ('string[] args', 8)
+        ]
+        
+        # Rust patterns
+        rust_patterns = [
+            ('fn main()', 10),
+            ('let mut', 8),
+            ('println!', 9),
+            ('use std::', 9),
+            ('impl ', 7),
+            ('match ', 7),
+            ('enum ', 6)
+        ]
+        
+        # C++ patterns
+        cpp_patterns = [
+            ('#include', 9),
+            ('std::', 8),
+            ('cout <<', 9),
+            ('cin >>', 9),
+            ('int main()', 10),
+            ('namespace std', 8),
+            ('using namespace', 7)
+        ]
+        
+        # Apply pattern matching with weights
+        pattern_sets = {
+            'go': go_patterns,
+            'javascript': js_patterns,
+            'typescript': ts_patterns,
+            'python': python_patterns,
+            'html': html_patterns,
+            'css': css_patterns,
+            'java': java_patterns,
+            'csharp': csharp_patterns,
+            'rust': rust_patterns,
+            'cpp': cpp_patterns
+        }
+        
+        for lang, patterns in pattern_sets.items():
+            for pattern, weight in patterns:
+                if pattern in code_lower:
+                    scores[lang] += weight
+        
+        # Special JSON detection
+        if self._is_valid_json_structure(code_content):
+            scores['json'] = 15
+        
+        # CSS structure detection (more reliable than keyword-based)
+        if self._has_css_structure(code_content):
+            scores['css'] += 10
+        
+        # Find language with highest score
+        max_score = max(scores.values())
+        if max_score >= 6:  # Minimum threshold
+            detected_lang = max(scores, key=scores.get)
+            return detected_lang
+        
+        return 'text'
+
+    def _is_valid_json_structure(self, code_content):
+        """Check if content has valid JSON structure"""
+        stripped = code_content.strip()
+        if (stripped.startswith('{') and stripped.endswith('}')) or \
+        (stripped.startswith('[') and stripped.endswith(']')):
             try:
                 import json
                 json.loads(code_content)
-                return 'json'
+                return True
             except:
                 pass
-        
-        return 'text'
+        return False
+
+    def _has_css_structure(self, code_content):
+        """Check for CSS-like structure patterns"""
+        # Look for CSS rule patterns: selector { property: value; }
+        css_pattern = re.compile(r'[a-zA-Z0-9\-\.#\s]+\s*\{\s*[a-zA-Z\-]+\s*:\s*[^;]+;')
+        return bool(css_pattern.search(code_content))
+
+    def detect_language_from_content(self, code_content):
+        """
+        Updated version of the original detect_language_from_content function
+        using the improved heuristics.
+        """
+        return self._detect_language_from_content_heuristics(code_content)
 
     def _get_display_language_name(self, language):
         """Get proper display name for language."""

@@ -3,116 +3,264 @@ import React, { useState, useRef, useEffect } from 'react';
 // Sử dụng API service thật
 import apiService from '../../../services/api';
 
-// CSS styles (condensed)
+// Component hiển thị sự khác biệt của AI
+const AiDiffViewer = ({ diff }) => {
+    const diffStyles = {
+        container: {
+            fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
+            fontSize: '13px',
+            whiteSpace: 'pre-wrap',
+            marginTop: '12px',
+            padding: '16px',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            borderRadius: '8px',
+            borderLeft: '4px solid #00d4ff',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+        },
+        line: {
+            display: 'block',
+            minHeight: '1.4em',
+            padding: '2px 0',
+        },
+        added: {
+            backgroundColor: 'rgba(46, 164, 79, 0.2)',
+            color: '#4ade80',
+            borderRadius: '4px',
+            padding: '2px 4px',
+            margin: '1px 0',
+        },
+        removed: {
+            backgroundColor: 'rgba(248, 81, 73, 0.2)',
+            color: '#f87171',
+            borderRadius: '4px',
+            padding: '2px 4px',
+            margin: '1px 0',
+        },
+    };
+
+    return (
+        <div style={diffStyles.container}>
+            {diff.split('\n').map((line, index) => {
+                let style = diffStyles.line;
+                if (line.startsWith('+ ')) {
+                    style = { ...style, ...diffStyles.added };
+                } else if (line.startsWith('- ')) {
+                    style = { ...style, ...diffStyles.removed };
+                }
+                return (
+                    <span key={index} style={style}>
+                        {line || ' '}
+                    </span>
+                );
+            })}
+        </div>
+    );
+};
+
+// Modern CSS styles
 const styles = {
   container: {
-    fontFamily: 'Arial, sans-serif',
-    border: '1px solid #444',
-    borderRadius: '8px',
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    borderRadius: '16px',
     width: '100%',
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '20px auto',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: '#2d2d2d',
+    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
   },
   mainContent: {
     display: 'flex',
     flexDirection: 'row',
-    height: '500px',
+    height: '600px',
   },
   editorWrapper: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    borderRight: '1px solid #444',
+    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+    background: 'linear-gradient(180deg, #1e293b 0%, #111827 100%)',
   },
   header: {
-    backgroundColor: '#3a3a3a',
-    padding: '10px 15px',
-    borderBottom: '1px solid #444',
+    background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+    padding: '16px 20px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    color: '#e0e0e0',
+    color: '#f8fafc',
+    backdropFilter: 'blur(10px)',
   },
   runButton: {
-    backgroundColor: '#007bff',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
     color: 'white',
     border: 'none',
-    padding: '8px 16px',
-    borderRadius: '4px',
+    padding: '10px 20px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '600',
     marginRight: '8px',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   },
   clearButton: {
-    backgroundColor: '#6c757d',
+    background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
     color: 'white',
     border: 'none',
-    padding: '8px 16px',
-    borderRadius: '4px',
+    padding: '10px 20px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '600',
     marginRight: '8px',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 14px 0 rgba(107, 114, 128, 0.39)',
+  },
+  templateSelect: {
+    background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+    color: 'white',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    marginRight: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    backdropFilter: 'blur(10px)',
   },
   codeTypeIndicator: {
-    backgroundColor: '#28a745',
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
     color: 'white',
-    padding: '4px 8px',
-    borderRadius: '12px',
+    padding: '6px 12px',
+    borderRadius: '20px',
     fontSize: '12px',
-    fontWeight: 'bold',
-    marginLeft: '10px',
+    fontWeight: '700',
+    marginLeft: '12px',
+    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
   },
   textarea: {
     flex: 1,
     border: 'none',
-    padding: '15px',
+    padding: '20px',
     fontSize: '14px',
-    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+    fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
     resize: 'none',
     boxSizing: 'border-box',
     outline: 'none',
-    backgroundColor: '#1e1e1e',
-    color: '#d4d4d4',
-    lineHeight: '1.5',
+    background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
+    color: '#e2e8f0',
+    lineHeight: '1.6',
+    letterSpacing: '0.025em',
   },
   previewWrapper: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
+    background: 'linear-gradient(180deg, #1e293b 0%, #111827 100%)',
   },
   iframe: {
     flex: 1,
     border: 'none',
     backgroundColor: 'white',
+    borderRadius: '0 0 8px 0',
   },
   output: {
-    height: '180px',
-    backgroundColor: '#1e1e1e',
-    color: '#ccc',
-    padding: '15px',
+    height: '200px',
+    background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
+    color: '#cbd5e1',
+    padding: '20px',
     fontSize: '13px',
-    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+    fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     overflowY: 'auto',
-    borderTop: '1px solid #444',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent',
   },
-  error: { color: '#ff6b6b' },
-  warning: { color: '#ffa726' },
-  success: { color: '#66bb6a' },
-  info: { color: '#29b6f6' },
+  error: { color: '#f87171', textShadow: '0 0 10px rgba(248, 113, 113, 0.3)' },
+  warning: { color: '#fbbf24', textShadow: '0 0 10px rgba(251, 191, 36, 0.3)' },
+  success: { color: '#4ade80', textShadow: '0 0 10px rgba(74, 222, 128, 0.3)' },
+  info: { color: '#60a5fa', textShadow: '0 0 10px rgba(96, 165, 250, 0.3)' },
   errorStack: {
-    color: '#c98282',
+    color: '#f87171',
     paddingLeft: '15px',
     fontSize: '11px',
     opacity: 0.8,
+    fontStyle: 'italic',
+  },
+  brandTitle: {
+    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    fontSize: '16px',
+    fontWeight: '800',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  libraryBadge: {
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    color: 'white',
+    padding: '4px 8px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '600',
+    marginLeft: '8px',
+    boxShadow: '0 2px 8px 0 rgba(245, 158, 11, 0.39)',
+  },
+  errorBox: {
+    marginBottom: '16px',
+    padding: '16px',
+    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+    borderRadius: '12px',
+    backdropFilter: 'blur(10px)',
+  },
+  aiFixButton: {
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 14px 0 rgba(139, 92, 246, 0.39)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  applyFixButton: {
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+    marginTop: '12px',
   },
 };
 
-// Lớp phân tích code siêu thông minh (giữ nguyên)
+// Lớp phân tích code (giữ nguyên logic)
 class UltraCodeAnalyzer {
     static analyzeCode(code) {
         const pythonPatterns = {
@@ -121,17 +269,13 @@ class UltraCodeAnalyzer {
             def: /^\s*def\s+.*:/m,
             class: /^\s*class\s+.*:/m,
             imports: /^\s*(from|import)\s/m,
-            // Cập nhật regex để bắt cả các thư viện chuẩn của Pyodide
             libraries: /import\s+(numpy|pandas|matplotlib|requests|scipy|scikit-learn)\b/m,
         };
-
         let isPython = Object.values(pythonPatterns).some(pattern => pattern.test(code));
         let executionStrategy = 'sync', complexity = 'basic', codeType = 'javascript', features = {};
-
         if (isPython) {
             codeType = 'python';
             executionStrategy = 'python_pyodide';
-            
             features.hasLibraries = pythonPatterns.libraries.test(code);
             features.libraryList = (code.match(/import\s+(numpy|pandas|matplotlib|requests|scipy|scikit-learn)\b/g) || [])
                 .map(m => m.replace('import ', ''));
@@ -146,11 +290,9 @@ class UltraCodeAnalyzer {
                 domManipulation: /document\.|getElementById|querySelector|addEventListener|createElement/,
                 reactJsx: /React\.|useState|useEffect|jsx|import.*react/i,
             };
-            
             for (const [feature, pattern] of Object.entries(jsPatterns)) {
                 features[feature] = pattern.test(code);
             }
-
             if (features.htmlDocument) codeType = 'html_document';
             else if (features.htmlTags) codeType = 'html_fragment';
             else if (features.cssRules && !features.htmlTags) codeType = 'css_only';
@@ -161,28 +303,41 @@ class UltraCodeAnalyzer {
         }
         return { features, executionStrategy, complexity, codeType };
     }
-
+    
     static getTypeLabel(analysis) {
         const { features, codeType } = analysis;
         if (codeType === 'python') {
             const libCount = features.libraryList?.length || 0;
             return { 
-                label: libCount > 0 ? `Python + ${libCount} libs` : 'Python (Pyodide)', 
-                color: features.hasLibraries ? '#ff6b35' : '#306998' 
+                label: libCount > 0 ? `🐍 Python + ${libCount} libs` : '🐍 Python (Pyodide)', 
+                color: features.hasLibraries ? '#f59e0b' : '#3b82f6' 
             };
         }
-        if (codeType === 'html_document') return { label: 'HTML Document', color: '#e67e22' };
-        if (codeType === 'css_only') return { label: 'CSS Styles', color: '#3498db' };
-        if (codeType === 'react_jsx') return { label: 'React/JSX', color: '#61dafb' };
-        if (features.asyncFunction) return { label: 'Async JS', color: '#f39c12' };
-        if (features.domManipulation) return { label: 'DOM Script', color: '#3498db' };
-        if (codeType === 'es_module') return { label: 'ES Module', color: '#f7df1e' };
-        return { label: 'JavaScript', color: '#f7df1e' };
+        if (codeType === 'html_document') return { label: '🌐 HTML Document', color: '#f97316' };
+        if (codeType === 'css_only') return { label: '🎨 CSS Styles', color: '#06b6d4' };
+        if (codeType === 'react_jsx') return { label: '⚛️ React/JSX', color: '#06b6d4' };
+        if (features.asyncFunction) return { label: '⚡ Async JS', color: '#f59e0b' };
+        if (features.domManipulation) return { label: '🔧 DOM Script', color: '#06b6d4' };
+        if (codeType === 'es_module') return { label: '📦 ES Module', color: '#eab308' };
+        return { label: '⚡ JavaScript', color: '#eab308' };
     }
 }
 
 const UltraSmartSandbox = () => {
-    const [code, setCode] = useState(`// Paste code here or click "Run in Sandbox" from a post!`);
+    const [code, setCode] = useState(`// Welcome to Ultra Smart Sandbox! 🚀
+// Paste your code here or select a template
+
+console.log("Hello, World! 🌍");
+
+// Try some interactive code:
+const greeting = "Welcome to the future of coding!";
+console.log(greeting);
+
+// This sandbox supports:
+// ✨ HTML, CSS, JavaScript
+// 🐍 Python with libraries (numpy, pandas, matplotlib)
+// 🎯 Real-time preview
+// 🤖 AI-powered error fixing`);
     const [output, setOutput] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [codeAnalysis, setCodeAnalysis] = useState(null);
@@ -191,24 +346,60 @@ const UltraSmartSandbox = () => {
     const [fixingRecommendation, setFixingRecommendation] = useState(null);
     const codeToRun = useRef(null);
     const [lastError, setLastError] = useState(null);
+    const [proposedFix, setProposedFix] = useState(null);
 
     const handleApplyAiFix = async () => {
         if (!lastError) return;
+        
+        const originalCode = code;
         const detailedPrompt = `Error: ${lastError.message}${lastError.stack ? `\nStack: ${lastError.stack}` : ''}\n\nFix this code:`;
+        
         setFixingRecommendation(detailedPrompt);
         setOutput(prev => [...prev, { type: 'info', message: `🤖 AI is analyzing the error...` }]);
+        
         try {
-            const response = await apiService.getAiCodeFix(code, detailedPrompt);
-            const fixedCode = response.fixed_code || response;
-            const markdownMatch = fixedCode.match(/```(?:python|javascript|html|css)?\s*\n([\s\S]*?)\n?```/);
-            if (markdownMatch && markdownMatch[1]) setCode(markdownMatch[1].trim());
-            else setCode(fixedCode);
-            setOutput(prev => [...prev, { type: 'success', message: '✅ AI fix has been applied!' }]);
+            const response = await apiService.getAiCodeFix(originalCode, detailedPrompt);
+            const fixedCodeRaw = response.fixed_code || response;
+            
+            const markdownMatch = fixedCodeRaw.match(/```(?:python|javascript|html|css)?\s*\n([\s\S]*?)\n?```/);
+            const fixedCode = markdownMatch && markdownMatch[1] ? markdownMatch[1].trim() : fixedCodeRaw.trim();
+            
+            const originalLines = new Set(originalCode.split('\n'));
+            const fixedLines = new Set(fixedCode.split('\n'));
+            
+            const removedLines = [...originalCode.split('\n')].filter(line => !fixedLines.has(line));
+            const addedLines = [...fixedCode.split('\n')].filter(line => !originalLines.has(line));
+
+            if (addedLines.length > 0 || removedLines.length > 0) {
+                const diffText = [
+                    ...removedLines.map(line => `- ${line}`),
+                    ...addedLines.map(line => `+ ${line}`)
+                ].join('\n');
+                const diffOutput = { type: 'ai_diff', content: diffText, message: '🤖 AI has suggested the following changes:' };
+                setOutput(prev => [...prev, diffOutput]);
+                setProposedFix(fixedCode);
+            } else {
+                setOutput(prev => [...prev, { type: 'info', message: 'ℹ️ AI analyzed the code but found no specific lines to change.' }]);
+            }
+
         } catch (error) {
             setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
         } finally {
             setFixingRecommendation(null);
         }
+    };
+
+    const handleAcceptAndRunFix = () => {
+        if (!proposedFix) return;
+
+        const codeToRun = proposedFix;
+        setCode(codeToRun);
+        setProposedFix(null);
+        setOutput(prev => [...prev, { type: 'success', message: '✅ Fix applied. Running again...' }]);
+
+        setTimeout(() => {
+            handleRunCode(codeToRun);
+        }, 50);
     };
 
     useEffect(() => {
@@ -229,21 +420,12 @@ const UltraSmartSandbox = () => {
         }
     }, [code]);
 
-    // START OF FIX: Cập nhật logic tạo Iframe Python
     const createPythonIframe = () => {
-        // Việc cài đặt sẽ được xử lý động, không cần truyền tham số vào đây nữa.
-        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Python Sandbox</title>
-<style>body{font-family:sans-serif;margin:10px;background:#f8f9fa}#output{white-space:pre-wrap;font-family:monospace}.error{color:#cc0000}</style>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script></head>
-<body><div id="status">Loading Python Environment... 🐍</div><div id="output"></div>
-<script>
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Python Sandbox</title><style>body{font-family:sans-serif;margin:10px;background:#f8f9fa}#output{white-space:pre-wrap;font-family:monospace}.error{color:#cc0000}</style><script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script></head><body><div id="status">Loading Python Environment... 🐍</div><div id="output"></div><script>
 const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); };
 const logInterval = setInterval(postLogs, 400);
-const addToLog = (type, message, stack = null) => {
-    String(message || '').split('\\n').filter(line => line.trim() !== '').forEach(line => logs.push({ type, message: line, stack }));
-};
+const addToLog = (type, message, stack = null) => { String(message || '').split('\\n').filter(line => line.trim() !== '').forEach(line => logs.push({ type, message: line, stack })); };
 function custom_js_input(prompt_text = '') { const r = window.prompt(prompt_text); if (r === null) throw new Error("Input cancelled by user."); return r; }
-
 async function main() {
     try {
         let pyodide = await loadPyodide();
@@ -252,37 +434,26 @@ async function main() {
         pyodide.setStderr({ batched: (str) => addToLog('error', str) });
         pyodide.globals.set('js_input', custom_js_input);
         await pyodide.runPythonAsync('import __main__\\n__builtins__.input = __main__.js_input');
-        
         window.parent.postMessage({ type: 'pyodide_ready' }, '*');
-
         window.addEventListener('message', async (event) => {
             if (!event.data?.code) return;
-            
             const { code, libraries } = event.data;
             let success = true;
-
             try {
-                // 1. Cài đặt các thư viện được yêu cầu (nếu có)
                 if (libraries && libraries.length > 0) {
-                    addToLog('info', \`📦 Installing \${libraries.join(', ')}...\`);
-                    postLogs(); // Gửi log cài đặt ngay lập tức
+                    addToLog('info', \`📦 Installing \${libraries.join(', ')}...\`); postLogs();
                     await pyodide.loadPackage(libraries);
                     addToLog('success', \`✅ Libraries installed successfully.\`);
                 }
-                
-                // 2. Chạy code của người dùng
-                addToLog('info', '🚀 Executing Python code...'); 
-                postLogs();
+                addToLog('info', '🚀 Executing Python code...'); postLogs();
                 await pyodide.runPythonAsync(code);
                 addToLog('success', '✅ Code executed successfully');
-
             } catch (err) {
                 success = false;
                 const errorMessage = err.message.includes('JavascriptError:') ? err.message.split('\\n').pop().trim() : err.message;
                 addToLog('error', errorMessage, err.stack);
             } finally { 
-                postLogs(); 
-                window.parent.postMessage({ type: 'execution_complete', success }, '*'); 
+                postLogs(); window.parent.postMessage({ type: 'execution_complete', success }, '*'); 
             }
         });
     } catch (err) {
@@ -293,10 +464,8 @@ async function main() {
 main();
 <\/script></body></html>`;
     };
-    // END OF FIX
 
     const createJavaScriptIframe = (codeToUse, codeType) => {
-        // Logic này không thay đổi
         if (codeType === 'html_fragment') codeToUse = `<!DOCTYPE html><html><head><title>Preview</title></head><body>${codeToUse}</body></html>`;
         else if (codeType === 'css_only') codeToUse = `<!DOCTYPE html><html><head><title>CSS Preview</title><style>${codeToUse}</style></head><body><div>CSS Applied</div></body></html>`;
         if (codeType.includes('html') || codeType === 'css_only') return codeToUse.replace('</head>', `<script>const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('load', () => setTimeout(() => { postLogs(); window.parent.postMessage({ type: 'execution_complete', success: true }, '*'); }, 200)); <\/script></head>`);
@@ -309,7 +478,6 @@ main();
             const { data } = event;
             if (data?.type === 'pyodide_ready' || data?.type === 'js_ready') {
                 if (codeToRun.current) {
-                    // Gửi message object đầy đủ, bao gồm cả thư viện cho Python
                     iframeRef.current.contentWindow.postMessage(codeToRun.current, '*');
                     codeToRun.current = null;
                 }
@@ -326,11 +494,11 @@ main();
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    // START OF FIX: Cập nhật logic chạy code
     const handleRunCode = (codeOverride) => {
         const codeToExecute = typeof codeOverride === 'string' ? codeOverride : code;
         if (iframeRef.current && !isRunning && codeToExecute.trim()) {
             setHasError(false); setLastError(null);
+            setProposedFix(null);
             setOutput([{ type: 'info', message: '🔄 Analyzing and preparing execution...' }]);
             setIsRunning(true);
             
@@ -338,7 +506,6 @@ main();
             const newIframeType = analysis.codeType;
             const currentIframeType = iframeRef.current.dataset.type;
 
-            // Xây dựng message object để gửi đi
             const message = analysis.codeType === 'python'
                 ? { code: codeToExecute, libraries: analysis.features.libraryList || [] }
                 : { code: codeToExecute, strategy: analysis.executionStrategy };
@@ -346,22 +513,21 @@ main();
             if (currentIframeType !== newIframeType) {
                 if (analysis.codeType === 'python') {
                     iframeRef.current.srcdoc = createPythonIframe();
-                    codeToRun.current = message; // Lưu message object đầy đủ
+                    codeToRun.current = message;
                 } else {
                     iframeRef.current.srcdoc = createJavaScriptIframe(codeToExecute, analysis.codeType);
                     codeToRun.current = analysis.codeType.includes('html') || analysis.codeType === 'css_only' ? null : message;
                 }
                 iframeRef.current.dataset.type = newIframeType;
             } else {
-                // Gửi message object đầy đủ ngay cả khi iframe được tái sử dụng
                 iframeRef.current.contentWindow.postMessage(message, '*');
             }
         }
     };
-    // END OF FIX
 
     const handleClear = () => {
         setHasError(false); setLastError(null); setOutput([]);
+        setProposedFix(null);
         if (iframeRef.current) {
             iframeRef.current.srcdoc = 'about:blank';
             iframeRef.current.dataset.type = 'blank';
@@ -369,16 +535,186 @@ main();
     };
     
     const getLogStyle = (type) => ({...styles[type]});
-
-    const typeInfo = codeAnalysis ? UltraCodeAnalyzer.getTypeLabel(codeAnalysis) : { label: 'Unknown', color: '#95a5a6' };
+    const typeInfo = codeAnalysis ? UltraCodeAnalyzer.getTypeLabel(codeAnalysis) : { label: 'Unknown', color: '#64748b' };
     
     const templates = {
-        html: `<!DOCTYPE html><html lang="en"><head><title>Page</title><style>body{font-family:sans-serif;}</style></head><body><h1>Hello World!</h1></body></html>`,
-        css: `.card { background: #eee; padding: 1rem; border-radius: 8px; text-align: center; }`,
-        js: `console.log("Hello from JavaScript!");\nconst arr = [1, 2, 3];\nconsole.log('Doubled:', arr.map(n => n * 2));`,
-        esmodule: `// ES Module example\nimport { format } from 'https://cdn.skypack.dev/date-fns';\nconsole.log('Date:', format(new Date(), 'yyyy-MM-dd'));`,
-        python: `# Python with user input\nname = input("What's your name? ")\nprint(f"Hello, {name}!")`,
-        numpy: `# Python with NumPy & Matplotlib\nimport numpy as np\nimport matplotlib.pyplot as plt\n\n# Create data\nx = np.linspace(0, 2 * np.pi, 200)\ny = np.sin(x)\n\nprint("NumPy array created with shape:", y.shape)\n\n# This will render in the preview pane!\nplt.plot(x, y)\nplt.title('Sine Wave')\nplt.xlabel('x')\nplt.ylabel('sin(x)')\nplt.grid(True)\nplt.show() # Important!`
+        html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beautiful Page</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 { margin: 0; font-size: 2.5rem; }
+        p { margin: 1rem 0; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚀 Hello, Beautiful World!</h1>
+        <p>This is a modern, glass-morphic design</p>
+        <button onclick="alert('Interactive!')">Click me!</button>
+    </div>
+</body>
+</html>`,
+        css: `.modern-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateY(0);
+    transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.3);
+}
+
+.glow-text {
+    text-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}`,
+        js: `// ✨ Modern JavaScript Example
+console.log("🚀 Welcome to Ultra Smart Sandbox!");
+
+// Interactive array operations
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+const sum = numbers.reduce((acc, n) => acc + n, 0);
+
+console.log("Original:", numbers);
+console.log("Doubled:", doubled);
+console.log("Sum:", sum);
+
+// Async/await example
+const fetchData = async () => {
+    console.log("📡 Simulating API call...");
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { message: "Data loaded successfully! ✅" };
+};
+
+fetchData().then(data => console.log(data.message));
+
+// Modern ES6+ features
+const user = { name: "Developer", level: "Pro" };
+const greeting = \`Hello \${user.name}, you're a \${user.level} developer! 🎉\`;
+console.log(greeting);`,
+        esmodule: `// 🚀 ES Module with dynamic imports
+import { format } from 'https://cdn.skypack.dev/date-fns';
+
+// Current date formatting
+const now = new Date();
+const formatted = format(now, 'PPP');
+console.log(\`📅 Today is: \${formatted}\`);
+
+// Dynamic color utility
+const colors = {
+    primary: '#3b82f6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    error: '#ef4444'
+};
+
+console.log('🎨 Available colors:', colors);
+
+// Async data processing
+const processData = async (data) => {
+    console.log('⚡ Processing data...');
+    return data.map(item => item.toUpperCase());
+};
+
+const fruits = ['apple', 'banana', 'orange'];
+processData(fruits).then(result => {
+    console.log('✨ Processed:', result);
+});`,
+        python: `# 🐍 Interactive Python Example
+print("🚀 Welcome to Python Sandbox!")
+
+# Get user input
+name = input("What's your name? ")
+age = int(input("How old are you? "))
+
+# Process the data
+greeting = f"Hello {name}! You are {age} years old."
+print(f"✨ {greeting}")
+
+# Some calculations
+years_to_100 = 100 - age
+print(f"📊 You have approximately {years_to_100} years until you're 100!")
+
+# List operations
+numbers = [1, 2, 3, 4, 5]
+squared = [n**2 for n in numbers]
+print(f"🔢 Numbers: {numbers}")
+print(f"⭐ Squared: {squared}")`,
+        numpy: `# 🐍 Python with NumPy & Matplotlib
+import numpy as np
+import matplotlib.pyplot as plt
+
+print("📊 Creating a beautiful sine wave visualization!")
+
+# Generate data
+x = np.linspace(0, 4 * np.pi, 200)
+y1 = np.sin(x)
+y2 = np.cos(x)
+y3 = np.sin(x) * np.cos(x)
+
+print(f"✨ Generated {len(x)} data points")
+
+# Create the plot
+plt.figure(figsize=(12, 8))
+plt.plot(x, y1, 'b-', linewidth=2, label='sin(x)', alpha=0.8)
+plt.plot(x, y2, 'r-', linewidth=2, label='cos(x)', alpha=0.8)
+plt.plot(x, y3, 'g-', linewidth=2, label='sin(x)cos(x)', alpha=0.8)
+
+# Styling
+plt.title('🌊 Beautiful Wave Functions', fontsize=16, fontweight='bold')
+plt.xlabel('x (radians)', fontsize=12)
+plt.ylabel('y', fontsize=12)
+plt.grid(True, alpha=0.3)
+plt.legend(fontsize=12)
+plt.tight_layout()
+
+# Add some statistics
+print(f"📈 Sine wave stats:")
+print(f"   Max: {np.max(y1):.3f}")
+print(f"   Min: {np.min(y1):.3f}")
+print(f"   Mean: {np.mean(y1):.3f}")
+
+plt.show()`
     };
 
     return (
@@ -387,58 +723,142 @@ main();
                 <div style={styles.editorWrapper}>
                     <div style={styles.header}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <span>🌟 Ultra Smart Sandbox</span>
-                            <div style={{ ...styles.codeTypeIndicator, backgroundColor: typeInfo.color }}>{typeInfo.label}</div>
+                            <span style={styles.brandTitle}>
+                                ✨ Ultra Smart Sandbox
+                            </span>
+                            <div style={{ ...styles.codeTypeIndicator, backgroundColor: typeInfo.color }}>
+                                {typeInfo.label}
+                            </div>
                             {codeAnalysis?.features?.libraryList?.length > 0 && (
-                                <div style={{ ...styles.codeTypeIndicator, backgroundColor: '#ff6b35', marginLeft: '5px', flexShrink: 0 }}>
+                                <div style={styles.libraryBadge}>
                                     📦 {codeAnalysis.features.libraryList.join(', ')}
                                 </div>
                             )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <select onChange={(e) => { if (e.target.value) setCode(templates[e.target.value]); e.target.value = ''; }} style={{ ...styles.clearButton, backgroundColor: '#4a4a4a', border: '1px solid #666', padding: '6px 12px', fontSize: '12px', marginRight: '8px' }}>
-                                <option value="">📋 Quick Templates</option>
-                                <option value="html">🌐 HTML</option>
-                                <option value="css">🎨 CSS</option>
+                            <select 
+                                onChange={(e) => { 
+                                    if (e.target.value) setCode(templates[e.target.value]); 
+                                    e.target.value = ''; 
+                                }} 
+                                style={styles.templateSelect}
+                            >
+                                <option value="">📚 Quick Templates</option>
+                                <option value="html">🌐 Modern HTML</option>
+                                <option value="css">🎨 Modern CSS</option>
                                 <option value="js">⚡ JavaScript</option>
                                 <option value="esmodule">📦 ES Module</option>
-                                <option value="python">🐍 Python + Input</option>
-                                <option value="numpy">📊 Python + NumPy/Matplotlib</option>
+                                <option value="python">🐍 Python Interactive</option>
+                                <option value="numpy">📊 Python + Data Viz</option>
                             </select>
-                            <button onClick={() => handleRunCode()} style={{ ...styles.runButton, opacity: isRunning ? 0.6 : 1 }} disabled={isRunning}>{isRunning ? '⏳ Processing...' : '🚀 Ultra Run'}</button>
-                            <button onClick={handleClear} style={styles.clearButton}>🗑 Clear</button>
+                            <button 
+                                onClick={() => handleRunCode()} 
+                                style={{ 
+                                    ...styles.runButton, 
+                                    opacity: isRunning ? 0.6 : 1,
+                                    transform: isRunning ? 'scale(0.98)' : 'scale(1)'
+                                }} 
+                                disabled={isRunning}
+                                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                                onMouseOut={e => e.target.style.transform = isRunning ? 'scale(0.98)' : 'scale(1)'}
+                            >
+                                {isRunning ? '⏳ Processing...' : '🚀 Ultra Run'}
+                            </button>
+                            <button 
+                                onClick={handleClear} 
+                                style={styles.clearButton}
+                                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                                onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                            >
+                                🗑 Clear
+                            </button>
                         </div>
                     </div>
-                    <textarea value={code} onChange={(e) => setCode(e.target.value)} style={styles.textarea} placeholder="// Paste HTML, CSS, JS or Python. Libraries like numpy, pandas, matplotlib are supported! 🚀" />
+                    <textarea 
+                        value={code} 
+                        onChange={(e) => setCode(e.target.value)} 
+                        style={styles.textarea} 
+                        placeholder="// 🚀 Welcome to Ultra Smart Sandbox!
+// Paste your HTML, CSS, JS, or Python code here
+// Libraries supported: numpy, pandas, matplotlib, and more!
+
+console.log('Ready to create something amazing? ✨');" 
+                    />
                 </div>
                 <div style={styles.previewWrapper}>
-                    <div style={styles.header}><span>📱 Live Preview / Output</span></div>
-                    <iframe ref={iframeRef} sandbox="allow-scripts allow-same-origin allow-modals allow-popups" style={styles.iframe} title="Ultra Smart Sandbox Preview" />
+                    <div style={styles.header}>
+                        <span style={styles.brandTitle}>📱 Live Preview / Output</span>
+                    </div>
+                    <iframe 
+                        ref={iframeRef} 
+                        sandbox="allow-scripts allow-same-origin allow-modals allow-popups" 
+                        style={styles.iframe} 
+                        title="Ultra Smart Sandbox Preview" 
+                    />
                 </div>
             </div>
             <div style={styles.output}>
-                {hasError && lastError && (
-                    <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.3)', borderRadius: '4px' }}>
-                        <div style={{ color: '#ff8a80', fontSize: '12px', fontWeight: 'bold' }}>⚠️ Error: <span style={{ fontFamily: 'monospace', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '3px' }}>{lastError.message}</span></div>
-                        <div style={{ color: '#ffc1b8', fontSize: '11px', marginTop: '5px', display: 'flex', alignItems: 'center' }}>
-                            <span>Let AI fix this error?</span>
-                            <button style={{ opacity: fixingRecommendation ? 0.5 : 1, cursor: fixingRecommendation ? 'not-allowed' : 'pointer', marginLeft: '10px', background: '#007bff', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px' }} onClick={handleApplyAiFix} disabled={!!fixingRecommendation}>
-                                {fixingRecommendation ? '⏳ Thinking...' : '🪄 Fix with DevAlly'}
+                {hasError && lastError && !fixingRecommendation && !proposedFix && (
+                    <div style={styles.errorBox}>
+                        <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>
+                            ⚠️ Error Detected: <span style={{ fontFamily: 'monospace', backgroundColor: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px' }}>{lastError.message}</span>
+                        </div>
+                        <div style={{ color: '#fca5a5', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span>✨ Let AI fix this error automatically?</span>
+                            <button 
+                                style={styles.aiFixButton} 
+                                onClick={handleApplyAiFix}
+                                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                                onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                            >
+                                🪄 Fix with AI
                             </button>
                         </div>
                     </div>
                 )}
                 {output.length > 0 ? (
                     output.map((line, index) => (
-                        <div key={index} style={{ marginBottom: '4px' }}>
+                        <div key={index} style={{ marginBottom: '8px', lineHeight: '1.5' }}>
                             <span style={getLogStyle(line.type)}>
-                                {line.type === 'error' ? '❌' : line.type === 'warning' ? '⚠️' : line.type === 'info' ? 'ℹ️' : line.type === 'success' ? '✅' : '▶'} {line.message}
+                                {line.type !== 'ai_diff' && (
+                                    line.type === 'error' ? '❌' : 
+                                    line.type === 'warning' ? '⚠️' : 
+                                    line.type === 'info' ? 'ℹ️' : 
+                                    line.type === 'success' ? '✅' : '▶️'
+                                )} {line.message}
                             </span>
-                            {line.stack && (<div style={styles.errorStack}>{line.stack.split('\n').slice(0, 4).join('\n')}</div>)}
+                            {line.type === 'ai_diff' && <AiDiffViewer diff={line.content} />}
+                            {line.type === 'ai_diff' && proposedFix && (
+                                <div style={{ marginTop: '12px' }}>
+                                    <button 
+                                        onClick={handleAcceptAndRunFix} 
+                                        style={styles.applyFixButton}
+                                        onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                                        onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                                    >
+                                        ✅ Apply Fix & Run Again
+                                    </button>
+                                </div>
+                            )}
+                            {line.stack && (
+                                <div style={styles.errorStack}>
+                                    {line.stack.split('\n').slice(0, 4).join('\n')}
+                                </div>
+                            )}
                         </div>
                     ))
                 ) : (
-                    <div style={{ color: '#888' }}>Console output, errors, and smart tips will appear here...<br /><small style={{ color: '#666' }}>💡 Try running some code or select a template!</small></div>
+                    <div style={{ color: '#94a3b8', lineHeight: '1.6' }}>
+                        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                            🌟 Console output, errors, and AI-powered suggestions will appear here...
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                            💡 Try running some code or select a template to get started!
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                            ✨ Features: Real-time preview • AI error fixing • Multi-language support
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
