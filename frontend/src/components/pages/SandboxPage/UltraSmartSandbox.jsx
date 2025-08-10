@@ -3,60 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 // Sử dụng API service thật
 import apiService from '../../../services/api';
 
-// Component hiển thị sự khác biệt của AI
-const AiDiffViewer = ({ diff }) => {
-    const diffStyles = {
-        container: {
-            fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
-            fontSize: '13px',
-            whiteSpace: 'pre-wrap',
-            marginTop: '12px',
-            padding: '16px',
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            borderRadius: '8px',
-            borderLeft: '4px solid #00d4ff',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-        },
-        line: {
-            display: 'block',
-            minHeight: '1.4em',
-            padding: '2px 0',
-        },
-        added: {
-            backgroundColor: 'rgba(46, 164, 79, 0.2)',
-            color: '#4ade80',
-            borderRadius: '4px',
-            padding: '2px 4px',
-            margin: '1px 0',
-        },
-        removed: {
-            backgroundColor: 'rgba(248, 81, 73, 0.2)',
-            color: '#f87171',
-            borderRadius: '4px',
-            padding: '2px 4px',
-            margin: '1px 0',
-        },
-    };
+import AiDiffViewer from '../AiDiffViewer'; // Giả sử bạn đặt nó trong src/components/common
 
-    return (
-        <div style={diffStyles.container}>
-            {diff.split('\n').map((line, index) => {
-                let style = diffStyles.line;
-                if (line.startsWith('+ ')) {
-                    style = { ...style, ...diffStyles.added };
-                } else if (line.startsWith('- ')) {
-                    style = { ...style, ...diffStyles.removed };
-                }
-                return (
-                    <span key={index} style={style}>
-                        {line || ' '}
-                    </span>
-                );
-            })}
-        </div>
-    );
-};
 
 // Component phát lại quá trình sửa lỗi của AI
 const AiReplayViewer = ({ replayState, setReplayState, onApply, onCancel }) => {
@@ -392,7 +340,50 @@ const styles = {
   },
 };
 
-// Lớp phân tích code (giữ nguyên logic)
+const SimpleHtmlLinter = {
+    lint: (code) => {
+        const errors = [];
+        const tags = code.match(/<(\w+)[^>]*>|<\/(\w+)>/g) || [];
+        const stack = [];
+        tags.forEach(tag => {
+            const isClosing = tag.startsWith('</');
+            const tagName = isClosing ? tag.slice(2, -1) : tag.slice(1).split(/[\s>]/)[0];
+            
+            if (['br', 'hr', 'img', 'input', 'meta', 'link'].includes(tagName)) {
+                return; 
+            }
+
+            if (isClosing) {
+                if (stack.length > 0 && stack[stack.length - 1] === tagName) {
+                    stack.pop();
+                } else {
+                    errors.push({ message: `HTML Syntax Error: Mismatched or unexpected closing tag </${tagName}>.` });
+                }
+            } else {
+                stack.push(tagName);
+            }
+        });
+        if (stack.length > 0) {
+            errors.push({ message: `HTML Syntax Error: Unclosed tag(s) found: <${stack.join('>, <')}>.` });
+        }
+        return errors;
+    }
+};
+
+const SimpleCssLinter = {
+    lint: (code) => {
+        const errors = [];
+        const lines = code.split('\n');
+        lines.forEach((line, index) => {
+            const trimmed = line.trim();
+            if (trimmed.includes(':') && !trimmed.endsWith(';') && !trimmed.endsWith('{')) {
+                 errors.push({ message: `CSS Syntax Error: Missing semicolon on line ${index + 1}? -> "${trimmed}"` });
+            }
+        });
+        return errors;
+    }
+};
+
 class UltraCodeAnalyzer {
     static analyzeCode(code) {
         const pythonPatterns = {
@@ -427,7 +418,7 @@ class UltraCodeAnalyzer {
             }
             if (features.htmlDocument) codeType = 'html_document';
             else if (features.htmlTags) codeType = 'html_fragment';
-            else if (features.cssRules && !features.htmlTags) codeType = 'css_only';
+            else if (features.cssRules && !features.htmlTags && !features.htmlDocument) codeType = 'css_only';
             else if (features.reactJsx) codeType = 'react_jsx';
             else if (features.esModule || features.topLevelAwait) codeType = 'es_module';
             else if (features.asyncFunction) codeType = 'async_js';
@@ -456,15 +447,15 @@ class UltraCodeAnalyzer {
 }
 
 const UltraSmartSandbox = () => {
-    const [code, setCode] = useState(`// Welcome to Ultra Smart Sandbox! 🚀
-// Paste your code here or select a template
-// Try this buggy code and let AI fix it!
-function greet() {
-    message = "Hello World!"
-    console.loog(message)
-}
-
-greet()`);
+    const [code, setCode] = useState(`<!DOCTYPE html>
+<html>
+<hea>
+    <title>Buggy Page</title>
+</head>
+<body>
+    <h1>This page has an error.
+</body>
+</html>`);
     const [output, setOutput] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [codeAnalysis, setCodeAnalysis] = useState(null);
@@ -503,6 +494,7 @@ greet()`);
         The user's code has encountered an error.
         Error Message: "${lastError.message}"
         ${lastError.stack ? `Stack Trace: ${lastError.stack}` : ''}
+        The error could be a JavaScript runtime error, or a syntax error in HTML or CSS detected by a linter.
 
         Your task is to analyze the following code, identify the root cause of the error, and provide a step-by-step guide to fix it.
         Break down the fix into logical steps. For each step, provide a title, a clear explanation of what you are fixing and why, and the complete code after applying that step's fix.
@@ -518,11 +510,9 @@ greet()`);
         const response = await apiService.getAiCodeFix(code, recommendation);
         let replaySteps = [];
 
-        // Logic bây giờ đơn giản hơn rất nhiều vì ta tin tưởng backend sẽ trả về JSON đúng
         if (typeof response === 'object' && response !== null && Array.isArray(response.steps)) {
             replaySteps = response.steps;
         } else {
-            // Trường hợp dự phòng nếu có điều gì đó rất lạ xảy ra với API
             console.warn("API did not return the expected { steps: [...] } structure.", response);
             throw new Error("Received an unexpected response format from the server.");
         }
@@ -547,19 +537,16 @@ greet()`);
 };
     
     useEffect(() => {
-        // Update editor content when replay step changes
         if (aiReplay.steps.length > 0 && aiReplay.currentIndex !== -1) {
             setCode(aiReplay.steps[aiReplay.currentIndex].code);
         }
     }, [aiReplay.currentIndex, aiReplay.steps]);
-
 
     const handleAcceptAndRunFinalFix = async () => {
         if (aiReplay.steps.length === 0) return;
 
         const finalCode = aiReplay.steps[aiReplay.steps.length - 1].code;
         
-        // --- TÍCH HỢP GHI LOG LỖI (SỬ DỤNG API THẬT) ---
         try {
             const analysis = UltraCodeAnalyzer.analyzeCode(originalCodeBeforeFix.current);
             const bugData = {
@@ -567,26 +554,23 @@ greet()`);
                 error_message: lastError.message,
                 original_code: originalCodeBeforeFix.current,
                 fix_step_count: aiReplay.steps.length,
-                // AI có thể trả về category trong response, nếu không thì để trống
-                // error_category: aiResponse.category || null 
+                fixed_code: finalCode,
             };
             
-            // ✅ GỌI API THẬT ĐỂ GHI LOG
             await apiService.logBugFix(bugData);
             console.log("Bug fix successfully logged to community database via API.");
 
         } catch (error) {
-            // Không nên chặn người dùng chỉ vì log lỗi thất bại
             console.error("Could not log bug fix to community DB:", error);
         }
-        // --- KẾT THÚC TÍCH HỢP ---
 
         setCode(finalCode);
         setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
-        setOutput([{ type: 'success', message: '✅ Final fix applied. Running again...' }]);
-
+        
         setTimeout(() => {
-            handleRunCode(finalCode);
+            handleRunCode(finalCode, { 
+                initialLog: { type: 'success', message: '✅ Final fix applied. Running again...' } 
+            });
         }, 50);
     };
 
@@ -599,12 +583,16 @@ greet()`);
     useEffect(() => {
         const codeFromStorage = sessionStorage.getItem('sandbox_code');
         if (codeFromStorage) {
+            const language = sessionStorage.getItem('sandbox_code_language') || 'unknown';
             setCode(codeFromStorage);
             sessionStorage.removeItem('sandbox_code');
-            const language = sessionStorage.getItem('sandbox_code_language') || 'unknown';
             sessionStorage.removeItem('sandbox_code_language');
-            setOutput([{ type: 'info', message: `🚀 Code imported from post (${language.toUpperCase()}). Auto-running...` }]);
-            setTimeout(() => handleRunCode(codeFromStorage), 300);
+            
+            setTimeout(() => {
+                 handleRunCode(codeFromStorage, {
+                    initialLog: { type: 'info', message: `🚀 Code imported from post (${language.toUpperCase()}). Auto-running...` }
+                 });
+            }, 300);
         }
     }, []);
 
@@ -662,14 +650,59 @@ main();
     const createJavaScriptIframe = (codeToUse, codeType) => {
         if (codeType === 'html_fragment') codeToUse = `<!DOCTYPE html><html><head><title>Preview</title></head><body>${codeToUse}</body></html>`;
         else if (codeType === 'css_only') codeToUse = `<!DOCTYPE html><html><head><title>CSS Preview</title><style>${codeToUse}</style></head><body><div>CSS Applied</div></body></html>`;
-        if (codeType.includes('html') || codeType === 'css_only') return codeToUse.replace('</head>', `<script>const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('load', () => setTimeout(() => { postLogs(); window.parent.postMessage({ type: 'execution_complete', success: true }, '*'); }, 200)); <\/script></head>`);
+        
+        if (codeType.includes('html') || codeType === 'css_only') {
+            const injectedScript = `
+                <script>
+                    const logs = [];
+                    let anErrorOccurred = false; 
+
+                    const postLogs = () => {
+                        if (logs.length > 0) {
+                            window.parent.postMessage(logs.splice(0), '*');
+                        }
+                    };
+                    
+                    setInterval(postLogs, 400);
+
+                    const createLogHandler = (type) => (...args) => {
+                        logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') });
+                    };
+
+                    console.log = createLogHandler('log');
+                    console.error = createLogHandler('error');
+                    console.warn = createLogHandler('warning');
+                    console.info = createLogHandler('info');
+
+                    window.addEventListener('error', e => {
+                        anErrorOccurred = true; 
+                        logs.push({ type: 'error', message: e.message, stack: e.error?.stack });
+                        postLogs();
+                    });
+
+                    window.addEventListener('load', () => {
+                        setTimeout(() => {
+                            if (!anErrorOccurred) {
+                                logs.push({ type: 'success', message: '✅ Code executed successfully' });
+                            }
+                            postLogs();
+                            window.parent.postMessage({ type: 'execution_complete', success: !anErrorOccurred }, '*');
+                        }, 200);
+                    });
+                <\/script>
+            `;
+            return codeToUse.replace('</head>', `${injectedScript}</head>`);
+        }
+
         return `<!DOCTYPE html><html><head><title>JS Sandbox</title></head><body><div id="root"></div><script type="module">const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('message', async (event) => { if (!event.data?.code) return; logs.push({ type: 'info', message: '🚀 Executing JS code...' }); postLogs(); let success = true; try { const { code, strategy } = event.data; if (strategy === 'module') { const blob = new Blob([code], { type: 'text/javascript' }); const url = URL.createObjectURL(blob); await import(url); URL.revokeObjectURL(url); } else if (strategy === 'async') { await (Object.getPrototypeOf(async function(){}).constructor)(code)(); } else { (new Function(code))(); } logs.push({ type: 'success', message: '✅ Code executed successfully' }); } catch (error) { success = false; logs.push({ type: 'error', message: \`\${error.name}: \${error.message}\`, stack: error.stack }); } finally { postLogs(); event.source.postMessage({ type: 'execution_complete', success }, event.origin); } }); window.parent.postMessage({ type: 'js_ready' }, '*'); <\/script></body></html>`;
     };
 
     useEffect(() => {
         const handleMessage = (event) => {
             if (event.source !== iframeRef.current?.contentWindow) return;
+
             const { data } = event;
+            
             if (data?.type === 'pyodide_ready' || data?.type === 'js_ready') {
                 if (codeToRun.current) {
                     iframeRef.current.contentWindow.postMessage(codeToRun.current, '*');
@@ -677,47 +710,94 @@ main();
                 }
             } else if (data?.type === 'execution_complete') {
                 setIsRunning(false);
-                if (data.success === false) setHasError(true);
             } else if (Array.isArray(data)) {
                 const errorLog = data.find(log => log.type === 'error');
-                if (errorLog) { setHasError(true); setLastError(errorLog); }
+                if (errorLog) {
+                    setHasError(true);
+                    setLastError(errorLog);
+                }
                 setOutput(prev => [...prev, ...data]);
             }
         };
+
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    const handleRunCode = (codeOverride) => {
+    // *** START: REFACTORED handleRunCode ***
+    const handleRunCode = (codeOverride, options = {}) => {
         const codeToExecute = typeof codeOverride === 'string' ? codeOverride : code;
         if (iframeRef.current && !isRunning && codeToExecute.trim()) {
-            setHasError(false); setLastError(null);
+            // 1. Reset all run-specific states.
+            setHasError(false);
+            setLastError(null);
             setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
-            setOutput([{ type: 'info', message: '🔄 Analyzing and preparing execution...' }]);
             setIsRunning(true);
-            
+
+            // 2. Perform pre-flight checks (linting).
             const analysis = UltraCodeAnalyzer.analyzeCode(codeToExecute);
+            let linterErrors = [];
+            if (analysis.codeType.includes('html')) {
+                linterErrors = SimpleHtmlLinter.lint(codeToExecute);
+            } else if (analysis.codeType === 'css_only') {
+                linterErrors = SimpleCssLinter.lint(codeToExecute);
+            }
+
+            // 3. If linting fails, set error state and stop immediately.
+            if (linterErrors.length > 0) {
+                const firstError = {
+                    type: 'error',
+                    message: linterErrors[0].message,
+                    stack: `Syntax error detected by linter in ${analysis.codeType}.`
+                };
+                setOutput([firstError]);
+                setLastError(firstError);
+                setHasError(true);
+                setIsRunning(false);
+                return;
+            }
+
+            // 4. Atomically build and set the initial logs for this run.
+            const initialLogs = [];
+            if (options.initialLog) {
+                initialLogs.push(options.initialLog);
+            }
+            initialLogs.push({ type: 'info', message: '🔄 Analyzing and preparing execution...' });
+            setOutput(initialLogs);
+
+            // 5. Proceed with iframe execution.
             const newIframeType = analysis.codeType;
             const currentIframeType = iframeRef.current.dataset.type;
-
             const message = analysis.codeType === 'python'
                 ? { code: codeToExecute, libraries: analysis.features.libraryList || [] }
                 : { code: codeToExecute, strategy: analysis.executionStrategy };
 
-            if (currentIframeType !== newIframeType) {
+            // --- START OF THE FIX ---
+            // We define types that MUST reload the iframe srcdoc every time.
+            const forceReloadTypes = ['html_document', 'html_fragment', 'css_only'];
+            const shouldReloadIframe = currentIframeType !== newIframeType || forceReloadTypes.includes(newIframeType);
+            // --- END OF THE FIX ---
+
+            if (shouldReloadIframe) { // Use the new condition here
                 if (analysis.codeType === 'python') {
                     iframeRef.current.srcdoc = createPythonIframe();
-                    codeToRun.current = message;
+                    codeToRun.current = message; // Queue the code to run after pyodide loads
                 } else {
+                    // For HTML/CSS, the code is embedded directly into the srcdoc.
+                    // The injected script will handle the 'execution_complete' message on 'load'.
                     iframeRef.current.srcdoc = createJavaScriptIframe(codeToExecute, analysis.codeType);
-                    codeToRun.current = analysis.codeType.includes('html') || analysis.codeType === 'css_only' ? null : message;
+                    // No message needs to be sent for these types as they run on load.
+                    codeToRun.current = null;
                 }
                 iframeRef.current.dataset.type = newIframeType;
             } else {
+                // This path is now only for JS/Python reruns where the iframe is already loaded
+                // and is waiting for a message.
                 iframeRef.current.contentWindow.postMessage(message, '*');
             }
         }
     };
+    // *** END: REFACTORED handleRunCode ***
 
     const handleClear = () => {
         setHasError(false); setLastError(null); setOutput([]);
@@ -903,7 +983,7 @@ plt.legend(fontsize=12)
 plt.tight_layout()
 
 # Add some statistics
-print(f"📈 Sine wave stats:")
+print(f"📈 Sine-wave stats:")
 print(f"   Max: {np.max(y1):.3f}")
 print(f"   Min: {np.min(y1):.3f}")
 print(f"   Mean: {np.mean(y1):.3f}")

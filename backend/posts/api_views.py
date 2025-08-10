@@ -1732,6 +1732,7 @@ def log_bug_view(request):
         'error_category': error_category,
         'original_code': request.data.get('original_code'),
         'fix_step_count': request.data.get('fix_step_count'),
+        'fixed_code': request.data.get('fixed_code'), 
     }
 
     serializer = LoggedBugSerializer(data=data_to_log)

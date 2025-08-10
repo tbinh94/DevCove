@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api'; 
 import { useAuthContext } from '../../contexts/AuthContext'; 
 import DefaultAvatar from '../../assets/imgs/avatar-default.png';
-import styles from './Settings.module.css'; // Đảm bảo dòng này đã có
+import styles from './Settings.module.css';
 
 const Settings = () => {
   const { user, updateUser } = useAuthContext(); 
@@ -20,16 +20,41 @@ const Settings = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email || '',
-        bio: user.profile?.bio || '',
-        avatar: null,
-      });
-      setAvatarPreview(user.profile?.avatar_url || DefaultAvatar);
-    }
+    const fetchUserProfile = async () => {
+      if (user?.username) {
+        try {
+          // Gọi API để lấy profile đầy đủ giống như trong Header.jsx
+          const response = await apiService.getUserProfile(user.username);
+          const profile = response.profile;
+          
+          setFormData({
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            email: user.email || '',
+            bio: profile?.bio || '',
+            avatar: null,
+          });
+          
+          // Set avatar preview từ profile hoặc default
+          const avatarUrl = profile?.avatar_url;
+          setAvatarPreview(avatarUrl || DefaultAvatar);
+          
+        } catch (error) {
+          console.error("Failed to fetch user profile for settings:", error);
+          // Fallback to user data if API call fails
+          setFormData({
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            email: user.email || '',
+            bio: user.profile?.bio || '',
+            avatar: null,
+          });
+          setAvatarPreview(user.profile?.avatar_url || DefaultAvatar);
+        }
+      }
+    };
+
+    fetchUserProfile();
   }, [user]);
 
   const handleInputChange = (e) => {
@@ -95,9 +120,9 @@ const Settings = () => {
             name="first_name"
             value={formData.first_name}
             onChange={handleInputChange}
-            className={styles.formInput} // Sử dụng styles.formInput
+            className={styles.formInput}
           />
-          {errors.first_name && <div className={styles.error}>{errors.first_name}</div>} {/* Sử dụng styles.error */}
+          {errors.first_name && <div className={styles.error}>{errors.first_name}</div>}
         </div>
         
         {/* Last Name */}
@@ -109,13 +134,13 @@ const Settings = () => {
             name="last_name"
             value={formData.last_name}
             onChange={handleInputChange}
-            className={styles.formInput} // Sử dụng styles.formInput
+            className={styles.formInput}
           />
-          {errors.last_name && <div className={styles.error}>{errors.last_name}</div>} {/* Sử dụng styles.error */}
+          {errors.last_name && <div className={styles.error}>{errors.last_name}</div>}
         </div>
 
         {/* Email */}
-        <div className={styles.formGroup}> {/* Sử dụng styles.formGroup */}
+        <div className={styles.formGroup}>
           <label htmlFor="email">Email:</label>
           <input
             type="email"
@@ -123,30 +148,38 @@ const Settings = () => {
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className={styles.formInput} // Sử dụng styles.formInput
+            className={styles.formInput}
           />
-          {errors.email && <div className={styles.error}>{errors.email}</div>} {/* Sử dụng styles.error */}
+          {errors.email && <div className={styles.error}>{errors.email}</div>}
         </div>
 
         {/* Bio */}
-        <div className={styles.formGroup}> {/* Sử dụng styles.formGroup */}
+        <div className={styles.formGroup}>
             <label htmlFor="bio">Bio:</label>
             <textarea
                 id="bio"
                 name="bio"
                 value={formData.bio}
                 onChange={handleInputChange}
-                className={styles.formInput} // Sử dụng styles.formInput
+                className={styles.formInput}
                 rows="3"
             ></textarea>
-            {errors.bio && <div className={styles.error}>{errors.bio}</div>} {/* Sử dụng styles.error */}
+            {errors.bio && <div className={styles.error}>{errors.bio}</div>}
         </div>
 
         {/* Avatar */}
-        <div className={`${styles.formGroup} ${styles.avatarGroup}`}> {/* Sử dụng styles.formGroup và styles.avatarGroup */}
+        <div className={`${styles.formGroup} ${styles.avatarGroup}`}>
           <label htmlFor="avatar">Avatar:</label>
-          <div className={styles.avatarWrapper}> {/* Sử dụng styles.avatarWrapper */}
-            <img src={avatarPreview} className={styles.avatarPreview} alt="User avatar" /> {/* Sử dụng styles.avatarPreview */}
+          <div className={styles.avatarWrapper}>
+            <img 
+              src={avatarPreview} 
+              className={styles.avatarPreview} 
+              alt="User avatar"
+              onError={(e) => {
+                // Nếu avatar bị lỗi, fallback về default avatar
+                e.target.src = DefaultAvatar;
+              }}
+            />
           </div>
           <input
             type="file"
@@ -154,14 +187,23 @@ const Settings = () => {
             name="avatar"
             accept="image/*"
             onChange={handleAvatarChange}
-            className={styles.formInput} // Sử dụng styles.formInput
+            className={styles.formInput}
           />
-          {errors.avatar && <div className={styles.error}>{errors.avatar}</div>} {/* Sử dụng styles.error */}
+          {errors.avatar && <div className={styles.error}>{errors.avatar}</div>}
         </div>
 
         <button type="submit" className={`${styles.btn} ${styles.btnPrimary} ${styles.saveBtn}`} disabled={loading}>
-          <span className={styles.btnIcon}>💾</span> {/* Sử dụng styles.btnIcon */}
+          <span className={styles.btnIcon}>💾</span>
           <span>{loading ? 'Saving...' : 'Save Changes'}</span>
+        </button>
+
+        <button 
+          type="button" 
+          className={`${styles.btn} ${styles.btnSecondary} ${styles.backBtn}`} 
+          onClick={() => window.location.href = '/'}
+        >
+          <span className={styles.btnIcon}>🏠</span>
+          <span>Back to Home</span>
         </button>
       </form>
     </div>

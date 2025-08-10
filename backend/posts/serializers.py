@@ -479,15 +479,18 @@ class LoggedBugSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoggedBug
         fields = [
+            'id', # Thêm id để tiện dùng ở frontend
             'language',
             'error_message',
             'error_category',
             'original_code',
+            'fixed_code', # ✅ THÊM TRƯỜNG MỚI
             'fix_step_count',
             'user',
+            'logged_at'
         ]
         # User sẽ được lấy từ request, không cần client gửi lên
-        read_only_fields = ['user']
+        read_only_fields = ['user', 'logged_at', 'id', 'language']
 
 
 class BugStatsSerializer(serializers.Serializer):

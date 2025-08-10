@@ -1,7 +1,7 @@
-// UserProfile.jsx - Updated with enhanced avatar display above username
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw, Award } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw, Award, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api'; 
 import styles from './UserProfile.module.css';
@@ -175,16 +175,59 @@ const UserProfile = () => {
     };
   }, []);
 
+  // Updated handleVote function with better debugging and field mapping
   const handleVote = async (postId, voteType) => {
     if (!isAuthenticated) {
-      alert('Please login to vote');
       return;
     }
 
-    try {
-      const data = await apiService.vote(postId, voteType);
+    // Store original state for potential revert
+    const originalPost = profileData?.posts?.find(p => p.id === postId);
+    if (!originalPost) return;
+
+    console.log('Vote clicked:', { postId, voteType, originalVote: originalPost.user_vote, originalScore: originalPost.calculated_score });
+
+    // Optimistic UI update
+    setProfileData(prev => {
+      if (!prev || !prev.posts) return prev;
       
-      // Update post data in profileData with error handling
+      return {
+        ...prev,
+        posts: prev.posts.map(post => {
+          if (post.id === postId) {
+            const currentVote = post.user_vote;
+            let newVote = voteType;
+            let newScore = post.calculated_score || 0;
+            
+            if (currentVote === voteType) {
+              // Same vote - remove it
+              newVote = null;
+              newScore += (voteType === 'up') ? -1 : 1;
+            } else if (currentVote) {
+              // Different vote - switch
+              newScore += (voteType === 'up') ? 2 : -2;
+            } else {
+              // No vote - add new
+              newScore += (voteType === 'up') ? 1 : -1;
+            }
+            
+            console.log('Optimistic update:', { newVote, newScore });
+            return {
+              ...post,
+              calculated_score: newScore,
+              user_vote: newVote
+            };
+          }
+          return post;
+        })
+      };
+    });
+
+    try {
+      const updated = await apiService.vote(postId, voteType);
+      console.log('API response:', updated);
+      
+      // Update with server response - handle different possible response formats
       setProfileData(prev => {
         if (!prev || !prev.posts) return prev;
         
@@ -194,16 +237,38 @@ const UserProfile = () => {
             post.id === postId 
               ? { 
                   ...post, 
-                  vote_score: data.vote_score ?? post.vote_score,
-                  user_vote: data.user_vote ?? post.user_vote
+                  // Handle different possible field names from API
+                  calculated_score: updated.score ?? updated.calculated_score ?? updated.vote_score ?? post.calculated_score,
+                  user_vote: updated.user_vote ?? updated.vote_type ?? post.user_vote
                 }
               : post
           )
         };
       });
+      
+      console.log('Updated with server response');
     } catch (err) {
-      console.error('Error voting:', err);
-      alert(err.message || "Failed to vote");
+      console.error('Vote error:', err);
+      
+      // Revert to original state on error
+      setProfileData(prev => {
+        if (!prev || !prev.posts) return prev;
+        
+        return {
+          ...prev,
+          posts: prev.posts.map(post => 
+            post.id === postId 
+              ? {
+                  ...post,
+                  calculated_score: originalPost.calculated_score,
+                  user_vote: originalPost.user_vote
+                }
+              : post
+          )
+        };
+      });
+      
+      setError('Failed to vote. Please try again.');
     }
   };
 
@@ -431,74 +496,83 @@ const UserProfile = () => {
           {posts && posts.length > 0 ? (
             posts.map((post, index) => (
               <div key={post.id} className={`${styles.postCard} ${styles.fadeInUp}`}>
-                <div className={styles.postHeader}>
-                  <div className={styles.postMeta}>
-                    <Link to={`/r/${post.subreddit}`} className={styles.subreddit}>
-                      <Hash size={16} />
-                      {post.subreddit}
-                    </Link>
-                    <span className={styles.postTime}>
-                      <Clock size={14} />
-                      {formatTime(post.created_at)}
-                    </span>
-                  </div>
+                {/* Vote section - similar to PostList layout */}
+                <div className={styles.voteSection}>
+                  <button 
+                    onClick={() => handleVote(post.id, 'up')} 
+                    className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} 
+                    disabled={!isAuthenticated}
+                  >
+                    <ChevronUp size={22} />
+                  </button>
+                  <span className={styles.voteScore}>{post.calculated_score || 0}</span>
+                  <button 
+                    onClick={() => handleVote(post.id, 'down')} 
+                    className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} 
+                    disabled={!isAuthenticated}
+                  >
+                    <ChevronDown size={22} />
+                  </button>
                 </div>
-                
-                <div className={styles.postContent}>
-                  <Link to={`/post/${post.id}`} className={styles.postTitle}>
-                    <h4>{post.title}</h4>
-                  </Link>
-                  
-                  {post.content && (
-                    <p className={styles.postText}>{post.content}</p>
-                  )}
-                  
-                  {post.image_url && (
-                    <div className={styles.postImage}>
-                      <img 
-                        src={post.image_url} 
-                        alt="Post content"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+
+                {/* Post content area */}
+                <div className={styles.postContentArea}>
+                  <div className={styles.postHeader}>
+                    <div className={styles.postMeta}>
+                      {post.subreddit && (
+                        <Link to={`/r/${post.subreddit}`} className={styles.subreddit}>
+                          <Hash size={16} />
+                          {post.subreddit}
+                        </Link>
+                      )}
+                      <span className={styles.postTime}>
+                        <Clock size={14} />
+                        {formatTime(post.created_at)}
+                      </span>
                     </div>
-                  )}
-                </div>
-                
-                <div className={styles.postActions}>
-                  <div className={styles.voteSection}>
-                    <button 
-                      className={`${styles.voteBtn} ${post.user_vote === 'up' ? styles.upvoted : ''}`}
-                      onClick={() => handleVote(post.id, 'up')}
-                      disabled={!isAuthenticated}
-                    >
-                      <ArrowUp size={16} />
-                    </button>
-                    <span className={styles.voteScore}>{post.vote_score || 0}</span>
-                    <button 
-                      className={`${styles.voteBtn} ${post.user_vote === 'down' ? styles.downvoted : ''}`}
-                      onClick={() => handleVote(post.id, 'down')}
-                      disabled={!isAuthenticated}
-                    >
-                      <ArrowDown size={16} />
-                    </button>
                   </div>
                   
-                  <Link to={`/post/${post.id}`} className={styles.actionBtn}>
-                    <MessageCircle size={16} />
-                    <span>{post.comment_count || 0}</span>
-                  </Link>
+                  <div className={styles.postContent}>
+                    <Link to={`/post/${post.id}`} className={styles.postTitle}>
+                      <h4>{post.title}</h4>
+                    </Link>
+                    
+                    {post.content && (
+                      <p className={styles.postText}>
+                        {post.content.length > 200 ? `${post.content.slice(0, 200)}...` : post.content}
+                      </p>
+                    )}
+                    
+                    {post.image_url && (
+                      <div className={styles.postImage}>
+                        <img 
+                          src={post.image_url} 
+                          alt="Post content"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                   
-                  <button className={styles.actionBtn}>
-                    <Share2 size={16} />
-                    Share
-                  </button>
-                  
-                  <button className={styles.actionBtn}>
-                    <Bookmark size={16} />
-                    Save
-                  </button>
+                  <div className={styles.postActions}>
+                    <Link to={`/post/${post.id}`} className={styles.actionBtn}>
+                      <MessageCircle size={16} />
+                      <span>{post.comment_count || 0} Comments</span>
+                    </Link>
+                    
+                    <button className={styles.actionBtn}>
+                      <Share2 size={16} />
+                      Share
+                    </button>
+                    
+                    <button className={styles.actionBtn}>
+                      <Bookmark size={16} />
+                      Save
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

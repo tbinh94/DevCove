@@ -1,5 +1,5 @@
-// PostList.jsx - PHIÊN BẢN ĐẦY ĐỦ
-import React, { useState, useEffect, useMemo, useRef } from 'react'; // THÊM useRef
+// PostList.jsx - CẢI THIỆN HỆ THỐNG VOTE
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronUp, ChevronDown, MessageCircle, Bot, X, Zap, ChevronsUpDown, Calendar, ArrowDownAZ } from 'lucide-react';
 import styles from './PostList.module.css';
@@ -16,13 +16,13 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
 
 const PostList = ({ showAllTags = false }) => {
   const { isAuthenticated } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams(); // THÊM setSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10)); // Lấy page từ URL
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [postsPerPage] = useState(10);
   const [totalPosts, setTotalPosts] = useState(0);
 
@@ -31,16 +31,14 @@ const PostList = ({ showAllTags = false }) => {
   const [overviewError, setOverviewError] = useState(null);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
   
-  // TẠO REF ĐỂ THAM CHIẾU ĐẾN MODAL
   const overviewModalRef = useRef(null);
 
-  // <<< THAY ĐỔI 1: LẤY CÁC THAM SỐ TỪ URL >>>
   const urlParams = useMemo(() => {
     try {
       return {
         tags: searchParams.get('tags'),
         search: searchParams.get('search'),
-        ordering: searchParams.get('ordering') || '-created_at' // Mặc định là 'New'
+        ordering: searchParams.get('ordering') || '-created_at'
       };
     } catch (error) {
       console.error('Error reading search params:', error);
@@ -77,46 +75,117 @@ const PostList = ({ showAllTags = false }) => {
     };
 
     fetchPosts();
-  // <<< THAY ĐỔI 3: CẬP NHẬT DEPENDENCY ARRAY >>>
   }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering]);
   
-  // TẠO USEEFFECT ĐỂ TỰ ĐỘNG CUỘN
   useEffect(() => {
     if (isOverviewModalOpen && overviewModalRef.current) {
-        // Delay một chút để đảm bảo modal đã render hoàn toàn
         setTimeout(() => {
             overviewModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
     }
   }, [isOverviewModalOpen]);
 
-  // <<< THAY ĐỔI 4: TẠO HÀM XỬ LÝ THAY ĐỔI SẮP XẾP >>>
   const handleSortChange = (newOrdering) => {
-    // Cập nhật search params, giữ lại các params khác như tags, search
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('ordering', newOrdering);
-      newParams.set('page', '1'); // Quay về trang 1 khi đổi sắp xếp
+      newParams.set('page', '1');
       return newParams;
     });
-    setCurrentPage(1); // Cập nhật state trang hiện tại
+    setCurrentPage(1);
   };
 
-  const handleVote = async (postId, type) => {
-    if (!isAuthenticated) return;
-    
+  // ✨ CẢI THIỆN HÀM VOTE VỚI OPTIMISTIC UPDATE GIỐNG USER PROFILE
+  const handleVote = async (postId, voteType) => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    // Lưu trữ trạng thái gốc để có thể revert nếu lỗi
+    const originalPost = posts.find(p => p.id === postId);
+    if (!originalPost) return;
+
+    console.log('Vote clicked:', { 
+      postId, 
+      voteType, 
+      originalVote: originalPost.user_vote, 
+      originalScore: originalPost.calculated_score 
+    });
+
+    // 🚀 OPTIMISTIC UI UPDATE - Cập nhật giao diện ngay lập tức
+    setPosts(prevPosts => {
+      return prevPosts.map(post => {
+        if (post.id === postId) {
+          const currentVote = post.user_vote;
+          let newVote = voteType;
+          let newScore = post.calculated_score || 0;
+          
+          // Logic xử lý vote hiển thị siêu nhanh như User Profile
+          if (currentVote === voteType) {
+            // Cùng vote - bỏ vote
+            newVote = null;
+            newScore += (voteType === 'up') ? -1 : 1;
+          } else if (currentVote) {
+            // Vote khác - chuyển đổi
+            newScore += (voteType === 'up') ? 2 : -2;
+          } else {
+            // Chưa vote - thêm vote mới
+            newScore += (voteType === 'up') ? 1 : -1;
+          }
+          
+          console.log('Optimistic update:', { newVote, newScore });
+          
+          return {
+            ...post,
+            calculated_score: newScore,
+            user_vote: newVote
+          };
+        }
+        return post;
+      });
+    });
+
+    // 📡 GỬI REQUEST ĐẾN SERVER
     try {
-      const updated = await apiService.vote(postId, type);
-      setPosts(prevPosts => 
-        prevPosts.map(p => 
-          p.id === postId 
-            ? { ...p, calculated_score: updated.score, user_vote: updated.user_vote } 
-            : p
-        )
-      );
+      const updated = await apiService.vote(postId, voteType);
+      console.log('API response:', updated);
+      
+      // Cập nhật với phản hồi từ server
+      setPosts(prevPosts => {
+        return prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                // Xử lý các định dạng phản hồi khác nhau từ API
+                calculated_score: updated.score ?? updated.calculated_score ?? updated.vote_score ?? post.calculated_score,
+                user_vote: updated.user_vote ?? updated.vote_type ?? post.user_vote
+              }
+            : post
+        );
+      });
+      
+      console.log('Updated with server response');
+      
     } catch (err) {
       console.error('Vote error:', err);
+      
+      // 🔄 REVERT VỀ TRẠNG THÁI GỐC KHI CÓ LỖI
+      setPosts(prevPosts => {
+        return prevPosts.map(post => 
+          post.id === postId 
+            ? {
+                ...post,
+                calculated_score: originalPost.calculated_score,
+                user_vote: originalPost.user_vote
+              }
+            : post
+        );
+      });
+      
+      // Hiển thị lỗi tạm thời
       setError('Failed to vote. Please try again.');
+      // Tự động xóa lỗi sau 3 giây
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -206,7 +275,6 @@ const PostList = ({ showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      {/* <<< THAY ĐỔI 5: THÊM CÁC NÚT SẮP XẾP VÀO GIAO DIỆN >>> */}
       <div className={styles.controlsContainer}>
         <button 
           onClick={handleGenerateOverview} 
@@ -216,7 +284,7 @@ const PostList = ({ showAllTags = false }) => {
         >
           <div className={styles.overviewButtonInner}>
             <Bot size={18} />
-            {isOverviewLoading ? 'Đang phân tích...' : 'Lấy tổng quan AI'}
+            {isOverviewLoading ? 'Đang phân tích...' : 'AI Post Overview'}
           </div>
         </button>
         
@@ -247,9 +315,24 @@ const PostList = ({ showAllTags = false }) => {
       {posts.map(post => (
         <div key={post.id} className={styles.postCard}>
           <div className={styles.voteSection}>
-            <button onClick={() => handleVote(post.id, 'up')} className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} disabled={!isAuthenticated}><ChevronUp size={22} /></button>
+            {/* ✨ CẢI THIỆN CÁC NÚT VOTE VỚI LOGIC TƯƠNG TỰ USER PROFILE */}
+            <button 
+              onClick={() => handleVote(post.id, 'up')} 
+              className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} 
+              disabled={!isAuthenticated}
+              title={!isAuthenticated ? "Đăng nhập để vote" : (post.user_vote === 'up' ? "Remove upvote" : "Upvote")}
+            >
+              <ChevronUp size={22} />
+            </button>
             <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-            <button onClick={() => handleVote(post.id, 'down')} className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} disabled={!isAuthenticated}><ChevronDown size={22} /></button>
+            <button 
+              onClick={() => handleVote(post.id, 'down')} 
+              className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} 
+              disabled={!isAuthenticated}
+              title={!isAuthenticated ? "Đăng nhập để vote" : (post.user_vote === 'down' ? "Remove downvote" : "Downvote")}
+            >
+              <ChevronDown size={22} />
+            </button>
           </div>
           <div className={styles.postContentArea}>
             {post.is_bot_reviewed && (<span className={styles.botReviewedBadge} title={post.bot_review_summary}>🤖 Reviewed</span>)}
@@ -274,7 +357,6 @@ const PostList = ({ showAllTags = false }) => {
       {totalPosts > postsPerPage && renderPagination()}
 
       {isOverviewModalOpen && (
-        // GẮN REF VÀO ĐÂY
         <div ref={overviewModalRef} className={styles.overviewModalOverlay}>
           <div className={styles.overviewModal}>
             <div className={styles.overviewModalHeader}>

@@ -304,6 +304,7 @@ class LoggedBug(models.Model):
     
     # The code itself
     original_code = models.TextField()
+    fixed_code = models.TextField(blank=True, null=True, help_text="The final version of the code after DevAlly fix.")
     fix_step_count = models.PositiveSmallIntegerField(default=1)
 
     # Context

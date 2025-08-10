@@ -1,60 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react'; // Import icon X cho nút đóng
+import { X, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
 
 // ✅ SỬ DỤNG API SERVICE THẬT
 import apiService from '../../services/api';
 // Import CSS module
 import styles from './BugTracker.module.css';
+import AiDiffViewer from '../pages/AiDiffViewer';
 
-const modalStyles = {
-    overlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.8)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-    },
-    content: {
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-        padding: '24px',
-        borderRadius: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        width: '90%',
-        maxWidth: '800px',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        position: 'relative',
-        color: '#e2e8f0',
-    },
-    closeButton: {
-        position: 'absolute',
-        top: '16px',
-        right: '16px',
-        background: 'transparent',
-        border: 'none',
-        color: '#94a3b8',
-        cursor: 'pointer',
-    },
-    example: {
-        marginBottom: '24px',
-        paddingBottom: '24px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-    },
-    codeBlock: {
-        background: 'rgba(0,0,0,0.3)',
-        padding: '16px',
-        borderRadius: '8px',
-        whiteSpace: 'pre-wrap',
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: '13px',
-        marginTop: '12px',
-    }
+const BugReview = ({ example }) => {
+    console.log("Bug example data:", example); 
+    const [showFixed, setShowFixed] = useState(false);
+
+    const getDiff = () => {
+        if (!example.fixed_code) return "No fix available to compare.";
+        
+        const oldLines = example.original_code.split('\n');
+        const newLines = example.fixed_code.split('\n');
+        
+        const removed = oldLines.filter(line => !newLines.includes(line) && line.trim() !== '').map(l => `- ${l}`);
+        const added = newLines.filter(line => !oldLines.includes(line) && line.trim() !== '').map(l => `+ ${l}`);
+        
+        const diffText = [...removed, ...added].join('\n');
+        
+        return diffText || "No visible changes found.";
+    };
+
+     return (
+        <div className={styles.modalExample}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0 }}>Example</h4>
+                {example.fixed_code && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                        <span>Original</span>
+                        {/* ✅ SỬA LỖI Ở ĐÂY: Dùng styles.switch, styles.slider, styles.round */}
+                        <label className={styles.switch}> 
+                            <input type="checkbox" checked={showFixed} onChange={() => setShowFixed(!showFixed)} />
+                            <span className={`${styles.slider} ${styles.round}`}></span>
+                        </label>
+                        <span>AI Fix</span>
+                    </div>
+                )}
+            </div>
+            
+            {showFixed ? (
+                <AiDiffViewer diff={getDiff()} />
+            ) : (
+                <div className={styles.modalCodeBlock}>
+                    {example.original_code}
+                </div>
+            )}
+        </div>
+    );
 };
 
 // Component Modal mới
@@ -80,21 +77,17 @@ const BugDetailModal = ({ bug, onClose }) => {
     }, [bug]);
 
     return (
-        <div style={modalStyles.overlay} onClick={onClose}>
-            <div style={modalStyles.content} onClick={(e) => e.stopPropagation()}>
-                <button style={modalStyles.closeButton} onClick={onClose}><X size={24} /></button>
+        <div className={styles.modalOverlay} onClick={onClose}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <button className={styles.modalCloseButton} onClick={onClose}>
+                    <X size={24} />
+                </button>
                 <h3 style={{ marginTop: 0 }}>{bug.category}: {bug.message}</h3>
                 <p>Common examples of this bug found in the community:</p>
                 {loading ? <p>Loading examples...</p> : (
-                    examples.map((ex, index) => (
-                        <div key={index} style={modalStyles.example}>
-                            <h4>Bug #{index + 1}</h4>
-                            <p><strong>Original Code with Bug:</strong></p>
-                            <div style={modalStyles.codeBlock}>
-                                {ex.original_code}
-                            </div>
-                            {/* Chúng ta có thể thêm diff viewer ở đây nếu API trả về code đã sửa */}
-                        </div>
+                    examples.map((ex) => (
+                        // ✅ SỬ DỤNG COMPONENT BUGEXAMPLE MỚI
+                        <BugReview key={ex.id} example={ex} />
                     ))
                 )}
                  { !loading && examples.length === 0 && <p>No detailed examples found.</p>}
@@ -185,6 +178,7 @@ const BugTracker = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedBug, setSelectedBug] = useState(null); // ✅ STATE MỚI ĐỂ MỞ MODAL
+    const navigate = useNavigate();
 
     const handleBugClick = (bug) => {
         setSelectedBug(bug);
@@ -297,6 +291,15 @@ const BugTracker = () => {
                     </div>
                 </div>
                 {renderContent()}
+                <div className={styles.footerActions}>
+                    <button 
+                        className={styles.backButton}
+                        onClick={() => navigate('/')} // Điều hướng về trang chủ
+                    >
+                        <Home size={18} />
+                        <span>Back to Home</span>
+                    </button>
+                </div>
             </div>
             {selectedBug && <BugDetailModal bug={selectedBug} onClose={() => setSelectedBug(null)} />}
         </>
