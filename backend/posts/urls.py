@@ -40,6 +40,7 @@ urlpatterns = [
 
     path('bugs/log/', api_views.log_bug_view, name='log_bug'),
     path('bugs/stats/', api_views.bug_stats_view, name='bug_stats'),
+    path('bugs/reviews/', api_views.bug_reviews_view, name='bug_reviews'),
     # Include tất cả các URL do router tạo ra vào cuối danh sách này
     path('', include(router.urls)),
 ]

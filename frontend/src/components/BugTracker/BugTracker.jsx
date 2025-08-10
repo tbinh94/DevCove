@@ -1,8 +1,107 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react'; // Import icon X cho nút đóng
+
 // ✅ SỬ DỤNG API SERVICE THẬT
 import apiService from '../../services/api';
 // Import CSS module
 import styles from './BugTracker.module.css';
+
+const modalStyles = {
+    overlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+    },
+    content: {
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        padding: '24px',
+        borderRadius: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        width: '90%',
+        maxWidth: '800px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        position: 'relative',
+        color: '#e2e8f0',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        background: 'transparent',
+        border: 'none',
+        color: '#94a3b8',
+        cursor: 'pointer',
+    },
+    example: {
+        marginBottom: '24px',
+        paddingBottom: '24px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    },
+    codeBlock: {
+        background: 'rgba(0,0,0,0.3)',
+        padding: '16px',
+        borderRadius: '8px',
+        whiteSpace: 'pre-wrap',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '13px',
+        marginTop: '12px',
+    }
+};
+
+// Component Modal mới
+const BugDetailModal = ({ bug, onClose }) => {
+    const [examples, setExamples] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchExamples = async () => {
+            if (!bug) return;
+            setLoading(true);
+            try {
+                // ✅ GỌI API MỚI
+                const data = await apiService.getBugExamples(bug.message);
+                setExamples(data);
+            } catch (error) {
+                console.error("Failed to fetch bug examples:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchExamples();
+    }, [bug]);
+
+    return (
+        <div style={modalStyles.overlay} onClick={onClose}>
+            <div style={modalStyles.content} onClick={(e) => e.stopPropagation()}>
+                <button style={modalStyles.closeButton} onClick={onClose}><X size={24} /></button>
+                <h3 style={{ marginTop: 0 }}>{bug.category}: {bug.message}</h3>
+                <p>Common examples of this bug found in the community:</p>
+                {loading ? <p>Loading examples...</p> : (
+                    examples.map((ex, index) => (
+                        <div key={index} style={modalStyles.example}>
+                            <h4>Bug #{index + 1}</h4>
+                            <p><strong>Original Code with Bug:</strong></p>
+                            <div style={modalStyles.codeBlock}>
+                                {ex.original_code}
+                            </div>
+                            {/* Chúng ta có thể thêm diff viewer ở đây nếu API trả về code đã sửa */}
+                        </div>
+                    ))
+                )}
+                 { !loading && examples.length === 0 && <p>No detailed examples found.</p>}
+            </div>
+        </div>
+    );
+};
 
 const Heatmap = ({ data, period }) => {
     // 1. TẠO KHUNG HEATMAP HOÀN CHỈNH
@@ -85,6 +184,11 @@ const BugTracker = () => {
     const [period, setPeriod] = useState('weekly');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedBug, setSelectedBug] = useState(null); // ✅ STATE MỚI ĐỂ MỞ MODAL
+
+    const handleBugClick = (bug) => {
+        setSelectedBug(bug);
+    };
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -150,6 +254,7 @@ const BugTracker = () => {
                          <div 
                             key={index} 
                             className={styles.bugItem}
+                            onClick={() => handleBugClick(bug)}
                          >
                             <div className={styles.bugInfo}>
                                 <div className={styles.bugCategoryContainer}>
@@ -172,26 +277,29 @@ const BugTracker = () => {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}>
-                <h2 className={styles.title}>🐞 Community Bug Tracker</h2>
-                <div className={styles.tabs}>
-                    <button
-                        className={`${styles.tabButton} ${period === 'weekly' ? styles.tabButtonActive : ''}`}
-                        onClick={() => setPeriod('weekly')}
-                    >
-                        Weekly
-                    </button>
-                    <button
-                        className={`${styles.tabButton} ${period === 'monthly' ? styles.tabButtonActive : ''}`}
-                        onClick={() => setPeriod('monthly')}
-                    >
-                        Monthly
-                    </button>
+        <>
+            <div className={styles.container}>
+                <div className={styles.header}>
+                    <h2 className={styles.title}>🐞 Community Bug Tracker</h2>
+                    <div className={styles.tabs}>
+                        <button
+                            className={`${styles.tabButton} ${period === 'weekly' ? styles.tabButtonActive : ''}`}
+                            onClick={() => setPeriod('weekly')}
+                        >
+                            Weekly
+                        </button>
+                        <button
+                            className={`${styles.tabButton} ${period === 'monthly' ? styles.tabButtonActive : ''}`}
+                            onClick={() => setPeriod('monthly')}
+                        >
+                            Monthly
+                        </button>
+                    </div>
                 </div>
+                {renderContent()}
             </div>
-            {renderContent()}
-        </div>
+            {selectedBug && <BugDetailModal bug={selectedBug} onClose={() => setSelectedBug(null)} />}
+        </>
     );
 };
 

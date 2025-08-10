@@ -64,7 +64,6 @@ from .serializers import (
     VoteSerializer,
     ConversationSerializer, ChatMessageSerializer,
     LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer
-
 )
 from dotenv import load_dotenv
 
@@ -1814,3 +1813,26 @@ def bug_stats_view(request):
         'heatmap': heatmap_serializer.data,
         'topBugs': top_bugs_serializer.data,
     })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def bug_reviews_view(request):
+    """
+    Fetches example instances of a specific common bug.
+    """
+    error_message = request.query_params.get('error_message')
+    if not error_message:
+        return Response({'error': 'error_message parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Tìm các ví dụ tiêu biểu nhất (ví dụ: 3 bản ghi gần nhất)
+    # Chúng ta lọc theo error_message để đảm bảo lấy đúng loại lỗi
+    bug_examples = LoggedBug.objects.filter(
+        error_message=error_message
+    ).select_related('language').order_by('-logged_at')[:3]
+
+    if not bug_examples.exists():
+        return Response({'error': 'No examples found for this bug.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Sử dụng serializer đã có để trả về dữ liệu
+    serializer = LoggedBugSerializer(bug_examples, many=True)
+    return Response(serializer.data)

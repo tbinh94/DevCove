@@ -405,6 +405,16 @@ class APIService {
     return this.request(`/api/bugs/stats/?${params}`);
   }
   
+  /**
+   * Fetches detailed examples for a specific common bug.
+   * @param {string} errorMessage - The exact error message to look up.
+   * @returns {Promise<Array<object>>} A list of bug examples.
+   */
+  async getBugExamples(errorMessage) {
+    const params = new URLSearchParams({ error_message: errorMessage });
+    return this.request(`/api/bugs/reviews/?${params}`);
+  }
+  
   // --- Utility Accessor ---
   get utils() {
     return {
