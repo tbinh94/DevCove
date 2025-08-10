@@ -288,3 +288,34 @@ class Notification(models.Model):
         
         # URL mặc định nếu không có hành động cụ thể
         return reverse('posts:notifications')
+    
+
+class LoggedBug(models.Model):
+    """
+    Stores information about a specific bug fixed by the AI.
+    This model powers the Community Bug Tracker.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Information about the error
+    language = models.ForeignKey(Language, on_delete=models.SET_NULL, null=True, blank=True, related_name='logged_bugs')
+    error_message = models.CharField(max_length=255, db_index=True)
+    error_category = models.CharField(max_length=100, blank=True, null=True, db_index=True, help_text="e.g., TypeError, ReferenceError, NameError")
+    
+    # The code itself
+    original_code = models.TextField()
+    fix_step_count = models.PositiveSmallIntegerField(default=1)
+
+    # Context
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, help_text="User who encountered the bug")
+    logged_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-logged_at']
+        indexes = [
+            models.Index(fields=['logged_at', 'language']),
+            models.Index(fields=['error_category']),
+        ]
+
+    def __str__(self):
+        return f"{self.error_category or 'Bug'} in {self.language.name if self.language else 'N/A'} at {self.logged_at.strftime('%Y-%m-%d')}"

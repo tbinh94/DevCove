@@ -1,0 +1,191 @@
+/* BugTracker.module.css */
+.container {
+    font-family: "Inter", sans-serif;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 24px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #38bdf8 0%, #a78bfa 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    border-radius: 10px;
+}
+
+.tabButton {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    background: transparent;
+    color: #94a3b8;
+}
+
+.tabButton:hover {
+    color: #cbd5e1;
+}
+
+.tabButtonActive {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+.heatmapContainer {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.heatmapTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.heatmapGrid {
+    display: flex;
+    justify-content: space-around;
+    gap: 10px;
+}
+
+.heatmapCell {
+    flex: 1;
+    text-align: center;
+}
+
+.heatmapSquare {
+    width: 100%;
+    padding-bottom: 100%; /* Creates a square */
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+
+.heatmapSquare:hover {
+    transform: scale(1.1);
+}
+
+.heatmapLabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.topBugsContainer {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.topBugsTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.bugItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.bugItem:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bugInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.bugCategory {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f87171;
+}
+
+.bugMessage {
+    font-size: 12px;
+    color: #94a3b8;
+    font-family: monospace;
+    margin-top: 4px;
+}
+
+.bugCount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.langBadge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.bugCategoryContainer {
+    display: flex;
+    align-items: center;
+}
+
+.loadingText {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 16px;
+}
+
+.errorText {
+    text-align: center;
+    color: #f87171;
+    font-size: 16px;
+}
+
+.noDataText {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 16px;
+}

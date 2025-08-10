@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage # MODIFIED: Import Language
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug # MODIFIED: Import Language
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -472,3 +472,36 @@ class PasswordChangeSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
+    
+
+class LoggedBugSerializer(serializers.ModelSerializer):
+    """Serializer for logging a new bug."""
+    class Meta:
+        model = LoggedBug
+        fields = [
+            'language',
+            'error_message',
+            'error_category',
+            'original_code',
+            'fix_step_count',
+            'user',
+        ]
+        # User sẽ được lấy từ request, không cần client gửi lên
+        read_only_fields = ['user']
+
+
+class BugStatsSerializer(serializers.Serializer):
+    """
+    Serializer for returning aggregated bug statistics.
+    This is a read-only serializer and does not map directly to a single model.
+    """
+    category = serializers.CharField()
+    message = serializers.CharField()
+    count = serializers.IntegerField()
+    language = serializers.CharField()
+
+
+class HeatmapDataSerializer(serializers.Serializer):
+    """Serializer for heatmap data points."""
+    day = serializers.CharField() # Or 'week', etc., depending on the period
+    errors = serializers.IntegerField()

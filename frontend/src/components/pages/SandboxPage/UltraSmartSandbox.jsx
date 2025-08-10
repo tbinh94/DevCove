@@ -58,6 +58,79 @@ const AiDiffViewer = ({ diff }) => {
     );
 };
 
+// Component phát lại quá trình sửa lỗi của AI
+const AiReplayViewer = ({ replayState, setReplayState, onApply, onCancel }) => {
+    const { steps, currentIndex, isPlaying } = replayState;
+    const currentStep = steps[currentIndex] || {};
+
+    const handleNext = () => {
+        if (currentIndex < steps.length - 1) {
+            setReplayState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1, isPlaying: false }));
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentIndex > 0) {
+            setReplayState(prev => ({ ...prev, currentIndex: prev.currentIndex - 1, isPlaying: false }));
+        }
+    };
+
+    const handlePlayPause = () => {
+        setReplayState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+    };
+
+    useEffect(() => {
+        if (isPlaying && currentIndex < steps.length - 1) {
+            const timer = setTimeout(handleNext, 2000); // Tự động chuyển bước sau 2 giây
+            return () => clearTimeout(timer);
+        } else if (isPlaying && currentIndex >= steps.length - 1) {
+            setReplayState(prev => ({ ...prev, isPlaying: false })); // Dừng khi hết
+        }
+    }, [isPlaying, currentIndex]);
+
+    return (
+        <div style={styles.replayContainer}>
+            <div style={styles.replayHeader}>
+                <span style={{ fontWeight: 'bold', fontSize: '15px' }}>🤖 AI Debug Replay</span>
+                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>Reviewing {steps.length} suggested changes</span>
+            </div>
+            
+            <div style={styles.replayProgress}>
+                {steps.map((_, index) => (
+                    <div 
+                        key={index} 
+                        style={{ ...styles.replayProgressStep, ...(index === currentIndex ? styles.replayProgressStepActive : {}) }}
+                        onClick={() => setReplayState(prev => ({ ...prev, currentIndex: index, isPlaying: false }))}
+                    />
+                ))}
+            </div>
+
+            <div style={styles.replayStepInfo}>
+                <div style={{ fontWeight: '600', color: '#f8fafc' }}>
+                    Step {currentIndex + 1}/{steps.length}: {currentStep.title}
+                </div>
+                <p style={{ margin: '8px 0', color: '#e2e8f0', fontSize: '14px' }}>{currentStep.explanation}</p>
+            </div>
+            
+            <AiDiffViewer diff={currentStep.diff} />
+
+            <div style={styles.replayControls}>
+                <button onClick={handlePrev} disabled={currentIndex <= 0} style={styles.replayButton}>Prev</button>
+                <button onClick={handlePlayPause} style={styles.replayButton}>
+                    {isPlaying && currentIndex < steps.length - 1 ? '❚❚ Pause' : '▶ Play'}
+                </button>
+                <button onClick={handleNext} disabled={currentIndex >= steps.length - 1} style={styles.replayButton}>Next</button>
+            </div>
+
+            <div style={styles.replayFooter}>
+                <button onClick={onCancel} style={styles.clearButton}>Cancel & Revert</button>
+                <button onClick={onApply} style={styles.applyFixButton}>Apply Final Fix & Run</button>
+            </div>
+        </div>
+    );
+};
+
+
 // Modern CSS styles
 const styles = {
   container: {
@@ -176,7 +249,7 @@ const styles = {
     borderRadius: '0 0 8px 0',
   },
   output: {
-    height: '200px',
+    height: '350px', // Tăng chiều cao để có không gian cho Replay Viewer
     background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
     color: '#cbd5e1',
     padding: '20px',
@@ -258,6 +331,65 @@ const styles = {
     boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
     marginTop: '12px',
   },
+  // Styles for AI Replay Viewer
+  replayContainer: {
+    padding: '16px',
+    background: 'linear-gradient(160deg, #1e293b 0%, #29374a 100%)',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+    backdropFilter: 'blur(4px)',
+  },
+  replayHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+  },
+  replayProgress: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+  replayProgressStep: {
+    flex: 1,
+    height: '6px',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+  },
+  replayProgressStepActive: {
+    backgroundColor: '#00d4ff',
+    boxShadow: '0 0 12px #00d4ff',
+  },
+  replayStepInfo: {
+    marginBottom: '12px',
+  },
+  replayControls: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '12px',
+    marginTop: '16px',
+  },
+  replayButton: {
+    background: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+    color: 'white',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    padding: '8px 20px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.2s ease',
+  },
+  replayFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: '20px',
+    paddingTop: '16px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  },
 };
 
 // Lớp phân tích code (giữ nguyên logic)
@@ -326,80 +458,142 @@ class UltraCodeAnalyzer {
 const UltraSmartSandbox = () => {
     const [code, setCode] = useState(`// Welcome to Ultra Smart Sandbox! 🚀
 // Paste your code here or select a template
+// Try this buggy code and let AI fix it!
+function greet() {
+    message = "Hello World!"
+    console.loog(message)
+}
 
-console.log("Hello, World! 🌍");
-
-// Try some interactive code:
-const greeting = "Welcome to the future of coding!";
-console.log(greeting);
-
-// This sandbox supports:
-// ✨ HTML, CSS, JavaScript
-// 🐍 Python with libraries (numpy, pandas, matplotlib)
-// 🎯 Real-time preview
-// 🤖 AI-powered error fixing`);
+greet()`);
     const [output, setOutput] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [codeAnalysis, setCodeAnalysis] = useState(null);
     const iframeRef = useRef(null);
     const [hasError, setHasError] = useState(false);
-    const [fixingRecommendation, setFixingRecommendation] = useState(null);
+    const [isFixing, setIsFixing] = useState(false);
     const codeToRun = useRef(null);
+    const originalCodeBeforeFix = useRef(null);
     const [lastError, setLastError] = useState(null);
-    const [proposedFix, setProposedFix] = useState(null);
+    const [aiReplay, setAiReplay] = useState({ steps: [], currentIndex: -1, isPlaying: false });
 
-    const handleApplyAiFix = async () => {
-        if (!lastError) return;
+    const generateDiff = (oldCode, newCode) => {
+        const oldLines = new Set(oldCode.split('\n'));
+        const newLines = new Set(newCode.split('\n'));
         
-        const originalCode = code;
-        const detailedPrompt = `Error: ${lastError.message}${lastError.stack ? `\nStack: ${lastError.stack}` : ''}\n\nFix this code:`;
-        
-        setFixingRecommendation(detailedPrompt);
-        setOutput(prev => [...prev, { type: 'info', message: `🤖 DevAlly is analyzing the error...` }]);
-        
-        try {
-            const response = await apiService.getAiCodeFix(originalCode, detailedPrompt);
-            const fixedCodeRaw = response.fixed_code || response;
-            
-            const markdownMatch = fixedCodeRaw.match(/```(?:python|javascript|html|css)?\s*\n([\s\S]*?)\n?```/);
-            const fixedCode = markdownMatch && markdownMatch[1] ? markdownMatch[1].trim() : fixedCodeRaw.trim();
-            
-            const originalLines = new Set(originalCode.split('\n'));
-            const fixedLines = new Set(fixedCode.split('\n'));
-            
-            const removedLines = [...originalCode.split('\n')].filter(line => !fixedLines.has(line));
-            const addedLines = [...fixedCode.split('\n')].filter(line => !originalLines.has(line));
+        const removed = [...oldCode.split('\n')].filter(line => !newLines.has(line) && line.trim() !== '');
+        const added = [...newCode.split('\n')].filter(line => !oldLines.has(line) && line.trim() !== '');
 
-            if (addedLines.length > 0 || removedLines.length > 0) {
-                const diffText = [
-                    ...removedLines.map(line => `- ${line}`),
-                    ...addedLines.map(line => `+ ${line}`)
-                ].join('\n');
-                const diffOutput = { type: 'ai_diff', content: diffText, message: '🤖 DevAlly has suggested the following changes:' };
-                setOutput(prev => [...prev, diffOutput]);
-                setProposedFix(fixedCode);
-            } else {
-                setOutput(prev => [...prev, { type: 'info', message: 'ℹ️ AI analyzed the code but found no specific lines to change.' }]);
-            }
-
-        } catch (error) {
-            setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
-        } finally {
-            setFixingRecommendation(null);
-        }
+        if (added.length === 0 && removed.length === 0) return "No significant changes found.";
+        
+        return [
+            ...removed.map(line => `- ${line}`),
+            ...added.map(line => `+ ${line}`)
+        ].join('\n');
     };
 
-    const handleAcceptAndRunFix = () => {
-        if (!proposedFix) return;
+    const handleApplyAiFix = async () => {
+    if (!lastError || isFixing) return;
 
-        const codeToRun = proposedFix;
-        setCode(codeToRun);
-        setProposedFix(null);
-        setOutput(prev => [...prev, { type: 'success', message: '✅ Fix applied. Running again...' }]);
+    originalCodeBeforeFix.current = code;
+    setIsFixing(true);
+    setHasError(false);
+    setOutput([{ type: 'info', message: `🤖 DevAlly is analyzing your code and error...` }]);
+
+    const recommendation = `
+        The user's code has encountered an error.
+        Error Message: "${lastError.message}"
+        ${lastError.stack ? `Stack Trace: ${lastError.stack}` : ''}
+
+        Your task is to analyze the following code, identify the root cause of the error, and provide a step-by-step guide to fix it.
+        Break down the fix into logical steps. For each step, provide a title, a clear explanation of what you are fixing and why, and the complete code after applying that step's fix.
+        Return the result as a raw JSON object with a single key "steps", which is an array of objects. Each object in the array should have three keys: "title", "explanation", and "code". Do not add any conversational text or markdown formatting around the JSON.
+
+        Original Code:
+        \`\`\`
+        ${code}
+        \`\`\`
+    `;
+
+    try {
+        const response = await apiService.getAiCodeFix(code, recommendation);
+        let replaySteps = [];
+
+        // Logic bây giờ đơn giản hơn rất nhiều vì ta tin tưởng backend sẽ trả về JSON đúng
+        if (typeof response === 'object' && response !== null && Array.isArray(response.steps)) {
+            replaySteps = response.steps;
+        } else {
+            // Trường hợp dự phòng nếu có điều gì đó rất lạ xảy ra với API
+            console.warn("API did not return the expected { steps: [...] } structure.", response);
+            throw new Error("Received an unexpected response format from the server.");
+        }
+
+        if (replaySteps.length === 0) {
+            throw new Error("AI response was received, but contained no actionable steps.");
+        }
+
+        const processedSteps = replaySteps.map((step, index) => {
+            const prevCode = index === 0 ? originalCodeBeforeFix.current : replaySteps[index - 1].code;
+            return { ...step, diff: generateDiff(prevCode, step.code) };
+        });
+        
+        setOutput([]);
+        setAiReplay({ steps: processedSteps, currentIndex: 0, isPlaying: false });
+
+    } catch (error) {
+        setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
+    } finally {
+        setIsFixing(false);
+    }
+};
+    
+    useEffect(() => {
+        // Update editor content when replay step changes
+        if (aiReplay.steps.length > 0 && aiReplay.currentIndex !== -1) {
+            setCode(aiReplay.steps[aiReplay.currentIndex].code);
+        }
+    }, [aiReplay.currentIndex, aiReplay.steps]);
+
+
+    const handleAcceptAndRunFinalFix = async () => {
+        if (aiReplay.steps.length === 0) return;
+
+        const finalCode = aiReplay.steps[aiReplay.steps.length - 1].code;
+        
+        // --- TÍCH HỢP GHI LOG LỖI (SỬ DỤNG API THẬT) ---
+        try {
+            const analysis = UltraCodeAnalyzer.analyzeCode(originalCodeBeforeFix.current);
+            const bugData = {
+                language: analysis.codeType,
+                error_message: lastError.message,
+                original_code: originalCodeBeforeFix.current,
+                fix_step_count: aiReplay.steps.length,
+                // AI có thể trả về category trong response, nếu không thì để trống
+                // error_category: aiResponse.category || null 
+            };
+            
+            // ✅ GỌI API THẬT ĐỂ GHI LOG
+            await apiService.logBugFix(bugData);
+            console.log("Bug fix successfully logged to community database via API.");
+
+        } catch (error) {
+            // Không nên chặn người dùng chỉ vì log lỗi thất bại
+            console.error("Could not log bug fix to community DB:", error);
+        }
+        // --- KẾT THÚC TÍCH HỢP ---
+
+        setCode(finalCode);
+        setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
+        setOutput([{ type: 'success', message: '✅ Final fix applied. Running again...' }]);
 
         setTimeout(() => {
-            handleRunCode(codeToRun);
+            handleRunCode(finalCode);
         }, 50);
+    };
+
+    const handleCancelReplay = () => {
+        setCode(originalCodeBeforeFix.current);
+        setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
+        setOutput(prev => [...prev, { type: 'info', message: '↩️ AI fix replay cancelled. Original code restored.' }]);
     };
 
     useEffect(() => {
@@ -498,7 +692,7 @@ main();
         const codeToExecute = typeof codeOverride === 'string' ? codeOverride : code;
         if (iframeRef.current && !isRunning && codeToExecute.trim()) {
             setHasError(false); setLastError(null);
-            setProposedFix(null);
+            setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
             setOutput([{ type: 'info', message: '🔄 Analyzing and preparing execution...' }]);
             setIsRunning(true);
             
@@ -527,7 +721,7 @@ main();
 
     const handleClear = () => {
         setHasError(false); setLastError(null); setOutput([]);
-        setProposedFix(null);
+        setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
         if (iframeRef.current) {
             iframeRef.current.srcdoc = 'about:blank';
             iframeRef.current.dataset.type = 'blank';
@@ -717,6 +911,8 @@ print(f"   Mean: {np.mean(y1):.3f}")
 plt.show()`
     };
 
+    const isReplayActive = aiReplay.steps.length > 0;
+
     return (
         <div style={styles.container}>
             <div style={styles.mainContent}>
@@ -742,6 +938,7 @@ plt.show()`
                                     e.target.value = ''; 
                                 }} 
                                 style={styles.templateSelect}
+                                disabled={isReplayActive}
                             >
                                 <option value="">📚 Quick Templates</option>
                                 <option value="html">🌐 Modern HTML</option>
@@ -755,10 +952,10 @@ plt.show()`
                                 onClick={() => handleRunCode()} 
                                 style={{ 
                                     ...styles.runButton, 
-                                    opacity: isRunning ? 0.6 : 1,
+                                    opacity: isRunning || isReplayActive ? 0.6 : 1,
                                     transform: isRunning ? 'scale(0.98)' : 'scale(1)'
                                 }} 
-                                disabled={isRunning}
+                                disabled={isRunning || isReplayActive}
                                 onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
                                 onMouseOut={e => e.target.style.transform = isRunning ? 'scale(0.98)' : 'scale(1)'}
                             >
@@ -767,6 +964,7 @@ plt.show()`
                             <button 
                                 onClick={handleClear} 
                                 style={styles.clearButton}
+                                disabled={isReplayActive}
                                 onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
                                 onMouseOut={e => e.target.style.transform = 'scale(1)'}
                             >
@@ -778,6 +976,7 @@ plt.show()`
                         value={code} 
                         onChange={(e) => setCode(e.target.value)} 
                         style={styles.textarea} 
+                        readOnly={isReplayActive}
                         placeholder="// 🚀 Welcome to Ultra Smart Sandbox!
 // Paste your HTML, CSS, JS, or Python code here
 // Libraries supported: numpy, pandas, matplotlib, and more!
@@ -798,7 +997,14 @@ console.log('Ready to create something amazing? ✨');"
                 </div>
             </div>
             <div style={styles.output}>
-                {hasError && lastError && !fixingRecommendation && !proposedFix && (
+                {isReplayActive ? (
+                    <AiReplayViewer
+                        replayState={aiReplay}
+                        setReplayState={setAiReplay}
+                        onApply={handleAcceptAndRunFinalFix}
+                        onCancel={handleCancelReplay}
+                    />
+                ) : hasError && lastError && !isFixing ? (
                     <div style={styles.errorBox}>
                         <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>
                             ⚠️ Error Detected: <span style={{ fontFamily: 'monospace', backgroundColor: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px' }}>{lastError.message}</span>
@@ -811,35 +1017,23 @@ console.log('Ready to create something amazing? ✨');"
                                 onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
                                 onMouseOut={e => e.target.style.transform = 'scale(1)'}
                             >
-                                🪄 Let DevAlly help you with this bug!
+                                🪄 Create Debug Replay?
                             </button>
                         </div>
                     </div>
-                )}
-                {output.length > 0 ? (
+                ) : null}
+
+                {output.length > 0 && !isReplayActive ? (
                     output.map((line, index) => (
                         <div key={index} style={{ marginBottom: '8px', lineHeight: '1.5' }}>
                             <span style={getLogStyle(line.type)}>
-                                {line.type !== 'ai_diff' && (
+                                {
                                     line.type === 'error' ? '❌' : 
                                     line.type === 'warning' ? '⚠️' : 
                                     line.type === 'info' ? 'ℹ️' : 
                                     line.type === 'success' ? '✅' : '▶️'
-                                )} {line.message}
+                                } {line.message}
                             </span>
-                            {line.type === 'ai_diff' && <AiDiffViewer diff={line.content} />}
-                            {line.type === 'ai_diff' && proposedFix && (
-                                <div style={{ marginTop: '12px' }}>
-                                    <button 
-                                        onClick={handleAcceptAndRunFix} 
-                                        style={styles.applyFixButton}
-                                        onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
-                                        onMouseOut={e => e.target.style.transform = 'scale(1)'}
-                                    >
-                                        ✅ Apply Fix & Run Again
-                                    </button>
-                                </div>
-                            )}
                             {line.stack && (
                                 <div style={styles.errorStack}>
                                     {line.stack.split('\n').slice(0, 4).join('\n')}
@@ -847,16 +1041,18 @@ console.log('Ready to create something amazing? ✨');"
                             )}
                         </div>
                     ))
-                ) : (
-                    <div style={{ color: '#94a3b8', lineHeight: '1.6' }}>
+                ) : null}
+                
+                {!isReplayActive && output.length === 0 && (
+                     <div style={{ color: '#94a3b8', lineHeight: '1.6' }}>
                         <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                             🌟 Console output, errors, and AI-powered suggestions will appear here...
                         </div>
                         <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
-                            💡 Try running some code or select a template to get started!
+                            💡 Try running the buggy example code or select a template to get started!
                         </div>
                         <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                            ✨ Features: Real-time preview • AI error fixing • Multi-language support
+                            ✨ Features: Real-time preview • AI Debug Replay • Multi-language support
                         </div>
                     </div>
                 )}

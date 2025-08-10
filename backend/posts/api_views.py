@@ -21,6 +21,7 @@ from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from rest_framework.decorators import action
 from django.http import HttpResponse
+from django.db.models.functions import TruncDay, TruncWeek
 
 # Import thư viện Gemini
 from google import genai
@@ -45,7 +46,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -61,7 +62,9 @@ from .serializers import (
     UserBasicSerializer,
     UserSerializer,
     VoteSerializer,
-    ConversationSerializer, ChatMessageSerializer
+    ConversationSerializer, ChatMessageSerializer,
+    LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer
+
 )
 from dotenv import load_dotenv
 
@@ -1627,44 +1630,187 @@ def get_ai_response(prompt: str):
 @permission_classes([IsAuthenticated])
 def ai_refactor_code_view(request):
     """
-    API endpoint để nhận code ĐỘNG từ sandbox của người dùng, gửi đến AI,
-    và trả về code đã được sửa một cách an toàn.
+    API endpoint to receive user's code, send it to the AI,
+    and return a structured, multi-step fix in JSON format.
     """
     user_code = request.data.get('code')
     recommendation = request.data.get('recommendation_text')
 
     if not user_code or not recommendation:
-        # Đối với lỗi, chúng ta vẫn có thể dùng Response của DRF để trả về JSON
-        from rest_framework.response import Response 
         return Response(
             {'error': '`code` and `recommendation_text` are required.'}, 
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    # Prompt vẫn yêu cầu AI trả về JSON có cấu trúc
     final_prompt = build_prompt(
         content=user_code,
-        language='javascript',
+        # Ngôn ngữ có thể được suy luận hoặc gửi từ frontend nếu cần
+        language=request.data.get('language', 'javascript'), 
         prompt_type='refactor_code',
         recommendation_text=recommendation
     )
     
-    fixed_code_raw = get_ai_response(final_prompt)
+    ai_response_raw = get_ai_response(final_prompt)
 
-    if fixed_code_raw is None:
-        from rest_framework.response import Response
+    if ai_response_raw is None:
         return Response(
             {'error': 'AI service failed to generate a fix.'}, 
             status=status.HTTP_502_BAD_GATEWAY
         )
 
-    code_match = re.search(r'```(?:javascript|js)?\n(.*?)```', fixed_code_raw, re.DOTALL)
-    
-    if code_match:
-        fixed_code = code_match.group(1).strip()
-    else:
-        fixed_code = fixed_code_raw.strip()
+    # --- LOGIC XỬ LÝ PHẢN HỒI NÂNG CAO Ở BACKEND ---
+    try:
+        # Kịch bản 1: AI trả về JSON hoàn hảo
+        # Thử tìm và parse khối JSON từ markdown
+        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
+        if match:
+            parsed_json = json.loads(match.group(1))
+        else:
+            # Nếu không, thử parse toàn bộ chuỗi
+            parsed_json = json.loads(ai_response_raw)
+        
+        # Kiểm tra xem có key 'steps' không
+        if 'steps' in parsed_json and isinstance(parsed_json['steps'], list):
+            # Nếu có, trả về trực tiếp
+            return Response(parsed_json, status=status.HTTP_200_OK)
 
-    # === THAY ĐỔI CỐT LÕI NẰM Ở ĐÂY ===
-    # Sử dụng HttpResponse gốc của Django để đảm bảo trả về HTML thô.
-    # Nó sẽ không thực hiện bất kỳ quá trình JSON serialization nào.
-    return HttpResponse(f"<code>{fixed_code}</code>", content_type='text/html')
+    except json.JSONDecodeError:
+        # Kịch bản 2: AI không trả về JSON, mà trả về code thô (phổ biến)
+        # Chúng ta sẽ tự tạo cấu trúc JSON cho nó
+        print("AI did not return JSON, wrapping raw code into a single step.")
+        
+        # Trích xuất code từ trong khối markdown, nếu có
+        code_match = re.search(r'```(?:python|javascript|js|html|css)?\s*\n([\s\S]*?)\n?```', ai_response_raw, re.DOTALL)
+        if code_match:
+            fixed_code = code_match.group(1).strip()
+        else:
+            # Nếu không có markdown, lấy toàn bộ chuỗi làm code
+            fixed_code = ai_response_raw.strip()
+        
+        # Tạo một response JSON chuẩn với một bước duy nhất
+        response_data = {
+            "steps": [
+                {
+                    "title": "AI Suggested Fix",
+                    "explanation": "The AI provided a direct fix for the code. Please review the changes carefully.",
+                    "code": fixed_code
+                }
+            ]
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    # Trường hợp dự phòng nếu JSON có cấu trúc lạ
+    return Response(
+        {'error': 'AI returned an unexpected data structure.'},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def log_bug_view(request):
+    """
+    Receives bug data from the frontend and logs it to the database.
+    """
+    # Lấy language_id từ frontend (frontend gửi 'python', 'javascript',...)
+    language_name = request.data.get('language')
+    language_obj = None
+    if language_name:
+        # Lấy hoặc tạo đối tượng Language, không phân biệt chữ hoa/thường
+        language_obj, _ = Language.objects.get_or_create(
+            name__iexact=language_name,
+            defaults={'name': language_name.capitalize(), 'slug': slugify(language_name)}
+        )
+
+    # Regex để cố gắng trích xuất category từ error message
+    error_message = request.data.get('error_message', '')
+    match = re.match(r'^(\w+Error):', error_message)
+    error_category = match.group(1) if match else "UnknownError"
+
+    data_to_log = {
+        'error_message': error_message,
+        'error_category': error_category,
+        'original_code': request.data.get('original_code'),
+        'fix_step_count': request.data.get('fix_step_count'),
+    }
+
+    serializer = LoggedBugSerializer(data=data_to_log)
+    if serializer.is_valid():
+        # Gán user và language trước khi lưu
+        serializer.save(user=request.user, language=language_obj)
+        return Response({"status": "success", "message": "Bug logged successfully."}, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def bug_stats_view(request):
+    """
+    Calculates and returns statistics for the Community Bug Tracker.
+    """
+    period = request.query_params.get('period', 'weekly').lower()
+    
+    if period == 'weekly':
+        seven_days_ago = timezone.now().date() - timedelta(days=6) # Lấy 7 ngày, tính cả hôm nay
+        queryset = LoggedBug.objects.filter(logged_at__date__gte=seven_days_ago)
+        
+        # Heatmap data
+        heatmap_data = (
+            queryset
+            .annotate(day=TruncDay('logged_at')) # Truncate to day
+            .values('day')
+            .annotate(errors=Count('id'))
+            .order_by('day')
+        )
+        # Top 5 bugs
+        top_bugs = list(
+            queryset
+            .values('error_category', 'error_message', 'language__name')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:5]
+        )
+        
+    elif period == 'monthly':
+        # Dữ liệu 4 tuần gần nhất
+        four_weeks_ago = timezone.now().date() - timedelta(weeks=4)
+        queryset = LoggedBug.objects.filter(logged_at__date__gte=four_weeks_ago)
+
+        # Heatmap data
+        heatmap_data = (
+            queryset
+            .annotate(week=TruncWeek('logged_at')) # Truncate to week
+            .values('week')
+            .annotate(errors=Count('id'))
+            .order_by('week')
+        )
+        
+        # Top 5 bugs
+        top_bugs = list(
+            queryset
+            .values('error_category', 'error_message', 'language__name')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:5]
+        )
+    
+    else:
+        return Response({'error': 'Invalid period. Use "weekly" or "monthly".'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Serialize the data for the response
+    top_bugs_serializer = BugStatsSerializer([
+        {'category': b.get('error_category', 'Error'), 'message': b.get('error_message', ''), 'count': b.get('count', 0), 'language': b.get('language__name', 'N/A')}
+        for b in top_bugs
+    ], many=True)
+    
+    # Sử dụng serializer mới cho heatmap
+    # Key 'day' sẽ chứa ngày hoặc tuần tùy thuộc vào period
+    heatmap_serializer = HeatmapDataSerializer([
+        {'day': item.get('day') or item.get('week'), 'errors': item.get('errors', 0)}
+        for item in heatmap_data
+    ], many=True)
+
+    return Response({
+        'heatmap': heatmap_serializer.data,
+        'topBugs': top_bugs_serializer.data,
+    })

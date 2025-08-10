@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 // Thêm icon FlaskConical cho Sandbox
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical } from 'lucide-react'; 
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug } from 'lucide-react'; 
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -133,6 +133,10 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     navigate('/sandbox'); // Điều hướng tới trang /sandbox
   };
 
+  const handleBugTrackerClick = () => {
+    navigate('/bug-tracker'); // Điều hướng tới trang /bug-tracker
+  };
+
   return (
     <>
       <header className={styles.header}>
@@ -193,6 +197,17 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                 >
                   <FlaskConical className={styles.buttonIcon} />
                   <span className={styles.sandboxButtonText}>Sandbox</span>
+                </button>
+
+
+                {/* ✅ BƯỚC 3: THÊM NÚT BUG TRACKER VÀO JSX */}
+                <button
+                  onClick={handleBugTrackerClick}
+                  className={styles.bugTrackerButton} // Thêm class mới cho styling
+                  title="Community Bug Tracker"
+                >
+                  <Bug className={styles.buttonIcon} />
+                  <span className={styles.bugTrackerButtonText}>Insights</span>
                 </button>
 
                 <div className={styles.notificationWrapper}>

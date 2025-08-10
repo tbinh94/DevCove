@@ -375,6 +375,36 @@ class APIService {
       },
     });
   }
+
+  /**
+   * Ghi lại một lỗi và cách sửa của nó vào cơ sở dữ liệu cộng đồng.
+   * @param {object} bugData - Dữ liệu về lỗi cần ghi lại.
+   * @param {string} bugData.language - Ngôn ngữ lập trình (ví dụ: 'python', 'javascript').
+   * @param {string} bugData.error_message - Thông báo lỗi.
+   * @param {string} bugData.original_code - Đoạn code gốc gây ra lỗi.
+   * @param {number} bugData.fix_step_count - Số bước mà AI đã thực hiện để sửa lỗi.
+   * @param {string} [bugData.error_category] - Loại lỗi do AI phân loại (ví dụ: 'TypeError').
+   * @returns {Promise<object>} - Phản hồi từ server.
+   */
+  async logBugFix(bugData) {
+    // Endpoint này cần được tạo ở backend để lưu trữ thông tin lỗi.
+    return this.request('/api/bugs/log/', { 
+      method: 'POST',
+      body: bugData,
+    });
+  }
+
+  /**
+   * Lấy dữ liệu thống kê về các lỗi phổ biến từ cộng đồng.
+   * @param {string} period - Khoảng thời gian thống kê ('weekly' hoặc 'monthly').
+   * @returns {Promise<object>} - Dữ liệu thống kê, bao gồm heatmap và topBugs.
+   */
+  async getBugStats(period = 'weekly') {
+    // Endpoint này cần được tạo ở backend để tổng hợp và trả về dữ liệu.
+    const params = new URLSearchParams({ period });
+    return this.request(`/api/bugs/stats/?${params}`);
+  }
+  
   // --- Utility Accessor ---
   get utils() {
     return {

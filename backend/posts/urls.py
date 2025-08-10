@@ -38,6 +38,8 @@ urlpatterns = [
     
     path('ai/refactor-code/', ai_refactor_code_view, name='ai_refactor_code'),
 
+    path('bugs/log/', api_views.log_bug_view, name='log_bug'),
+    path('bugs/stats/', api_views.bug_stats_view, name='bug_stats'),
     # Include tất cả các URL do router tạo ra vào cuối danh sách này
     path('', include(router.urls)),
 ]

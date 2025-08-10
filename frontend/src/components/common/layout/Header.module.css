@@ -619,3 +619,42 @@
     padding: 8px;
   }
 }
+
+.bugTrackerButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background-color: transparent; /* Hoặc màu nền phù hợp */
+  color: var(--text-color-light); /* Màu chữ */
+  border: 1px solid var(--border-color); /* Viền giống các nút khác */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.bugTrackerButton:hover {
+  background-color: var(--button-hover-bg); /* Màu nền khi hover */
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.bugTrackerButton .buttonIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.bugTrackerButtonText {
+  display: block;
+}
+
+/* Ẩn chữ trên màn hình nhỏ để tiết kiệm không gian */
+@media (max-width: 992px) {
+  .bugTrackerButtonText {
+    display: none;
+  }
+  .bugTrackerButton {
+    padding: 8px; /* Giảm padding để nút trở thành hình vuông */
+  }
+}
