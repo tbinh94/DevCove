@@ -10,8 +10,10 @@
   --text-muted: #94a3b8;
   --success: #10b981;
   --danger: #ef4444;
+  --warning: #f59e0b;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   --glow: 0 0 20px rgba(37, 99, 235, 0.3);
+  --glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
 .sidebar {
@@ -24,7 +26,7 @@
 }
 
 /* Unified Card System */
-.tagsSection, .filterStatus, .userSection {
+.controlsSection, .tagsSection, .filterStatus, .userSection {
   background: var(--surface);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border);
@@ -37,7 +39,7 @@
   overflow: hidden;
 }
 
-.tagsSection::before, .filterStatus::before, .userSection::before {
+.controlsSection::before, .tagsSection::before, .filterStatus::before, .userSection::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -54,20 +56,21 @@
   transition: opacity 0.4s ease;
 }
 
+.controlsSection:hover::before, 
 .tagsSection:hover::before, 
 .filterStatus:hover::before, 
 .userSection:hover::before {
   opacity: 1;
 }
 
-.tagsSection:hover, .filterStatus:hover, .userSection:hover {
+.controlsSection:hover, .tagsSection:hover, .filterStatus:hover, .userSection:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow), var(--glow);
   border-color: var(--border-active);
 }
 
 /* Consistent Headers */
-.tagsSection h3, .filterStatus h4, .userSection h3 {
+.controlsSection h3, .tagsSection h3, .filterStatus h4, .userSection h3 {
   margin: 0 0 20px 0;
   font-size: 16px;
   font-weight: 600;
@@ -76,6 +79,11 @@
   align-items: center;
   gap: 8px;
   letter-spacing: -0.01em;
+}
+
+.controlsSection h3::before {
+  content: '🧠';
+  font-size: 14px;
 }
 
 .tagsSection h3::before {
@@ -92,6 +100,209 @@
   content: '👤';
   font-size: 14px;
 }
+
+/* ===== NEW: AI OVERVIEW & CONTROLS SECTION ===== */
+.controlsSection {
+  border-color: var(--warning);
+  background: linear-gradient(135deg, 
+    rgba(15, 23, 42, 0.95) 0%, 
+    rgba(30, 41, 59, 0.9) 50%, 
+    rgba(245, 158, 11, 0.05) 100%
+  );
+}
+
+.controlsSection:hover {
+  box-shadow: var(--shadow), var(--glow-warning);
+  border-color: var(--warning);
+}
+
+/* AI Overview Button */
+.overviewButton {
+  width: 100%;
+  background: linear-gradient(135deg, var(--warning), #d97706);
+  border: 1px solid var(--warning);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2);
+}
+
+.overviewButton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.2) 0%, 
+    transparent 50%, 
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.overviewButton:hover::before {
+  opacity: 1;
+}
+
+.overviewButton:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: var(--glow-warning), 0 8px 30px rgba(245, 158, 11, 0.4);
+}
+
+.overviewButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.overviewButton.loading {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.overviewButtonInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.overviewButtonInner svg {
+  transition: transform 0.3s ease;
+}
+
+.overviewButton:hover .overviewButtonInner svg {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.overviewButton.loading .overviewButtonInner svg {
+  animation: spin 1.5s linear infinite;
+}
+
+/* Sort Controls */
+.sortControls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sortLabel {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.sortButtons {
+  display: grid;
+  gap: 8px;
+}
+
+.sortButton {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sortButton::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+  transition: width 0.3s ease;
+  z-index: 0;
+}
+
+.sortButton span, .sortButton svg {
+  position: relative;
+  z-index: 1;
+}
+
+.sortButton:hover {
+  transform: translateX(4px);
+  border-color: var(--primary);
+  color: white;
+}
+
+.sortButton:hover::before {
+  width: 100%;
+}
+
+.sortButton.activeSort {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border-color: var(--primary);
+  transform: translateX(6px);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3), 0 8px 20px rgba(37, 99, 235, 0.2);
+}
+
+.sortButton.activeSort::before {
+  width: 100%;
+}
+
+.sortButton svg {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.sortButton:hover svg {
+  transform: scale(1.1);
+}
+
+/* Error Display */
+.overviewError {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 12px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== EXISTING STYLES (Updated) ===== */
 
 /* Unified Tag System with Dynamic Colors */
 .tagsList {
@@ -363,12 +574,40 @@
     order: 2;
     margin-top: 24px;
   }
+  
+  .controlsSection {
+    order: -1; /* Put controls at the top on mobile */
+  }
+  
+  .sortButtons {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  
+  .sortButton {
+    flex-shrink: 0;
+    min-width: 80px;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 768px) {
-  .tagsSection, .filterStatus, .userSection {
+  .controlsSection, .tagsSection, .filterStatus, .userSection {
     padding: 20px;
     border-radius: 16px;
+  }
+  
+  .overviewButton {
+    padding: 14px 18px;
+    font-size: 13px;
+  }
+  
+  .sortButton {
+    padding: 10px 14px;
+    font-size: 13px;
   }
   
   .tagBadge {
@@ -388,16 +627,40 @@
 }
 
 @media (max-width: 480px) {
-  .tagsSection, .filterStatus, .userSection {
+  .controlsSection, .tagsSection, .filterStatus, .userSection {
     padding: 16px;
     margin-bottom: 16px;
+  }
+  
+  .sortButtons {
+    grid-template-columns: 1fr;
+  }
+  
+  .sortButton {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .overviewButton {
+    padding: 12px 16px;
   }
 }
 
 /* Focus States */
-.tagBadge:focus, .viewAllButton:focus, .actionBtn:focus, .clearAllBtn:focus {
+.overviewButton:focus, .sortButton:focus, .tagBadge:focus, .viewAllButton:focus, .actionBtn:focus, .clearAllBtn:focus {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* Accessibility - High Contrast Mode */
+@media (prefers-contrast: high) {
+  .controlsSection, .tagsSection, .filterStatus, .userSection {
+    border-width: 2px;
+  }
+  
+  .overviewButton, .sortButton, .tagBadge {
+    border-width: 2px;
+  }
 }
 
 /* Reduced Motion */
@@ -405,5 +668,14 @@
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+  
+  .overviewButton.loading {
+    animation: none;
+  }
+  
+  .spinner {
+    animation: none;
+    border-top-color: var(--primary);
   }
 }

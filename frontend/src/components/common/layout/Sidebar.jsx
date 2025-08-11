@@ -1,31 +1,45 @@
+// Sidebar.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Bot, Zap, Calendar, ArrowDownAZ } from 'lucide-react';
 import styles from './Sidebar.module.css';
-// import AllTags from '../../pages/AllTags';
 import TagsModal from '../../pages/TagsModal';
-const Sidebar = ({ 
-  user = null 
+import { useAuth } from '../../../contexts/AuthContext';
+// apiService không còn cần thiết ở đây nữa, nhưng có thể giữ lại nếu dùng cho việc khác
+// import apiService from '../../../services/api';
+
+const Sidebar = ({
+  user = null,
+  posts = [],
+  // THAY ĐỔI 1: Đổi tên onOverviewGenerated thành một cái tên rõ ràng hơn
+  // và nó sẽ là hàm trigger toàn bộ quá trình.
+  onGenerateOverview,
+  isOverviewLoading = false,
+  overviewError = null,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [popularTags, setPopularTags] = useState([]);
   const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAllTags, setShowAllTags] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   // Get current filters from URL
   const getCurrentFilters = () => {
     const urlTags = searchParams.get('tags');
+    const ordering = searchParams.get('ordering') || '-created_at';
     return {
       selectedTags: urlTags ? urlTags.split(',').map(slug => ({
         slug,
         name: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
       })) : [],
+      ordering
     };
   };
 
-  const { selectedTags, searchQuery } = getCurrentFilters();
+  const { selectedTags, ordering, searchQuery } = getCurrentFilters();
 
   // Fetch popular tags from backend
   useEffect(() => {
@@ -84,7 +98,7 @@ const Sidebar = ({
     return cookieValue;
   };
 
-  const updateUrlParams = (newTags, newSearch = null) => {
+  const updateUrlParams = (newTags, newSearch = null, newOrdering = null) => {
     const params = new URLSearchParams(searchParams);
     
     if (newTags && newTags.length > 0) {
@@ -92,6 +106,12 @@ const Sidebar = ({
     } else {
       params.delete('tags');
     }
+
+    if (newOrdering) {
+      params.set('ordering', newOrdering);
+      params.set('page', '1'); // Reset to first page when sorting changes
+    }
+    
     navigate(params.toString() ? `/?${params.toString()}` : '/');
   };
 
@@ -123,18 +143,27 @@ const Sidebar = ({
     updateUrlParams(currentTagSlugs, '');
   };
 
-  const handleViewAllTags = (e) => {
-    e.preventDefault();
-    setShowAllTags(true);
+  const handleSortChange = (newOrdering) => {
+    const currentTagSlugs = selectedTags.map(tag => tag.slug);
+    updateUrlParams(currentTagSlugs, null, newOrdering);
   };
+  // ... (Kết thúc phần code không thay đổi)
 
-  const handleAllTagsClose = () => {
-    setShowAllTags(false);
-  };
 
-  const handleTagSelectFromModal = (tag) => {
-    handleTagToggle(tag.slug);
-    setShowAllTags(false);
+  // THAY ĐỔI 2: Xóa bỏ hoàn toàn logic gọi API trong Sidebar
+  // Hàm này giờ chỉ đơn giản là gọi prop được truyền vào
+  const handleGenerateOverviewClick = () => {
+    if (!isAuthenticated) {
+      alert("Bạn cần đăng nhập để dùng tính năng này.");
+      return;
+    }
+    if (posts.length === 0) {
+      return;
+    }
+    // Gọi hàm từ component cha để bắt đầu quá trình
+    if (onGenerateOverview) {
+      onGenerateOverview();
+    }
   };
 
   const isTagSelected = (tagSlug) => {
@@ -146,19 +175,76 @@ const Sidebar = ({
     return selected || tag;
   };
 
+  const getSortButtonClass = (sortType) => {
+    return `${styles.sortButton} ${ordering === sortType ? styles.activeSort : ''}`;
+  };
+
   return (
     <div className={styles.sidebar}>
-      {/* Tags Section */}
+      {/* AI Overview & Sort Controls Section */}
+      <div className={styles.controlsSection}>
+        <h3>Smart Tools</h3>
+        
+        {/* AI Overview Button */}
+        <button 
+          // THAY ĐỔI 3: Gọi hàm mới đã được đơn giản hóa
+          onClick={handleGenerateOverviewClick} 
+          disabled={isOverviewLoading || !isAuthenticated || posts.length === 0}
+          className={`${styles.overviewButton} ${isOverviewLoading ? styles.loading : ''}`}
+          title={!isAuthenticated ? "Đăng nhập để sử dụng" : "Tạo tổng quan cho các bài đăng hiện tại bằng AI"}
+        >
+          <div className={styles.overviewButtonInner}>
+            <Bot size={18} />
+            <span>{isOverviewLoading ? 'Analyzing...' : 'AI Overview'}</span>
+          </div>
+        </button>
+        
+        {/* ... (Phần còn lại của JSX không thay đổi) ... */}
+        <div className={styles.sortControls}>
+          <div className={styles.sortLabel}>Sort by:</div>
+          <div className={styles.sortButtons}>
+            <button 
+              onClick={() => handleSortChange('-calculated_score')}
+              className={getSortButtonClass('-calculated_score')}
+              title="Sort by popularity (votes)"
+            >
+              <Zap size={16} />
+              <span>Hot</span>
+            </button>
+            <button 
+              onClick={() => handleSortChange('-created_at')}
+              className={getSortButtonClass('-created_at')}
+              title="Sort by creation time"
+            >
+              <Calendar size={16} />
+              <span>New</span>
+            </button>
+            <button 
+              onClick={() => handleSortChange('title')}
+              className={getSortButtonClass('title')}
+              title="Sort alphabetically"
+            >
+              <ArrowDownAZ size={16} />
+              <span>A-Z</span>
+            </button>
+          </div>
+        </div>
+        {overviewError && (
+          <div className={styles.overviewError}>
+            {overviewError}
+          </div>
+        )}
+      </div>
+
+      {/* ... (Phần còn lại của JSX không thay đổi) ... */}
       <div className={styles.tagsSection}>
         <h3>Popular Tags</h3>
-        
         {loading && (
           <div className={styles.loading}>
             <div className={styles.spinner}></div>
             <p>Loading tags...</p>
           </div>
         )}
-        
         {error && (
           <div className={styles.error}>
             <p>Error loading tags: {error}</p>
@@ -170,7 +256,6 @@ const Sidebar = ({
             </button>
           </div>
         )}
-        
         {!loading && !error && (
           <div className={styles.tagsList}>
             {popularTags.length > 0 ? (
@@ -198,7 +283,6 @@ const Sidebar = ({
                     </button>
                   );
                 })}
-                
                 <button 
                     className={styles.viewAllButton} 
                     onClick={() => setIsTagsModalOpen(true)}
@@ -212,8 +296,6 @@ const Sidebar = ({
           </div>
         )}
       </div>
-
-      {/* Active Filters */}
       {(selectedTags.length > 0 || searchQuery) && (
         <div className={styles.filterStatus}>
           <div className={styles.filterHeader}>
@@ -225,7 +307,6 @@ const Sidebar = ({
               Clear All
             </button>
           </div>
-          
           {selectedTags.length > 0 && (
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>
@@ -233,10 +314,8 @@ const Sidebar = ({
               </div>
               <div className={styles.selectedTags}>
                 {selectedTags.map((tag) => {
-                  // Find the tag in popularTags to get the color
                   const popularTag = popularTags.find(pt => pt.slug === tag.slug);
                   const tagColor = popularTag?.color || '#6B7280';
-                  
                   return (
                     <span
                       key={tag.slug}
@@ -257,7 +336,6 @@ const Sidebar = ({
               </div>
             </div>
           )}
-          
           {searchQuery && (
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>
@@ -275,7 +353,6 @@ const Sidebar = ({
               </span>
             </div>
           )}
-          
           <div className={styles.filterStats}>
             Filtering {selectedTags.length > 0 ? `by ${selectedTags.length} tag${selectedTags.length > 1 ? 's' : ''}` : ''}
             {selectedTags.length > 0 && searchQuery ? ' and ' : ''}
@@ -283,31 +360,27 @@ const Sidebar = ({
           </div>
         </div>
       )}
-
-      {/* User Section - if authenticated */}
-      {user && (
+      {user && isAuthenticated && ( // Kiểm tra cả `user` và `isAuthenticated` cho chắc chắn
         <div className={styles.userSection}>
           <h3>Quick Actions</h3>
           <div className={styles.userActions}>
             <button className={styles.actionBtn} onClick={() => navigate('/create-post')}>
               Create Post
             </button>
-            <button className={styles.actionBtn} onClick={() => navigate('/profile')}>
+            <button 
+              className={styles.actionBtn} 
+              onClick={() => navigate(`/profile/${user.username}`)}
+              disabled={!user.username} // Vô hiệu hóa nút nếu không có username
+            >
               My Profile
             </button>
           </div>
         </div>
       )}
-      
-      
-
-      {/* Render Modal có điều kiện VÀ TRUYỀN PROPS VÀO */}
       {isTagsModalOpen && (
           <TagsModal 
             onClose={() => setIsTagsModalOpen(false)} 
-            // Truyền hàm xử lý filter vào modal
             onTagSelect={handleTagToggle}
-            // Truyền các tag đang được chọn để modal có thể highlight chúng
             selectedTags={selectedTags}
           />
       )}

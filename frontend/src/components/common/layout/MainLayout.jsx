@@ -1,142 +1,84 @@
-// MainLayout.jsx
-import React, { useState, useEffect } from 'react';
+// MainLayout.jsx - PHIÊN BẢN SỬA LỖI VÒNG LẶP
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'; // <-- Thêm useCallback, useMemo
 import { Outlet } from 'react-router-dom';
 import { Header, Footer, Sidebar } from './index';
 import styles from './MainLayout.module.css';
-
-// Utility function to get CSRF token
-const getCSRFToken = () => {
-  const token = document.querySelector('meta[name="csrf-token"]');
-  return token ? token.getAttribute('content') : '';
-};
-
-// Utility function to format time ago
-const formatTimeAgo = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now - date) / 1000);
-  
-  if (diffInSeconds < 60) return 'just now';
-  const minutes = Math.floor(diffInSeconds / 60);
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
-  const months = Math.floor(days / 30);
-  return `${months} month${months > 1 ? 's' : ''} ago`;
-};
+import { useAuth } from '../../../contexts/AuthContext';
+import apiService from '../../../services/api';
+import DOMPurify from 'dompurify';
+import { X } from 'lucide-react';
 
 const MainLayout = () => {
-  const [popularTags, setPopularTags] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { isAuthenticated, user } = useAuth();
+
+  const [posts, setPosts] = useState([]);
+  
+  const [isOverviewLoading, setIsOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const overviewModalRef = useRef(null);
 
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch('/api/tags/popular', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken(),
-          },
-        });
+  const handleGenerateOverview = async () => {
+    if (!isAuthenticated || posts.length === 0) {
+      if (!isAuthenticated) alert("Bạn cần đăng nhập để dùng tính năng này.");
+      return;
+    }
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    setIsOverviewLoading(true);
+    setOverviewError(null);
+    setOverview(null);
 
-        const data = await response.json();
-        setPopularTags(data.tags || data || []);
-      } catch (err) {
-        console.error('Failed to fetch popular tags:', err);
-        setError('Failed to load popular tags. Please try again later.');
-        setPopularTags([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchTags();
-  }, []);
+    try {
+      const postIds = posts.map(p => p.id);
+      const response = await apiService.generatePostListOverview({ post_ids: postIds });
+      
+      setOverview(response.overview);
+      setIsOverviewModalOpen(true);
+    } catch (err) {
+      console.error('Error generating overview:', err);
+      const errorMessage = err.response?.data?.error || 'Không thể tạo tổng quan. Vui lòng thử lại.';
+      setOverviewError(errorMessage);
+    } finally {
+      setIsOverviewLoading(false);
+    }
+  };
 
-  // Handle responsive sidebar collapse
+  // SỬA LỖI 1: BỌC HÀM BẰNG `useCallback`
+  // Hàm này giờ sẽ không bị tạo lại sau mỗi lần re-render, trừ khi phụ thuộc thay đổi.
+  // Ở đây, mảng phụ thuộc là rỗng `[]` vì `setPosts` được React đảm bảo là ổn định.
+  const handlePostsLoaded = useCallback((loadedPosts) => {
+    setPosts(loadedPosts);
+  }, []); // <-- Mảng phụ thuộc rỗng
+
+  // Logic responsive cho sidebar
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setSidebarCollapsed(true);
-      } else {
-        setSidebarCollapsed(false);
-      }
+      setSidebarCollapsed(window.innerWidth < 1024);
     };
-
-    handleResize(); // Check initial size
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleTagToggle = async (tagSlug) => {
-    try {
-      console.log("Tag toggled:", tagSlug);
-      // Optional: Send tag interaction to server for analytics
-      await fetch('/api/tags/interact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken(),
-        },
-        body: JSON.stringify({ 
-          tagSlug,
-          action: 'toggle',
-          timestamp: new Date().toISOString()
-        }),
-      });
-    } catch (err) {
-      console.error('Failed to record tag interaction:', err);
+  // Cuộn tới modal khi nó mở
+  useEffect(() => {
+    if (isOverviewModalOpen && overviewModalRef.current) {
+        setTimeout(() => {
+            overviewModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
     }
-  };
+  }, [isOverviewModalOpen]);
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Loading popular tags</p>
-        </div>
-      );
-    }
+  // SỬA LỖI 2: BỌC OBJECT CONTEXT BẰNG `useMemo`
+  // Điều này đảm bảo rằng object context chỉ được tạo lại khi `handlePostsLoaded` thay đổi.
+  // Vì `handlePostsLoaded` giờ đã ổn định, object này cũng sẽ ổn định.
+  const outletContext = useMemo(() => ({
+    onPostsLoaded: handlePostsLoaded,
+  }), [handlePostsLoaded]);
 
-    if (error) {
-      return (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorIcon}>⚠️</div>
-          <h3 className={styles.errorTitle}>Something went wrong</h3>
-          <p className={styles.errorMessage}>{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className={styles.retryButton}
-          >
-            Try Again
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <Outlet context={{ 
-        popularTags, 
-        formatTimeAgo, 
-        getCSRFToken,
-        sidebarCollapsed,
-        setSidebarCollapsed
-      }} />
-    );
-  };
 
   return (
     <div className={styles.appContainer}>
@@ -144,20 +86,38 @@ const MainLayout = () => {
       <main className={styles.mainContent}>
         <div className={styles.layoutContainer}>
           <Sidebar 
-            popularTags={popularTags} 
-            onTagToggle={handleTagToggle}
-            formatTimeAgo={formatTimeAgo}
-            loading={loading}
-            error={!!error}
+            user={user}
+            posts={posts}
+            onGenerateOverview={handleGenerateOverview}
+            isOverviewLoading={isOverviewLoading}
+            overviewError={overviewError}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
           <div className={`${styles.contentArea} ${sidebarCollapsed ? styles.contentExpanded : ''}`}>
-            {renderContent()}
+            {/* Truyền object context đã được ổn định xuống */}
+            <Outlet context={outletContext} />
           </div>
         </div>
       </main>
       <Footer />
+
+       {isOverviewModalOpen && (
+        <div ref={overviewModalRef} className={styles.overviewModalOverlay}>
+          <div className={styles.overviewModal}>
+            <div className={styles.overviewModalHeader}>
+              <h3>📊 DevAlly Overview</h3>
+              <button onClick={() => setIsOverviewModalOpen(false)} className={styles.closeButton}>
+                <X size={24} />
+              </button>
+            </div>
+            <div 
+              className={styles.overviewModalContent} 
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(overview) }} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
