@@ -1837,3 +1837,40 @@ def bug_reviews_view(request):
     # Sử dụng serializer đã có để trả về dữ liệu
     serializer = LoggedBugSerializer(bug_examples, many=True)
     return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_generate_title_view(request):
+    """
+    Generates a post title by sending the raw prompt from the frontend directly to the AI.
+    It bypasses the backend build_prompt function.
+    """
+    # 1. Lấy prompt đã được xây dựng hoàn chỉnh từ frontend
+    prompt_from_frontend = request.data.get('prompt')
+
+    if not prompt_from_frontend:
+        return Response(
+            {"error": "The 'prompt' field is required."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # 2. GỌI THẲNG get_ai_response VỚI PROMPT TỪ FRONTEND
+        #    Đây là chìa khóa. Chúng ta không dùng build_prompt ở backend nữa.
+        generated_title = get_ai_response(prompt_from_frontend)
+
+        if generated_title is None:
+            # get_ai_response có thể trả về None nếu có lỗi
+            raise Exception("AI service returned an empty or failed response.")
+        
+        # 3. Làm sạch kết quả và trả về
+        cleaned_title = generated_title.strip().strip('"')
+        
+        return Response(cleaned_title, status=status.HTTP_200_OK, content_type='text/plain')
+
+    except Exception as e:
+        print(f"Error in ai_generate_title_view: {e}")
+        return Response(
+            {"error": "An error occurred while communicating with the AI service."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )

@@ -500,6 +500,16 @@ class APIService {
     });
   }
 
+  async getAiGeneratedTitle(fullPrompt) {
+    // Chúng ta sẽ gọi đến một endpoint mới, rõ ràng hơn
+    return this.request('/api/ai/generate-title/', {
+      method: 'POST',
+      body: {
+        prompt: fullPrompt, // Gửi toàn bộ lời nhắc đã được xây dựng ở frontend
+      },
+    });
+  }
+  
   async logBugFix(bugData) {
     return this.request('/api/bugs/log/', { 
       method: 'POST',

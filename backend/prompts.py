@@ -170,7 +170,29 @@ Bạn là một chuyên gia tái cấu trúc code. Dựa trên đoạn code và 
 
 Trả về code đã sửa với đúng language identifier trong fenced code block.
 """
-}
+},
+    
+    # --- THÊM PROMPT MỚI VÀO ĐÂY ---
+    "generate_title": {
+        "title": "Generate a Post Title from Code",
+        "instruction": """
+            You are an expert technical writer. Your only task is to analyze the following code snippet and generate a single, concise, and descriptive title for it. The title should be suitable for a blog post or a forum question.
+
+            IMPORTANT RULES:
+            1.  Your entire response MUST BE ONLY the title text.
+            2.  DO NOT include any labels like "Title:", explanations, or markdown formatting (like quotes or code blocks).
+            3.  Analyze the language (e.g., Python, JavaScript), libraries used (e.g., React, NumPy), and the overall purpose of the code.
+
+            GOOD TITLE EXAMPLES:
+            - For a simple Python function: "Creating a Random Compliment Generator in Python"
+            - For a React component: "Building a Modern Glassmorphism Card with React and CSS"
+            - For a data script: "Visualizing Data with Python, NumPy, and Matplotlib"
+            - For a CSS animation: "How to Create a Pulsing Glow Effect with CSS Keyframes"
+
+            Here is the code to analyze:
+            {code_content}
+        """
+    }
 }
 
 CUSTOM_PROMPT_TEMPLATE = """
@@ -197,6 +219,12 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
         instruction = task_data['instruction'].format(code=content, recommendation_text=kwargs.get('recommendation_text', ''))
         # Include system prompt for consistency
         return f"{SYSTEM_PROMPT}\n\n{instruction}"
+    
+    if prompt_type == "generate_title":
+        # Đây là logic đặc biệt cho việc tạo tiêu đề.
+        # Nó chỉ cần instruction, không cần system prompt hay phần content kèm theo.
+        instruction_template = TASK_PROMPTS[prompt_type]['instruction']
+        return instruction_template.format(code_content=content)
 
     if prompt_type == 'custom_analysis' and user_prompt_text:
         task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text)

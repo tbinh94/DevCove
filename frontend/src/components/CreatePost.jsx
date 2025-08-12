@@ -35,6 +35,9 @@ const CreatePost = ({ onPostCreated }) => {
 
     const tagInputRef = useRef(null);
 
+    // --- THÊM STATE MỚI ĐỂ XỬ LÝ TAG TỰ ĐỘNG ---
+    const [initialTagName, setInitialTagName] = useState(null);
+
     // Fetch tags khi component mount
     useEffect(() => {
         const fetchTags = async () => {
@@ -78,6 +81,62 @@ const CreatePost = ({ onPostCreated }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+
+    // --- THÊM useEffect MỚI ĐỂ LẤY DỮ LIỆU TỪ SANDBOX ---
+    useEffect(() => {
+        const storedCode = sessionStorage.getItem('create_post_code');
+        const storedTitle = sessionStorage.getItem('create_post_title');
+        const storedTagName = sessionStorage.getItem('create_post_tag_name'); // <--- ĐỌC TÊN TAG
+
+        if (storedCode) {
+            setContent(storedCode);
+            sessionStorage.removeItem('create_post_code');
+        }
+        if (storedTitle) {
+            setTitle(storedTitle);
+            sessionStorage.removeItem('create_post_title');
+        }
+        if (storedTagName) {
+            setInitialTagName(storedTagName); // <--- LƯU TÊN TAG VÀO STATE
+            sessionStorage.removeItem('create_post_tag_name');
+        }
+    }, []); // Chỉ chạy một lần
+
+    // Hook để fetch tất cả các tag có sẵn
+    useEffect(() => {
+        const fetchTags = async () => {
+            try {
+                const response = await apiService.getTags({ page_size: 1000 });
+                setAllAvailableTags(response.results || response || []);
+            } catch (err) {
+                console.error('Error fetching tags:', err);
+            }
+        };
+        fetchTags();
+    }, []);
+
+    // --- HOOK MỚI: Tự động chọn tag khi đã có đủ thông tin ---
+    // Hook này sẽ chạy khi `initialTagName` được set hoặc khi `allAvailableTags` được load xong.
+    useEffect(() => {
+        if (initialTagName && allAvailableTags.length > 0) {
+            // Tìm tag trong danh sách các tag đã fetch
+            const tagToSelect = allAvailableTags.find(
+                tag => tag.name.toLowerCase() === initialTagName.toLowerCase()
+            );
+
+            if (tagToSelect) {
+                // Nếu tìm thấy, thêm nó vào danh sách các tag đã chọn
+                addTagToSelected(tagToSelect);
+                // Reset state để tránh chạy lại không cần thiết
+                setInitialTagName(null);
+            } else {
+                // Nếu không tìm thấy tag (ví dụ: 'python' chưa có trong DB), bạn có thể
+                // bỏ qua hoặc tự động tạo nó. Hiện tại, chúng ta chỉ bỏ qua.
+                console.warn(`Tag "${initialTagName}" not found in available tags.`);
+                setInitialTagName(null); // Reset để không tìm nữa
+            }
+        }
+    }, [initialTagName, allAvailableTags]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];

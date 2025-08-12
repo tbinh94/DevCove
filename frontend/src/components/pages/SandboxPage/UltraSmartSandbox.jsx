@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 // Sử dụng API service thật
 import apiService from '../../../services/api';
 
@@ -338,6 +338,22 @@ const styles = {
     paddingTop: '16px',
     borderTop: '1px solid rgba(255, 255, 255, 0.1)',
   },
+  createPostButton: {
+            background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            marginRight: '8px',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 4px 14px 0 rgba(168, 85, 247, 0.39)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+        },
 };
 
 const SimpleHtmlLinter = {
@@ -466,6 +482,8 @@ const UltraSmartSandbox = () => {
     const originalCodeBeforeFix = useRef(null);
     const [lastError, setLastError] = useState(null);
     const [aiReplay, setAiReplay] = useState({ steps: [], currentIndex: -1, isPlaying: false });
+    const [isCreatingPost, setIsCreatingPost] = useState(false);
+    const navigate = useNavigate();
 
     const generateDiff = (oldCode, newCode) => {
         const oldLines = new Set(oldCode.split('\n'));
@@ -483,64 +501,142 @@ const UltraSmartSandbox = () => {
     };
 
     const handleApplyAiFix = async () => {
-    if (!lastError || isFixing) return;
+        if (!lastError || isFixing) return;
 
-    originalCodeBeforeFix.current = code;
-    setIsFixing(true);
-    setHasError(false);
-    setOutput([{ type: 'info', message: `🤖 DevAlly is analyzing your code and error...` }]);
+        originalCodeBeforeFix.current = code;
+        setIsFixing(true);
+        setHasError(false);
+        setOutput([{ type: 'info', message: `🤖 DevAlly is analyzing your code and error...` }]);
 
-    const recommendation = `
-        The user's code has encountered an error.
-        Error Message: "${lastError.message}"
-        ${lastError.stack ? `Stack Trace: ${lastError.stack}` : ''}
-        The error could be a JavaScript runtime error, or a syntax error in HTML or CSS detected by a linter.
+        const recommendation = `
+            The user's code has encountered an error.
+            Error Message: "${lastError.message}"
+            ${lastError.stack ? `Stack Trace: ${lastError.stack}` : ''}
+            The error could be a JavaScript runtime error, or a syntax error in HTML or CSS detected by a linter.
 
-        Your task is to analyze the following code, identify the root cause of the error, and provide a step-by-step guide to fix it.
-        Break down the fix into logical steps. For each step, provide a title, a clear explanation of what you are fixing and why, and the complete code after applying that step's fix.
-        Return the result as a raw JSON object with a single key "steps", which is an array of objects. Each object in the array should have three keys: "title", "explanation", and "code". Do not add any conversational text or markdown formatting around the JSON.
+            Your task is to analyze the following code, identify the root cause of the error, and provide a step-by-step guide to fix it.
+            Break down the fix into logical steps. For each step, provide a title, a clear explanation of what you are fixing and why, and the complete code after applying that step's fix.
+            Return the result as a raw JSON object with a single key "steps", which is an array of objects. Each object in the array should have three keys: "title", "explanation", and "code". Do not add any conversational text or markdown formatting around the JSON.
 
-        Original Code:
-        \`\`\`
-        ${code}
-        \`\`\`
-    `;
+            Original Code:
+            \`\`\`
+            ${code}
+            \`\`\`
+        `;
 
-    try {
-        const response = await apiService.getAiCodeFix(code, recommendation);
-        let replaySteps = [];
+        try {
+            const response = await apiService.getAiCodeFix(code, recommendation);
+            let replaySteps = [];
 
-        if (typeof response === 'object' && response !== null && Array.isArray(response.steps)) {
-            replaySteps = response.steps;
-        } else {
-            console.warn("API did not return the expected { steps: [...] } structure.", response);
-            throw new Error("Received an unexpected response format from the server.");
+            if (typeof response === 'object' && response !== null && Array.isArray(response.steps)) {
+                replaySteps = response.steps;
+            } else {
+                console.warn("API did not return the expected { steps: [...] } structure.", response);
+                throw new Error("Received an unexpected response format from the server.");
+            }
+
+            if (replaySteps.length === 0) {
+                throw new Error("AI response was received, but contained no actionable steps.");
+            }
+
+            const processedSteps = replaySteps.map((step, index) => {
+                const prevCode = index === 0 ? originalCodeBeforeFix.current : replaySteps[index - 1].code;
+                return { ...step, diff: generateDiff(prevCode, step.code) };
+            });
+            
+            setOutput([]);
+            setAiReplay({ steps: processedSteps, currentIndex: 0, isPlaying: false });
+
+        } catch (error) {
+            setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
+        } finally {
+            setIsFixing(false);
         }
-
-        if (replaySteps.length === 0) {
-            throw new Error("AI response was received, but contained no actionable steps.");
-        }
-
-        const processedSteps = replaySteps.map((step, index) => {
-            const prevCode = index === 0 ? originalCodeBeforeFix.current : replaySteps[index - 1].code;
-            return { ...step, diff: generateDiff(prevCode, step.code) };
-        });
-        
-        setOutput([]);
-        setAiReplay({ steps: processedSteps, currentIndex: 0, isPlaying: false });
-
-    } catch (error) {
-        setOutput(prev => [...prev, { type: 'error', message: `❌ AI fix failed: ${error.message}` }]);
-    } finally {
-        setIsFixing(false);
-    }
-};
+    };
     
     useEffect(() => {
         if (aiReplay.steps.length > 0 && aiReplay.currentIndex !== -1) {
             setCode(aiReplay.steps[aiReplay.currentIndex].code);
         }
     }, [aiReplay.currentIndex, aiReplay.steps]);
+
+
+    const normalizeTagName = (codeType) => {
+        if (!codeType) return 'general';
+        if (codeType.includes('html')) return 'html';
+        if (codeType.includes('css')) return 'css';
+        if (codeType.includes('js') || codeType.includes('module') || codeType.includes('react')) return 'javascript'; // Gom nhóm các loại JS
+        if (codeType === 'python') return 'python';
+        return 'code'; // Tag mặc định nếu không nhận dạng được
+    };
+
+    const handleCreatePost = async () => {
+        if (isCreatingPost || !code.trim()) return;
+
+        setIsCreatingPost(true);
+        try {
+            // --- CẢI TIẾN LỚN: Prompt mới cho AI, chi tiết và mạnh mẽ hơn ---
+            const recommendation = `
+                You are an expert technical writer. Your only task is to analyze the following code snippet and generate a single, concise, and descriptive title for it. The title should be suitable for a blog post or a forum question.
+                IMPORTANT RULES:
+                1. Your entire response MUST BE ONLY the title text.
+                2. DO NOT include any labels like "Title:", explanations, or markdown formatting.
+                
+                GOOD TITLE EXAMPLES:
+                - For a simple Python function: "Creating a Random Compliment Generator in Python"
+                - For a React component: "Building a Modern Glassmorphism Card with React and CSS"
+                - For a data script: "Visualizing Data with Python, NumPy, and Matplotlib"
+                - For a CSS animation: "How to Create a Pulsing Glow Effect with CSS Keyframes"
+
+                Here is the code to analyze:
+                \`\`\`
+                ${code}
+                \`\`\`
+            `;
+
+            const response = await apiService.getAiGeneratedTitle(recommendation);
+            
+            // Thêm log để gỡ lỗi, giúp bạn xem chính xác AI trả về gì
+            console.log("AI Response for Title:", response);
+
+            let suggestedTitle = "Untitled Code Snippet"; // Tiêu đề dự phòng tốt hơn
+
+            // Xử lý phản hồi từ AI một cách linh hoạt
+            if (typeof response === 'string' && response.trim()) {
+                // Trường hợp lý tưởng: AI trả về một chuỗi văn bản thô
+                suggestedTitle = response.trim().replace(/^"|"$/g, ''); // Xóa dấu "" ở đầu/cuối
+            } else if (response?.title) {
+                // Nếu AI trả về object có key 'title'
+                suggestedTitle = response.title;
+            } else if (response?.steps?.[0]?.title) {
+                // Tái sử dụng cấu trúc của AI fix nếu nó trả về như vậy
+                suggestedTitle = response.steps[0].title;
+            } else if (typeof response === 'object' && response !== null) {
+                // Cố gắng tìm giá trị text đầu tiên trong object trả về
+                const firstStringValue = Object.values(response).find(v => typeof v === 'string');
+                if (firstStringValue) {
+                    suggestedTitle = firstStringValue;
+                }
+            }
+            
+            const detectedLanguage = codeAnalysis ? normalizeTagName(codeAnalysis.codeType) : 'code';
+
+            sessionStorage.setItem('create_post_code', code);
+            sessionStorage.setItem('create_post_title', suggestedTitle);
+            sessionStorage.setItem('create_post_tag_name', detectedLanguage);
+
+            navigate('/create-post');
+        } catch (error) {
+            console.error("Failed to generate title or navigate:", error);
+            const detectedLanguage = codeAnalysis ? normalizeTagName(codeAnalysis.codeType) : 'code';
+            sessionStorage.setItem('create_post_code', code);
+            sessionStorage.setItem('create_post_title', 'My Code Snippet');
+            sessionStorage.setItem('create_post_tag_name', detectedLanguage);
+            navigate('/create-post');
+        } finally {
+            setIsCreatingPost(false);
+        }
+    };
 
     const handleAcceptAndRunFinalFix = async () => {
         if (aiReplay.steps.length === 0) return;
@@ -1028,6 +1124,20 @@ plt.show()`
                                 <option value="python">🐍 Python Interactive</option>
                                 <option value="numpy">📊 Python + Data Viz</option>
                             </select>
+
+                            <button
+                                onClick={handleCreatePost}
+                                style={{
+                                    ...styles.createPostButton,
+                                    opacity: isCreatingPost ? 0.6 : 1,
+                                }}
+                                disabled={isCreatingPost || isReplayActive}
+                                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                                onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                            >
+                                {isCreatingPost ? '✨ Generating...' : '📝 Create Post'}
+                            </button>
+
                             <button 
                                 onClick={() => handleRunCode()} 
                                 style={{ 
