@@ -1,4 +1,4 @@
-/* LoginPage.module.css - Dark Theme */
+/* LoginPage.module.css - Enhanced with error states */
 
 .authContainer {
   min-height: 100vh;
@@ -97,6 +97,17 @@
   align-items: center;
 }
 
+/* Error state for input groups */
+.inputError input {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.inputError .inputIcon {
+  color: #ef4444 !important;
+}
+
 .inputIcon {
   position: absolute;
   left: 16px;
@@ -133,6 +144,16 @@
   color: #06b6d4;
 }
 
+/* Override focus styles when there's an error */
+.inputError input:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.inputError input:focus + .inputIcon {
+  color: #ef4444 !important;
+}
+
 .togglePassword {
   position: absolute;
   right: 16px;
@@ -146,6 +167,14 @@
 
 .togglePassword:hover {
   color: #06b6d4;
+}
+
+.inputError .togglePassword {
+  color: #ef4444;
+}
+
+.inputError .togglePassword:hover {
+  color: #dc2626;
 }
 
 .submitButton {
@@ -182,6 +211,24 @@
   margin-bottom: 20px;
   color: #fca5a5;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+/* Field-specific error messages */
+.fieldError {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #f87171;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .authFooter {

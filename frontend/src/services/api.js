@@ -1,4 +1,4 @@
-// services/api.js - Fixed CSRF token handling
+// services/api.js - Enhanced with detailed error handling
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class APIService {
@@ -170,18 +170,176 @@ class APIService {
 
   // --- API Endpoint Methods ---
 
-  // Authentication
+  // Authentication - ENHANCED with detailed error handling
   async login(credentials) {
-    return this.request('/api/auth/login/', { method: 'POST', body: credentials });
+    try {
+      const response = await this.request('/api/auth/login/', { 
+        method: 'POST', 
+        body: credentials 
+      });
+      
+      // If successful, return the response as is
+      return response;
+      
+    } catch (error) {
+      console.error('Login API error:', error);
+      
+      if (error instanceof APIError) {
+        // Handle different HTTP status codes
+        switch (error.status) {
+          case 400:
+            // Validation errors
+            if (error.data && typeof error.data === 'object') {
+              if (error.data.username) {
+                throw new AuthError(
+                  'Please enter a valid username',
+                  'VALIDATION_ERROR',
+                  error.data
+                );
+              }
+              if (error.data.password) {
+                throw new AuthError(
+                  'Please enter a valid password',
+                  'VALIDATION_ERROR',
+                  error.data
+                );
+              }
+            }
+            throw new AuthError(
+              'Please check your input and try again',
+              'VALIDATION_ERROR',
+              error.data
+            );
+
+          case 401:
+            // Authentication errors - check for specific error types from backend
+            if (error.data && typeof error.data === 'object') {
+              const errorType = error.data.error_type || error.data.errorType;
+              const errorMessage = error.data.error || error.data.message || error.data.detail;
+              
+              switch (errorType) {
+                case 'USER_NOT_FOUND':
+                  throw new AuthError(
+                    'Username not found. Please check your username or create a new account.',
+                    'USER_NOT_FOUND',
+                    error.data
+                  );
+                case 'INVALID_PASSWORD':
+                  throw new AuthError(
+                    'Incorrect password. Please try again.',
+                    'INVALID_PASSWORD',
+                    error.data
+                  );
+                case 'ACCOUNT_LOCKED':
+                  throw new AuthError(
+                    errorMessage || 'Account temporarily locked due to multiple failed attempts. Please try again later.',
+                    'ACCOUNT_LOCKED',
+                    error.data
+                  );
+                case 'ACCOUNT_DISABLED':
+                  throw new AuthError(
+                    'Your account has been disabled. Please contact support.',
+                    'ACCOUNT_DISABLED',
+                    error.data
+                  );
+                default:
+                  throw new AuthError(
+                    errorMessage || 'Invalid credentials. Please check your username and password.',
+                    'INVALID_CREDENTIALS',
+                    error.data
+                  );
+              }
+            }
+            
+            // Fallback for 401 without detailed error structure
+            throw new AuthError(
+              'Invalid credentials. Please check your username and password.',
+              'INVALID_CREDENTIALS',
+              error.data
+            );
+
+          case 429:
+            // Rate limiting
+            throw new AuthError(
+              'Too many login attempts. Please try again later.',
+              'RATE_LIMITED',
+              error.data
+            );
+
+          case 500:
+          case 502:
+          case 503:
+            // Server errors
+            throw new AuthError(
+              'Server is temporarily unavailable. Please try again later.',
+              'SERVER_ERROR',
+              error.data
+            );
+
+          default:
+            throw new AuthError(
+              'An unexpected error occurred. Please try again.',
+              'UNKNOWN_ERROR',
+              error.data
+            );
+        }
+      }
+      
+      // Network or other errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new AuthError(
+          'Unable to connect to server. Please check your internet connection.',
+          'NETWORK_ERROR',
+          null
+        );
+      }
+      
+      // Fallback for any other errors
+      throw new AuthError(
+        error.message || 'Login failed. Please try again.',
+        'UNKNOWN_ERROR',
+        null
+      );
+    }
   }
+
   async register(userData) {
-    return this.request('/api/register/', { method: 'POST', body: userData });
+    try {
+      return await this.request('/api/register/', { method: 'POST', body: userData });
+    } catch (error) {
+      console.error('Registration API error:', error);
+      
+      if (error instanceof APIError && error.status === 400) {
+        // Handle validation errors for registration
+        if (error.data && typeof error.data === 'object') {
+          const errors = [];
+          
+          if (error.data.username) {
+            errors.push(`Username: ${Array.isArray(error.data.username) ? error.data.username.join(', ') : error.data.username}`);
+          }
+          if (error.data.email) {
+            errors.push(`Email: ${Array.isArray(error.data.email) ? error.data.email.join(', ') : error.data.email}`);
+          }
+          if (error.data.password) {
+            errors.push(`Password: ${Array.isArray(error.data.password) ? error.data.password.join(', ') : error.data.password}`);
+          }
+          
+          if (errors.length > 0) {
+            throw new AuthError(errors.join('. '), 'VALIDATION_ERROR', error.data);
+          }
+        }
+      }
+      
+      throw error; // Re-throw if not handled
+    }
   }
+
   async logout() {
     const response = await this.request('/api/auth/logout/', { method: 'POST', body: {} });
     this.csrfToken = null;
     return response;
   }
+
   async checkAuth() {
     try {
       return await this.request('/api/auth/user/');
@@ -190,6 +348,7 @@ class APIService {
     }
   }
 
+  // ... rest of the methods remain the same ...
   // Posts
   async getPosts(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -223,19 +382,13 @@ class APIService {
   }
 
   // === AI OVERVIEW FUNCTION ===
-  /**
-   * Generates an AI-powered overview for a list of posts.
-   * @param {object} payload - The request payload.
-   * @param {Array<number|string>} payload.post_ids - An array of post IDs to analyze.
-   * @returns {Promise<object>} - The API response containing the overview.
-   */
-
   async generatePostListOverview(payload) {
     return this.request('/api/posts/generate_overview/', {
       method: 'POST',
       body: payload,
     });
   }
+
   // Tags
   async getTags(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -252,18 +405,17 @@ class APIService {
   }
 
   async getChatCandidates() {
-  try {
-    return await this.request('/api/users/chat-candidates/', {
-      headers: {
-        'Authorization': `Bearer ${this.getCookie('access_token') || ''}`, // if you use JWT
-        // hoặc nếu dùng session auth thì không cần Authorization header
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching chat candidates:', error);
-    throw new APIError(error.status || 500, error.data || 'Failed to fetch chat candidates');
+    try {
+      return await this.request('/api/users/chat-candidates/', {
+        headers: {
+          'Authorization': `Bearer ${this.getCookie('access_token') || ''}`,
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching chat candidates:', error);
+      throw new APIError(error.status || 500, error.data || 'Failed to fetch chat candidates');
+    }
   }
-}
   
   async updateUserProfile(username, profileData) {
     if (!(profileData instanceof FormData)) {
@@ -311,21 +463,12 @@ class APIService {
   async getAvailablePrompts() {
     return this.request('/api/posts/available_prompt_types/');
   }
-  // --- Chat ---
 
-  /**
-   * Fetches all conversations for the current user.
-   * @returns {Promise<Array<object>>} A list of conversations.
-   */
+  // --- Chat ---
   async getConversations() {
     return this.request('/api/conversations/');
   }
 
-  /**
-   * Gets or creates a one-on-one conversation with another user.
-   * @param {number} userId - The ID of the other user.
-   * @returns {Promise<object>} The conversation object.
-   */
   async getOrCreateConversation(userId) {
     return this.request('/api/conversations/get_or_create/', {
       method: 'POST',
@@ -333,21 +476,10 @@ class APIService {
     });
   }
 
-  /**
-   * Fetches the message history for a specific conversation.
-   * @param {string} conversationId - The UUID of the conversation.
-   * @returns {Promise<Array<object>>} A list of messages.
-   */
   async getChatMessages(conversationId) {
     return this.request(`/api/conversations/${conversationId}/messages/`);
   }
 
-  /**
-   * Sends a chat message to a conversation via HTTP (as a fallback).
-   * @param {string} conversationId The ID of the conversation.
-   * @param {object} messageData The message payload, e.g., { text: "Hello" }.
-   * @returns {Promise<object>} The sent message object returned from the API.
-   */
   async sendChatMessage(conversationId, messageData) {
     return this.request(`/api/conversations/${conversationId}/send_message/`, {
       method: 'POST',
@@ -356,60 +488,29 @@ class APIService {
   }
 
   // Bot
-  /**
-   * Yêu cầu AI sửa một đoạn code dựa trên một đề xuất cụ thể.
-   * @param {string} code - Đoạn code cần sửa.
-   * @param {string} recommendation - Hướng dẫn/đề xuất để AI áp dụng.
-   * @returns {Promise<object>} - Phản hồi từ API, dự kiến chứa code đã sửa.
-   */
   async getAiCodeFix(code, recommendation) {
-    // Chúng ta có thể tạo một endpoint mới hoặc tái sử dụng ask_bot nếu nó linh hoạt
-    // Ở đây, tôi giả định một endpoint mới để code rõ ràng hơn
-    // Bạn cũng có thể điều chỉnh endpoint ask_bot để không yêu cầu postId
-    return this.request('/api/ai/refactor-code/', { // Giả sử có endpoint mới
+    return this.request('/api/ai/refactor-code/', {
       method: 'POST',
       body: {
         code: code,
-        prompt_type: 'refactor_code', // Một prompt_type mới
+        prompt_type: 'refactor_code',
         recommendation_text: recommendation
       },
     });
   }
 
-  /**
-   * Ghi lại một lỗi và cách sửa của nó vào cơ sở dữ liệu cộng đồng.
-   * @param {object} bugData - Dữ liệu về lỗi cần ghi lại.
-   * @param {string} bugData.language - Ngôn ngữ lập trình (ví dụ: 'python', 'javascript').
-   * @param {string} bugData.error_message - Thông báo lỗi.
-   * @param {string} bugData.original_code - Đoạn code gốc gây ra lỗi.
-   * @param {number} bugData.fix_step_count - Số bước mà AI đã thực hiện để sửa lỗi.
-   * @param {string} [bugData.error_category] - Loại lỗi do AI phân loại (ví dụ: 'TypeError').
-   * @returns {Promise<object>} - Phản hồi từ server.
-   */
   async logBugFix(bugData) {
-    // Endpoint này cần được tạo ở backend để lưu trữ thông tin lỗi.
     return this.request('/api/bugs/log/', { 
       method: 'POST',
       body: bugData,
     });
   }
 
-  /**
-   * Lấy dữ liệu thống kê về các lỗi phổ biến từ cộng đồng.
-   * @param {string} period - Khoảng thời gian thống kê ('weekly' hoặc 'monthly').
-   * @returns {Promise<object>} - Dữ liệu thống kê, bao gồm heatmap và topBugs.
-   */
   async getBugStats(period = 'weekly') {
-    // Endpoint này cần được tạo ở backend để tổng hợp và trả về dữ liệu.
     const params = new URLSearchParams({ period });
     return this.request(`/api/bugs/stats/?${params}`);
   }
   
-  /**
-   * Fetches detailed examples for a specific common bug.
-   * @param {string} errorMessage - The exact error message to look up.
-   * @returns {Promise<Array<object>>} A list of bug examples.
-   */
   async getBugExamples(errorMessage) {
     const params = new URLSearchParams({ error_message: errorMessage });
     return this.request(`/api/bugs/reviews/?${params}`);
@@ -426,10 +527,11 @@ class APIService {
   }
 }
 
+// Enhanced APIError class
 class APIError extends Error {
   constructor(status, data) {
     const message = typeof data === 'object' && data !== null
-      ? data.detail || data.message || JSON.stringify(data)
+      ? data.detail || data.message || data.error || JSON.stringify(data)
       : String(data);
       
     super(message);
@@ -439,5 +541,16 @@ class APIError extends Error {
   }
 }
 
+// New AuthError class for authentication-specific errors
+class AuthError extends Error {
+  constructor(message, errorType = 'UNKNOWN_ERROR', data = null) {
+    super(message);
+    this.name = 'AuthError';
+    this.errorType = errorType;
+    this.data = data;
+  }
+}
+
 const apiService = new APIService();
 export default apiService;
+export { AuthError };

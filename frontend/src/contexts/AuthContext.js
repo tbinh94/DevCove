@@ -1,12 +1,13 @@
 // src/contexts/AuthContext.js
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import apiService from '../services/api'; // Import the correct service
+import apiService, { AuthError } from '../services/api'; // Import AuthError
 
 // Initial state
 const initialState = {
   user: null,
   loading: true,
   error: null,
+  errorType: null,
   isAuthenticated: false,
 };
 
@@ -35,12 +36,14 @@ const authReducer = (state, action) => {
         isAuthenticated: !!action.payload,
         loading: false,
         error: null,
+        errorType: null,
       };
     
     case AuthActionTypes.SET_ERROR:
       return {
         ...state,
-        error: action.payload,
+        error: action.payload.message || action.payload,
+        errorType: action.payload.type || null,
         loading: false,
       };
     
@@ -51,12 +54,14 @@ const authReducer = (state, action) => {
         isAuthenticated: false,
         loading: false,
         error: null,
+        errorType: null,
       };
     
     case AuthActionTypes.CLEAR_ERROR:
       return {
         ...state,
         error: null,
+        errorType: null,
       };
     
     default:
@@ -91,7 +96,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUserSession = async () => {
       dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
-      
+      // Khởi động CSRF token ngay khi ứng dụng tải để các request sau này (như login) không bị chặn.
+      apiService.utils.initCSRF();
       try {
         const response = await apiService.checkAuth();
         
@@ -102,55 +108,126 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error("Session check failed:", error);
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
+        dispatch({ type: AuthActionTypes.SET_ERROR, payload: { message: error.message } });
       }
     };
 
     checkUserSession();
   }, []);
 
-   // Login function - FIXED
+  // Login function - ENHANCED with detailed error handling
   const login = async (credentials) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
+    
     try {
       const response = await apiService.login(credentials);
-      // SỬA ĐỔI: Kiểm tra sự tồn tại của 'response.user' thay vì 'response.success'
+      
+      console.log('Login API response:', response);
+      
+      // Check if login was successful
       if (response && response.user) {
         dispatch({ type: AuthActionTypes.SET_USER, payload: response.user });
         return { success: true, data: response };
       } else {
-        // Trường hợp API trả về lỗi có cấu trúc nhưng không phải exception
-        const errorMessage = response.error || "Login failed due to an unknown error.";
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
-        return { success: false, error: errorMessage };
+        // Handle case where API doesn't return user data
+        const errorMessage = response.error || "Login failed. Please check your credentials.";
+        dispatch({ 
+          type: AuthActionTypes.SET_ERROR, 
+          payload: { message: errorMessage, type: 'GENERAL' } 
+        });
+        return { success: false, error: errorMessage, errorType: 'GENERAL' };
       }
+      
     } catch (error) {
-      const errorMessage = error.message || "Login failed. Please check your credentials.";
-      dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
-      return { success: false, error: errorMessage };
+      console.error('Login error in AuthContext:', error);
+      
+      // Handle AuthError with detailed error types
+      if (error instanceof AuthError) {
+        dispatch({ 
+          type: AuthActionTypes.SET_ERROR, 
+          payload: { message: error.message, type: error.errorType } 
+        });
+        return { 
+          success: false, 
+          error: error.message, 
+          errorType: error.errorType,
+          data: error.data 
+        };
+      }
+      
+      // Handle other errors
+      const errorMessage = error.message || "Login failed. Please try again.";
+      const errorType = error.name === 'TypeError' && error.message.includes('fetch') 
+        ? 'NETWORK_ERROR' 
+        : 'UNKNOWN_ERROR';
+      
+      dispatch({ 
+        type: AuthActionTypes.SET_ERROR, 
+        payload: { message: errorMessage, type: errorType } 
+      });
+      
+      return { 
+        success: false, 
+        error: errorMessage, 
+        errorType: errorType 
+      };
     }
   };
 
-  // Register function - FIXED
+  // Register function - ENHANCED with detailed error handling
   const register = async (userData) => {
     dispatch({ type: AuthActionTypes.SET_LOADING, payload: true });
     dispatch({ type: AuthActionTypes.CLEAR_ERROR });
+    
     try {
       const response = await apiService.register(userData);
-      // SỬA ĐỔI: Kiểm tra sự tồn tại của 'response.user' thay vì 'response.success'
+      
       if (response && response.user) {
         dispatch({ type: AuthActionTypes.SET_USER, payload: response.user });
         return { success: true, data: response };
       } else {
-        const errorMessage = response.error || "Registration failed due to an unknown error.";
-        dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
-        return { success: false, error: errorMessage };
+        const errorMessage = response.error || "Registration failed. Please try again.";
+        dispatch({ 
+          type: AuthActionTypes.SET_ERROR, 
+          payload: { message: errorMessage, type: 'GENERAL' } 
+        });
+        return { success: false, error: errorMessage, errorType: 'GENERAL' };
       }
+      
     } catch (error) {
-      const errorMessage = error.message || "Registration failed.";
-      dispatch({ type: AuthActionTypes.SET_ERROR, payload: errorMessage });
-      return { success: false, error: errorMessage };
+      console.error('Registration error in AuthContext:', error);
+      
+      // Handle AuthError with detailed error types
+      if (error instanceof AuthError) {
+        dispatch({ 
+          type: AuthActionTypes.SET_ERROR, 
+          payload: { message: error.message, type: error.errorType } 
+        });
+        return { 
+          success: false, 
+          error: error.message, 
+          errorType: error.errorType,
+          data: error.data 
+        };
+      }
+      
+      // Handle other errors
+      const errorMessage = error.message || "Registration failed. Please try again.";
+      const errorType = error.name === 'TypeError' && error.message.includes('fetch') 
+        ? 'NETWORK_ERROR' 
+        : 'UNKNOWN_ERROR';
+      
+      dispatch({ 
+        type: AuthActionTypes.SET_ERROR, 
+        payload: { message: errorMessage, type: errorType } 
+      });
+      
+      return { 
+        success: false, 
+        error: errorMessage, 
+        errorType: errorType 
+      };
     }
   };
 
@@ -170,7 +247,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error("Logout error", error);
-      dispatch({ type: AuthActionTypes.SET_ERROR, payload: error.message });
+      dispatch({ type: AuthActionTypes.SET_ERROR, payload: { message: error.message } });
       return { success: false, error: error.message };
     }
   };
