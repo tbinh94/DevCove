@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'; // Thêm useEffect
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+// ✅ Import AdminRoute từ AuthContext
+import { AuthProvider, AdminRoute } from './contexts/AuthContext';
 import apiService from './services/api';
 // Import components
 import LoginPage from './components/LoginPage';
@@ -67,7 +68,16 @@ const App = () => {
           <Route path="/create-post" element={<CreatePost />} />
           <Route path="/chat" element={<Chatting />} />
           <Route path="/sandbox" element={<SandboxPage />} />
-          <Route path="/bug-tracker" element={<BugTracker />} />
+          
+          {/* ✅ BẢO VỆ ROUTE /bug-tracker BẰNG AdminRoute */}
+          <Route 
+            path="/bug-tracker" 
+            element={
+              <AdminRoute>
+                <BugTracker />
+              </AdminRoute>
+            } 
+          />
           
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />

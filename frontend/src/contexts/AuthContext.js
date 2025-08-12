@@ -1,5 +1,8 @@
 // src/contexts/AuthContext.js
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+// ✅ Thêm Navigate và Outlet để xử lý điều hướng trong React Router v6
+import { Navigate } from 'react-router-dom';
 import apiService, { AuthError } from '../services/api'; // Import AuthError
 
 // Initial state
@@ -323,4 +326,37 @@ export const ProtectedRoute = ({ children, fallback = null }) => {
   }
   
   return children;
+};
+
+// ✅ TẠO COMPONENT BẢO VỆ ROUTE DÀNH RIÊNG CHO ADMIN
+// Component này giả định rằng object `user` trong context sẽ có thuộc tính `role`.
+// Ví dụ: user: { id: 1, username: 'admin', role: 'admin' }
+const NotAuthorized = () => (
+    <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>
+        <h1>403 - Forbidden</h1>
+        <p>You must be the administrator to access this page.</p>
+        <a href="/" style={{ color: '#61dafb' }}>Go to Homepage</a>
+    </div>
+);
+
+export const AdminRoute = ({ children }) => {
+    const { isAuthenticated, loading, user } = useAuth();
+
+    if (loading) {
+        // Hiển thị thông báo trong khi kiểm tra phiên đăng nhập
+        return <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>Checking permissions...</div>;
+    }
+
+    if (!isAuthenticated) {
+        // Nếu chưa đăng nhập, điều hướng về trang login
+        return <Navigate to="/login" replace />;
+    }
+
+    if (user?.role !== 'admin') {
+        // Nếu đã đăng nhập nhưng không phải admin, hiển thị trang không có quyền truy cập
+        return <NotAuthorized />;
+    }
+
+    // Nếu đã đăng nhập và là admin, cho phép truy cập component con
+    return children;
 };
