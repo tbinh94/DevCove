@@ -305,7 +305,8 @@ class APIService {
 
   async register(userData) {
     try {
-      return await this.request('/api/register/', { method: 'POST', body: userData });
+      // FIXED: Changed from '/api/register/' to '/api/auth/register/' to match login pattern
+      return await this.request('/api/auth/register/', { method: 'POST', body: userData });
     } catch (error) {
       console.error('Registration API error:', error);
       
