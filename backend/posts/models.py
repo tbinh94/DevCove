@@ -193,10 +193,21 @@ class Comment(models.Model):
         return f"Comment on {self.post.title}"
 
 class Profile(models.Model):
+    class Role(models.TextChoices):
+        USER = 'USER', 'User'
+        MODERATOR = 'MODERATOR', 'Moderator'
+        ADMIN = 'ADMIN', 'Admin'
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     bio = models.TextField(blank=True)
     is_weekly_helper = models.BooleanField(default=False)
+
+    role = models.CharField(
+        max_length=50,
+        choices=Role.choices,
+        default=Role.USER,
+    )
     
     def followers_count(self):
         return self.user.follower_set.count()

@@ -14,9 +14,11 @@ class UserSerializer(serializers.ModelSerializer):
     is_weekly_helper = serializers.SerializerMethodField()
     avatar_url = serializers.SerializerMethodField()
 
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'is_weekly_helper', 'avatar_url']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'is_weekly_helper', 'avatar_url', 'role']
         read_only_fields = ['id', 'date_joined']
 
     def get_is_weekly_helper(self, obj):
@@ -33,6 +35,15 @@ class UserSerializer(serializers.ModelSerializer):
         except Profile.DoesNotExist:
             pass
         return None
+    
+    def get_role(self, obj):
+        try:
+            # obj ở đây là một instance của User
+            # obj.profile sẽ truy cập vào Profile object liên quan qua OneToOneField
+            return obj.profile.role
+        except Profile.DoesNotExist:
+            # Nếu user vì lý do nào đó không có profile, trả về vai trò mặc định
+            return Profile.Role.USER
 
 
 class UserBasicSerializer(serializers.ModelSerializer):

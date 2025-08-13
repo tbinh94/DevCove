@@ -329,13 +329,20 @@ export const ProtectedRoute = ({ children, fallback = null }) => {
 };
 
 // ✅ TẠO COMPONENT BẢO VỆ ROUTE DÀNH RIÊNG CHO ADMIN
-// Component này giả định rằng object `user` trong context sẽ có thuộc tính `role`.
-// Ví dụ: user: { id: 1, username: 'admin', role: 'admin' }
 const NotAuthorized = () => (
-    <div style={{ padding: '50px', textAlign: 'center', color: 'white' }}>
-        <h1>403 - Forbidden</h1>
-        <p>You must be the administrator to access this page.</p>
-        <a href="/" style={{ color: '#61dafb' }}>Go to Homepage</a>
+    <div style={{ 
+        padding: '50px', 
+        textAlign: 'center', 
+        color: 'white', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+    }}>
+        <h1 style={{ fontSize: '3rem', margin: 0 }}>403 - Forbidden</h1>
+        <p style={{ fontSize: '1.2rem', marginTop: '1rem' }}>You must be the administrator to access this page.</p>
+        <a href="/" style={{ color: '#61dafb', marginTop: '2rem', textDecoration: 'underline' }}>Go to Homepage</a>
     </div>
 );
 
@@ -352,7 +359,7 @@ export const AdminRoute = ({ children }) => {
         return <Navigate to="/login" replace />;
     }
 
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'ADMIN') {
         // Nếu đã đăng nhập nhưng không phải admin, hiển thị trang không có quyền truy cập
         return <NotAuthorized />;
     }

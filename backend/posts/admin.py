@@ -1,7 +1,7 @@
 # ===== 5. ADMIN.PY - Cải thiện admin interface =====
 
 from django.contrib import admin
-from .models import Post, Comment, BotSession
+from .models import Post, Comment, BotSession, Profile
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
@@ -18,6 +18,8 @@ class PostAdmin(admin.ModelAdmin):
     def bot_reviews_count(self, obj):
         return obj.bot_reviews_count
     bot_reviews_count.short_description = 'Bot Reviews'
+
+admin.site.register(Profile)
 
 
 @admin.register(BotSession) 
