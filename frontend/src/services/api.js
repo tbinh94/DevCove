@@ -545,6 +545,37 @@ class APIService {
   async getChallengeDetail(id) {
     return this.request(`/api/challenges/${id}/`);
   }
+  async getMyLatestSubmission(challengeId) {
+    return this.request(`/api/challenges/${challengeId}/my_latest_submission/`);
+  }
+  async submitChallengeForReview(submissionData) {
+        return this.request('/api/challenge-submissions/', {
+            method: 'POST',
+            body: submissionData,
+        });
+    }
+  async getSubmissionDetail(submissionId) {
+        return this.request(`/api/challenge-submissions/${submissionId}/`);
+    }
+
+    async updateSubmissionStatus(submissionId, payload) {
+        // payload sẽ là { status: 'approved' | 'rejected', feedback: '...' }
+        return this.request(`/api/challenge-submissions/${submissionId}/`, {
+            method: 'PATCH',
+            body: payload,
+        });
+    }
+  async getNotificationCountAndRecent() {
+        return this.request('/api/notifications/count/');
+    }
+
+    async markAllNotificationsRead() {
+        return this.request('/api/notifications/mark-all-read/', { method: 'POST' });
+    }
+    
+    async markNotificationRead(id) {
+        return this.request(`/api/notifications/${id}/mark_read/`, { method: 'POST' });
+    }
   // --- Utility Accessor ---
   get utils() {
     return {

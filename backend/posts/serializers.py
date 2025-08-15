@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug, WeeklyChallenge
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug, WeeklyChallenge,ChallengeSubmission
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -396,12 +396,30 @@ class FollowSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     """Serializer cho Notification model"""
     sender = UserBasicSerializer(read_only=True)
+    
+    # ✅ Lấy các ID một cách an toàn
     post_id = serializers.IntegerField(source='post.id', read_only=True, allow_null=True)
+    submission_id = serializers.UUIDField(source='submission.id', read_only=True, allow_null=True)
+    
+    # ✅ Lấy URL đã được tính toán từ model
+    action_url = serializers.CharField(source='get_action_url', read_only=True)
+    
+    # ✅ Giữ lại source cho notification_type để tương thích với frontend cũ
     type = serializers.CharField(source='notification_type', read_only=True)
 
     class Meta:
         model = Notification
-        fields = ['id', 'sender', 'type', 'post_id', 'is_read', 'created_at']
+        # ✅ CẬP NHẬT DANH SÁCH FIELDS HOÀN CHỈNH
+        fields = [
+            'id', 
+            'sender', 
+            'type', # Giữ lại 'type' cho getNotificationIcon/Text
+            'post_id', 
+            'submission_id', 
+            'is_read', 
+            'created_at', 
+            'action_url' # Thêm trường URL mới
+        ]
 
 
 # Serializers thống kê
@@ -532,3 +550,28 @@ class WeeklyChallengeSerializer(serializers.ModelSerializer):
             'published_at', 'created_by', 'created_at', 'language'
         ]
         read_only_fields = ['id', 'published_at', 'created_by', 'created_at']
+
+class ChallengeSubmissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer được sửa lại để xử lý đúng việc tạo và đọc submission.
+    """
+    user = UserBasicSerializer(read_only=True)
+    
+    # ✅ KHI ĐỌC (GET): Sử dụng nested serializer để hiển thị chi tiết challenge.
+    challenge_details = WeeklyChallengeSerializer(source='challenge', read_only=True)
+    
+    # ✅ KHI GHI (POST): Chấp nhận một UUID cho challenge.
+    # `write_only=True` đảm bảo trường này chỉ dùng để nhận dữ liệu.
+    challenge = serializers.PrimaryKeyRelatedField(
+        queryset=WeeklyChallenge.objects.all(), 
+        write_only=True
+    )
+
+    class Meta:
+        model = ChallengeSubmission
+        # ✅ CẬP NHẬT FIELDS: Thêm 'challenge_details' và giữ 'challenge' để ghi.
+        fields = [
+            'id', 'challenge', 'challenge_details', 'user', 
+            'submitted_code', 'language', 'submitted_at', 
+            'status', 'feedback'
+        ]

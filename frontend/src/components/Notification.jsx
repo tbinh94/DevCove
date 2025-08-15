@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ Đảm bảo đã import
+import apiService from '../services/api'; // ✅ Sử dụng apiService
 import styles from './Notification.module.css';
 
 const NotificationManager = () => {
@@ -7,63 +9,35 @@ const NotificationManager = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate(); // ✅ Khởi tạo hook
 
   const updateInterval = 30000;
-  const countUrl = '/api/notifications/count/';
-  const markAllReadUrl = '/api/notifications/mark-all-read/';
 
-  const getCSRFToken = () => {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-  };
-
-  const updateNotificationCount = async () => {
+  // ✅ Sử dụng apiService để fetch dữ liệu
+  const fetchNotificationsData = async (shouldShowLoading = false) => {
+    if (shouldShowLoading) setIsLoading(true);
     try {
-      const response = await fetch(countUrl);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const data = await response.json();
+      const data = await apiService.getNotificationCountAndRecent();
       setUnreadCount(data.count);
-      
-      if (isDropdownOpen) {
-        setNotifications(data.notifications);
-      }
-    } catch (error) {
-      console.error('Error fetching notification count:', error);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(countUrl);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const data = await response.json();
       setNotifications(data.notifications);
-      setUnreadCount(data.count);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setNotifications([]);
+      if (shouldShowLoading) setNotifications([]);
     } finally {
-      setIsLoading(false);
+      if (shouldShowLoading) setIsLoading(false);
     }
   };
   
+  // ✅ Sử dụng apiService để đánh dấu tất cả đã đọc
   const markAllAsRead = async () => {
     try {
-      const response = await fetch(markAllReadUrl, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      
+      const data = await apiService.markAllNotificationsRead();
       if (data.success) {
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         setTimeout(() => setIsDropdownOpen(false), 500);
       }
-    } catch (error) {
+    } catch (error)      {
       console.error('Error marking all as read:', error);
     }
   };
@@ -72,14 +46,36 @@ const NotificationManager = () => {
     const newIsOpen = !isDropdownOpen;
     setIsDropdownOpen(newIsOpen);
     if (newIsOpen) {
-      fetchNotifications();
+      // Khi mở dropdown, fetch dữ liệu và hiển thị loading spinner
+      fetchNotificationsData(true);
     }
+  };
+  
+  // ✅ Sử dụng useNavigate để điều hướng, tránh reload trang
+  const handleNotificationClick = (notification) => {
+    // 1. Đánh dấu đã đọc ở client-side ngay lập tức để UI phản hồi nhanh
+    if (!notification.is_read) {
+        setNotifications(prev => prev.map(n => n.id === notification.id ? {...n, is_read: true} : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        // 2. Gửi request đánh dấu đã đọc lên server (fire and forget)
+        apiService.markNotificationRead(notification.id).catch(err => console.error("Failed to mark notification as read on server:", err));
+    }
+    // 3. Đóng dropdown và điều hướng
+    setIsDropdownOpen(false);
+    navigate(notification.action_url || '/');
   };
 
   // --- CÁC HÀM HELPER ---
 
   const getNotificationIcon = (type) => {
-    const icons = { 'comment': '💬', 'vote': '👍', 'follow': '➕' };
+    const icons = { 
+        'comment': '💬', 
+        'vote': '👍', 
+        'follow': '➕',
+        'bot_analysis': '🤖',
+        'challenge_submission': '🏆',
+        'challenge_review': '✅'
+    };
     return icons[type] || '🔔';
   };
 
@@ -88,6 +84,9 @@ const NotificationManager = () => {
       'comment': 'commented on your post.',
       'vote': 'upvoted your post.',
       'follow': 'started following you.',
+      'bot_analysis': 'analyzed your post.',
+      'challenge_submission': 'submitted a solution for a challenge.',
+      'challenge_review': 'reviewed your challenge submission.' 
     };
     return typeMap[type] || 'sent you a notification.';
   };
@@ -102,24 +101,18 @@ const NotificationManager = () => {
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     return date.toLocaleDateString();
   };
-
-  // ✅ ĐÃ SỬA: Hàm tạo URL động từ dữ liệu notification
-  const getNotificationUrl = (notification) => {
-    switch (notification.type) {
-      case 'comment':
-      case 'vote':
-        // Sửa ở đây: Đổi '/posts/' thành '/post/'
-        return notification.post_id ? `/post/${notification.post_id}/` : '/';
-      case 'follow':
-        return notification.sender ? `/profile/${notification.sender.username}/` : '/';
-      default:
-        return '#';
-    }
-  };
+  
+  // ✅ Xóa bỏ hàm getNotificationUrl vì chúng ta sẽ dùng action_url từ backend
 
   useEffect(() => {
-    updateNotificationCount();
-    const interval = setInterval(updateNotificationCount, updateInterval);
+    // Chỉ fetch count khi component mount lần đầu
+    apiService.getNotificationCountAndRecent().then(data => setUnreadCount(data.count)).catch(err => console.error(err));
+    
+    // Vẫn giữ interval để cập nhật count trong nền
+    const interval = setInterval(() => {
+        apiService.getNotificationCountAndRecent().then(data => setUnreadCount(data.count)).catch(err => console.error(err));
+    }, updateInterval);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -169,12 +162,12 @@ const NotificationManager = () => {
               </li>
             ) : (
               notifications.map((notification) => (
-                <li key={notification.id}>
-                  <a 
+                // ✅ SỬ DỤNG onClick VÀ THẺ li THAY VÌ <a> VÀ href
+                <li key={notification.id} onClick={() => handleNotificationClick(notification)}>
+                  <div 
                     className={`${styles.dropdownItem} ${styles.notificationItem} ${
                       !notification.is_read ? styles.notificationUnread : ''
                     }`}
-                    href={getNotificationUrl(notification)}
                   >
                     <div className={`${styles.dFlex} ${styles.alignItemsCenter}`}>
                       <div className={`${styles.flexShrink0} ${styles.me3}`}>
@@ -195,7 +188,7 @@ const NotificationManager = () => {
                         <span className={`${styles.notificationDot} ${styles.msAuto}`}></span>
                       )}
                     </div>
-                  </a>
+                  </div>
                 </li>
               ))
             )}

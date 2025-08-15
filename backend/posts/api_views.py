@@ -48,7 +48,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language, WeeklyChallenge
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language, WeeklyChallenge, ChallengeSubmission
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -66,7 +66,7 @@ from .serializers import (
     VoteSerializer,
     ConversationSerializer, ChatMessageSerializer,
     LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer,
-    WeeklyChallengeSerializer
+    WeeklyChallengeSerializer, ChallengeSubmissionSerializer
 )
 from dotenv import load_dotenv
 
@@ -1926,31 +1926,63 @@ class AIChallengeGeneratorView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _build_challenge_prompt(self, topic):
-        """Helper function để tạo prompt chi tiết."""
+        """
+        ✅ PROMPT ĐÃ ĐƯỢC THIẾT KẾ LẠI HOÀN TOÀN
+        - Yêu cầu AI chọn ngôn ngữ phù hợp.
+        - Buộc tất cả các trường phải nhất quán với ngôn ngữ đã chọn.
+        - Cung cấp ví dụ chi tiết cho cả Python và JavaScript để AI học theo.
+        """
         return f"""
-        Generate a programming challenge based on the topic: "{topic}".
-        The output must be a single, valid JSON object with NO markdown formatting around it.
+        You are an expert programming challenge creator. Your task is to generate a complete, consistent, and high-quality programming challenge based on the topic: "{topic}".
+
+        Follow these steps strictly:
+        1.  Analyze the topic and decide on the MOST SUITABLE programming language (e.g., "python", "javascript", "csharp", "java").
+        2.  Generate all parts of the challenge (description, solution, test cases) CONSISTENTLY for the CHOSEN language.
+        3.  The final output MUST be a single, valid JSON object with NO markdown formatting around it.
+
         The JSON object must have these exact keys: "title", "description", "language", "solution_code", "test_cases".
 
-        - "title": A creative and clear title for the challenge.
-        - "description": A detailed problem statement in Markdown format. Explain the task, input, and expected output clearly.
-        - "language": The programming language for the solution (e.g., "python", "javascript").
-        - "solution_code": A correct solution in the specified language.
-        - "test_cases": An array of at least 5 JSON objects. Each object must have two keys: "input" (an array of function arguments) and "expected" (the expected return value).
+        - "title": A creative and clear title.
+        - "description": A detailed problem statement in Markdown. Explain the task, input, and expected output.
+        - "language": The single-word, lowercase name of the chosen programming language (e.g., "python", "javascript", "csharp"). This MUST match the language of the "solution_code".
+        - "solution_code": A correct and well-commented solution in the chosen language.
+        - "test_cases": An array of at least 5 JSON objects. Each object must have "input" (an array of arguments for the function) and "expected" (the expected return value). The data types in "input" and "expected" MUST be valid for the chosen language.
 
-        Here is a perfect example for the topic "sum of two numbers":
+        ---
+        EXAMPLE 1: If the topic was "Python list comprehensions". You should choose Python.
+        ---
         {{
-            "title": "Two Number Sum",
-            "description": "## Problem\\nWrite a function that takes two numbers `a` and `b` and returns their sum.\\n\\n### Input\\n- `a` (integer)\\n- `b` (integer)\\n\\n### Output\\n- The sum of `a` and `b` (integer).",
-            "solution_code": "def two_sum(a, b):\\n  # Simple addition\\n  return a + b",
+            "title": "Filtering Even Numbers",
+            "description": "## Problem\\nWrite a Python function using list comprehension that takes a list of integers and returns a new list containing only the even numbers.",
+            "language": "python",
+            "solution_code": "def filter_even(numbers):\\n  # Use list comprehension to filter for even numbers\\n  return [num for num in numbers if num % 2 == 0]",
             "test_cases": [
-                {{"input": [1, 2], "expected": 3}},
-                {{"input": [-5, 5], "expected": 0}},
-                {{"input": [100, 200], "expected": 300}},
-                {{"input": [0, 0], "expected": 0}},
-                {{"input": [-10, -20], "expected": -30}}
+                {{"input": [[1, 2, 3, 4, 5]], "expected": [2, 4]}},
+                {{"input": [[10, 23, 45, 60]], "expected": [10, 60]}},
+                {{"input": [[-2, -3, 4, 5]], "expected": [-2, 4]}},
+                {{"input": [[1, 3, 5]], "expected": []}},
+                {{"input": [[]], "expected": []}}
             ]
         }}
+
+        ---
+        EXAMPLE 2: If the topic was "JavaScript array map method". You should choose JavaScript.
+        ---
+        {{
+            "title": "Squaring Array Elements",
+            "description": "## Problem\\nWrite a JavaScript function that takes an array of numbers and returns a new array with each number squared, using the `.map()` method.",
+            "language": "javascript",
+            "solution_code": "function squareElements(arr) {{\\n  // Use the map method to create a new array of squared numbers\\n  return arr.map(num => num * num);\\n}}",
+            "test_cases": [
+                {{"input": [[1, 2, 3]], "expected": [1, 4, 9]}},
+                {{"input": [[-1, -2, -3]], "expected": [1, 4, 9]}},
+                {{"input": [[10, 0]], "expected": [100, 0]}},
+                {{"input": [[]], "expected": []}},
+                {{"input": [[1.5, 2.5]], "expected": [2.25, 6.25]}}
+            ]
+        }}
+
+        Now, generate the challenge for the topic: "{topic}".
         """
 
 class WeeklyChallengeViewSet(viewsets.ModelViewSet):
@@ -2000,3 +2032,129 @@ class WeeklyChallengeViewSet(viewsets.ModelViewSet):
         
         # Trả về rỗng nếu không có challenge nào
         return Response(None, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_latest_submission(self, request, pk=None):
+        """
+        Lấy bài nộp gần nhất của người dùng hiện tại cho challenge này.
+        """
+        challenge = self.get_object()
+        user = request.user
+
+        latest_submission = ChallengeSubmission.objects.filter(
+            challenge=challenge,
+            user=user
+        ).order_by('-submitted_at').first()
+
+        if latest_submission:
+            # Tái sử dụng ChallengeSubmissionSerializer
+            serializer = ChallengeSubmissionSerializer(latest_submission)
+            return Response(serializer.data)
+        
+        # Trả về không có nội dung nếu người dùng chưa nộp bài
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
+
+class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet để người dùng nộp bài giải cho các challenge.
+    """
+    queryset = ChallengeSubmission.objects.all()
+    serializer_class = ChallengeSubmissionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Lưu submission và gán user
+        submission = serializer.save(user=self.request.user)
+        
+        # ✅ GỬI NOTIFICATION CHO TẤT CẢ ADMIN
+        self.notify_admins(submission)
+    
+    def get_permissions(self):
+        """
+        - Chỉ Admin mới được quyền xem list, update, delete.
+        - Người dùng đã đăng nhập có thể tạo (nộp bài).
+        - Chủ sở hữu submission có thể xem bài của mình (tùy chọn).
+        """
+        if self.action in ['list', 'update', 'partial_update', 'destroy']:
+            self.permission_classes = [permissions.IsAdminUser]
+        # ✅ SỬA Ở ĐÂY: Cho phép chủ sở hữu xem bài nộp của họ
+        elif self.action == 'retrieve':
+            # Hoặc là Admin, hoặc là chủ sở hữu
+            self.permission_classes = [IsAdminUserOrOwner] 
+        else: # 'create'
+            self.permission_classes = [permissions.IsAuthenticated]
+        return super().get_permissions()
+
+    # ✅ GHI ĐÈ PHƯƠNG THỨC UPDATE
+    def update(self, request, *args, **kwargs):
+        # Lấy submission object
+        submission = self.get_object()
+        
+        # Gọi hàm update mặc định của DRF
+        response = super().update(request, *args, **kwargs)
+        
+        # Nếu update thành công, gửi notification cho người dùng
+        if response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]:
+            # Lấy trạng thái mới từ request data
+            new_status = request.data.get('status')
+            if new_status in ['approved', 'rejected']:
+                self.notify_user_of_review(submission, new_status, request.user)
+
+        return response
+    
+    def notify_admins(self, submission):
+        """
+        Tìm tất cả admin và tạo notification cho họ.
+        """
+        # Tìm tất cả user có role là ADMIN trong Profile
+        admin_users = User.objects.filter(profile__role='ADMIN')
+        
+        # Người nộp bài
+        sender = submission.user
+        
+        for admin in admin_users:
+            # Không gửi notification nếu admin tự nộp bài
+            if admin == sender:
+                continue
+                
+            Notification.objects.create(
+                recipient=admin,
+                sender=sender,
+                notification_type='challenge_submission',
+                # ✅ Gán submission object vào notification
+                submission=submission,
+                message=f"{sender.username} has submitted a solution for the challenge '{submission.challenge.title[:30]}...'"
+            )
+
+    # ✅ TẠO HÀM MỚI ĐỂ GỬI NOTIFICATION CHO USER
+    def notify_user_of_review(self, submission, new_status, admin_user):
+        """
+        Gửi thông báo cho người dùng về kết quả review.
+        """
+        recipient = submission.user
+        
+        # Xây dựng message dựa trên trạng thái
+        if new_status == 'approved':
+            message = f"Congratulations! Your solution for '{submission.challenge.title[:30]}...' has been approved."
+        else: # rejected
+            message = f"Your solution for '{submission.challenge.title[:30]}...' needs improvement. See feedback from the admin."
+            
+        Notification.objects.create(
+            recipient=recipient,
+            sender=admin_user, # Sender là admin đã review
+            notification_type='challenge_review', # ✅ Tạo một loại notification mới
+            submission=submission,
+            message=message
+        )
+
+
+class IsAdminUserOrOwner(permissions.BasePermission):
+    """
+    Custom permission to only allow admins or owners of an object to view it.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Admin luôn có quyền
+        if request.user.is_staff or (hasattr(request.user, 'profile') and request.user.profile.role == 'ADMIN'):
+            return True
+        # Cho phép chủ sở hữu xem
+        return obj.user == request.user

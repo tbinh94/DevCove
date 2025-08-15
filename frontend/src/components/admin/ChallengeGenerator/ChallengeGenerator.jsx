@@ -1,7 +1,7 @@
 // src/components/admin/ChallengeGenerator.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import apiService from '../../services/api';
+import apiService from '../../../services/api';
 import styles from './ChallengeGenerator.module.css'; // Tạo file CSS này
 import ReactMarkdown from 'react-markdown';
 const ChallengeGenerator = () => {
@@ -12,7 +12,12 @@ const ChallengeGenerator = () => {
     const [isPublishing, setIsPublishing] = useState(false); // State mới
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState(''); 
-
+    
+    const capitalize = (s) => {
+        if (typeof s !== 'string' || s.length === 0) return '';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    };
+    
     const handleGenerate = async () => {
         if (!topic.trim()) {
             setError('Please enter a topic.');
@@ -73,7 +78,7 @@ const ChallengeGenerator = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1>AI Auto Challenge Generator</h1>
+                <h1>Auto Challenge Generator</h1>
                 <p>Enter a topic (e.g., "Python decorators", "async JavaScript", "binary search") and let AI create a challenge for you.</p>
             </div>
             
@@ -105,12 +110,20 @@ const ChallengeGenerator = () => {
                             {generatedChallenge.description}
                         </ReactMarkdown>
                     </div>
-                    <h4>Solution Code (Python)</h4>
+                    <h4>
+                        Solution Code ({capitalize(generatedChallenge.language || 'Unknown')})
+                    </h4>
                     <pre className={styles.codeBlock}>{generatedChallenge.solution_code}</pre>
                     
                     <h4>Test Cases</h4>
                     <pre className={styles.codeBlock}>
-                        {JSON.stringify(generatedChallenge.test_cases, null, 2)}
+                        {/* ✅ SỬA ĐỔI HIỂN THỊ TEST CASE */}
+                        {JSON.stringify(generatedChallenge.test_cases, (key, value) => {
+                            // Chuyển đổi chuỗi "true"/"false" thành boolean để hiển thị đẹp hơn
+                            if (value === "true") return true;
+                            if (value === "false") return false;
+                            return value;
+                        }, 2)}
                     </pre>
 
                     <button 
@@ -118,7 +131,7 @@ const ChallengeGenerator = () => {
                       className={`${styles.button} ${styles.publishButton}`}
                       disabled={isPublishing} // Disable nút khi đang publish
                     >
-                        {isPublishing ? 'Publishing...' : 'Looks Good, Publish as Weekly Challenge!'}
+                        {isPublishing ? 'Publishing...' : 'Publish as Weekly Challenge!'}
                     </button>
                 </div>
             )}

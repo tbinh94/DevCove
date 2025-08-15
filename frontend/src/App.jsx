@@ -17,9 +17,10 @@ import PasswordChange from './components/users/PasswordChange';
 import AuthTest from './AuthTest';
 import Chatting from './components/Chatting';
 import SandboxPage from './components/pages/SandboxPage/SandboxPage';
-import BugTracker from './components/BugTracker'; // Trang mới chứa CommunityBugTracker
-import ChallengeGenerator from './components/ChallengeGenerator';
-import ChallengeDetail from './components/ChallengeDetail';
+import BugTracker from './components/admin/BugTracker'; // Trang mới chứa CommunityBugTracker
+import ChallengeGenerator from './components/admin/ChallengeGenerator';
+import ChallengeDetail from './components/admin/ChallengeDetail';
+import SubmissionReview from './components/admin/SubmissionReview';
 // Main App Component
 const App = () => {
   useEffect(() => {
@@ -62,7 +63,14 @@ const App = () => {
             <Route path="community/:name/top" element={<PostList filter="top" />} />
 
             <Route path="/challenges/:challengeId" element={<ChallengeDetail />} />
-
+             <Route 
+                path="admin/review/:submissionId" 
+                element={
+                  <AdminRoute>
+                    <SubmissionReview />
+                  </AdminRoute>
+                } 
+              />
           </Route>
           
           {/* Routes không cần MainLayout (fullscreen) */}
@@ -90,7 +98,6 @@ const App = () => {
                 </AdminRoute>
               } 
           />
-          
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />
           <Route path="/profile" element={<UserProfile />} />

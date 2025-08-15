@@ -3,10 +3,10 @@ import { X, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
 // ✅ SỬ DỤNG API SERVICE THẬT
-import apiService from '../../services/api';
+import apiService from '../../../services/api';
 // Import CSS module
 import styles from './BugTracker.module.css';
-import AiDiffViewer from '../pages/AiDiffViewer';
+import AiDiffViewer from '../../pages/AiDiffViewer';
 
 const BugReview = ({ example }) => {
     console.log("Bug example data:", example); 

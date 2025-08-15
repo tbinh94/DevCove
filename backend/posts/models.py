@@ -234,6 +234,8 @@ class Notification(models.Model):
         ('follow', 'Follow'),
         ('mention', 'Mention'),
         ('bot_analysis', 'Bot Analysis'), # NEW: Added bot_analysis type
+        ('challenge_submission', 'Challenge Submission'),
+        ('challenge_review', 'Challenge Review'),
     ]
     
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
@@ -245,7 +247,8 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
-    
+    submission = models.ForeignKey('ChallengeSubmission', on_delete=models.CASCADE, null=True, blank=True)
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
@@ -287,18 +290,26 @@ class Notification(models.Model):
     
     def get_action_url(self):
         """
-        Tạo URL động bằng hàm reverse() để đảm bảo luôn chính xác.
+        Tạo URL động.
         """
-        if self.notification_type in ['comment', 'vote', 'bot_analysis'] and self.post: # MODIFIED
-            # Sửa lỗi chính ở đây: dùng reverse để tạo URL đúng là 'post/<pk>/'
-            return reverse('posts:post_detail', kwargs={'pk': self.post.pk})
+        if self.notification_type in ['comment', 'vote', 'bot_analysis'] and self.post:
+            # Dùng `self.post.id` thay vì `self.post.pk` để rõ ràng hơn
+            return f"/post/{self.post.id}"
         
-        elif self.notification_type == 'follow':
-            # Cũng nên dùng reverse cho các URL khác để đảm bảo tính nhất quán
-            return reverse('posts:user_profile', kwargs={'username': self.sender.username})
+        elif self.notification_type == 'follow' and self.sender:
+            return f"/profile/{self.sender.username}"
+
+        elif self.notification_type == 'challenge_submission' and self.submission:
+            # ✅ ĐÂY LÀ URL DÀNH CHO ADMIN
+            # Giả sử trang review submission của bạn có URL như sau
+            return f"/admin/review/{self.submission.id}"
         
-        # URL mặc định nếu không có hành động cụ thể
-        return reverse('posts:notifications')
+        elif self.notification_type == 'challenge_review' and self.submission:
+            # Dẫn người dùng về trang challenge để họ xem lại
+            return f"/challenges/{self.submission.challenge.id}"
+        
+        # Fallback URL
+        return "/"
     
 
 class LoggedBug(models.Model):
@@ -357,3 +368,25 @@ class WeeklyChallenge(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+class ChallengeSubmission(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    challenge = models.ForeignKey(WeeklyChallenge, on_delete=models.CASCADE, related_name='submissions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='challenge_submissions')
+    submitted_code = models.TextField()
+    language = models.CharField(max_length=50)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    # Dành cho Admin review
+    status = models.CharField(
+        max_length=20, 
+        choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')],
+        default='pending'
+    )
+    feedback = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Submission by {self.user.username} for {self.challenge.title}"
+
+    class Meta:
+        ordering = ['-submitted_at']

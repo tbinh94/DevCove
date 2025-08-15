@@ -1,61 +1,82 @@
-// src/components/ChallengeDetail.jsx
-
+// Component này hiển thị chi tiết của challenge, cho phép người dùng xem mô tả, test cases và gửi bài nộp
+// chứa logic hiển thị chi tiết, kiểm tra ngôn ngữ, fetch bài nộp, và điều hướng đến Sandbox hoặc gửi đi review.
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Trophy, CheckSquare, Code, Terminal, Upload } from 'lucide-react';
-import apiService from '../../services/api';
-import styles from './ChallengeDetail.module.css'; // Sẽ tạo file CSS
+import { Trophy, Code, Terminal, Upload } from 'lucide-react';
+import apiService from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import SubmissionStatus from '../SubmissionStatus'; // Đảm bảo bạn đã tạo file này
+import styles from './ChallengeDetail.module.css';
 
 const ChallengeDetail = () => {
     const { challengeId } = useParams();
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
     const [challenge, setChallenge] = useState(null);
+    const [mySubmission, setMySubmission] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [userCode, setUserCode] = useState('');
     const [submissionResult, setSubmissionResult] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const navigate = useNavigate();
+    
+    const RUNNABLE_LANGUAGES = ['python', 'javascript', 'html', 'css'];
+
+    const capitalize = (s) => {
+        if (typeof s !== 'string' || s.length === 0) return '';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    };
 
     useEffect(() => {
-        const fetchChallenge = async () => {
+        const fetchAllData = async () => {
             if (!challengeId) return;
             setLoading(true);
             setError(null);
+            setMySubmission(null); // Reset submission state on new challenge load
+            
             try {
-                const data = await apiService.getChallengeDetail(challengeId);
-                setChallenge(data);
-                if (data.solution_code) {
-                    // Tách signature của hàm để làm code mẫu
-                    const functionSignature = data.solution_code.split('\n')[0];
-                    let placeholder;
-                    if (data.language === 'python') {
+                const challengeData = await apiService.getChallengeDetail(challengeId);
+                setChallenge(challengeData);
+
+                let currentUserSubmission = null;
+                if (isAuthenticated) {
+                    try {
+                        const submissionData = await apiService.getMyLatestSubmission(challengeId);
+                        setMySubmission(submissionData);
+                        currentUserSubmission = submissionData;
+                    } catch (subError) {
+                        if (subError.status !== 204) { // 204 No Content is not a real error
+                            console.warn("Could not fetch user submission:", subError);
+                        }
+                    }
+                }
+                
+                if (currentUserSubmission && currentUserSubmission.submitted_code) {
+                    setUserCode(currentUserSubmission.submitted_code);
+                } else if (challengeData.solution_code) {
+                    const functionSignature = challengeData.solution_code.split('\n')[0];
+                    let placeholder = '';
+                    if (challengeData.language === 'python') {
                         placeholder = '\n  # Your code here\n  pass';
-                    } else if (data.language === 'javascript') {
+                    } else if (challengeData.language === 'javascript') {
                         placeholder = '\n  // Your code here\n}';
                     }
-                    setUserCode(functionSignature + (placeholder || ''));
+                    setUserCode(functionSignature + placeholder);
                 }
+
             } catch (err) {
-                console.error("Error fetching challenge:", err);
+                console.error("Error fetching challenge data:", err);
                 setError(err.message || 'Failed to load the challenge.');
             } finally {
                 setLoading(false);
             }
         };
-        fetchChallenge();
-    }, [challengeId]);
 
-    const buildTestRunnerCode = (userSolution, testCases, language) => {
-        if (language === 'python') {
-            return buildPythonTestRunner(userSolution, testCases);
-        } else if (language === 'javascript') {
-            return buildJavaScriptTestRunner(userSolution, testCases);
-        } else {
-            alert(`Sorry, automated testing for '${language}' is not supported yet.`);
-            return null;
-        }
-    };
+        fetchAllData();
+    }, [challengeId, isAuthenticated]);
+
 
     const buildPythonTestRunner = (userSolution, testCases) => {
         const functionNameMatch = userSolution.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
@@ -67,21 +88,13 @@ const ChallengeDetail = () => {
         const testCasesPython = JSON.stringify(testCases, null, 4);
 
         return `
-# --------------------------------------------------
-# 🐍 DevCove Challenge Runner
-# --------------------------------------------------
-
-# --- DEVCOVE_USER_CODE_START ---
+# Your Submitted Solution:
 ${userSolution}
-# --- DEVCOVE_USER_CODE_END ---
-
-# --- DEVCOVE_TEST_HARNESS_START ---
-# Test Cases:
-test_cases = ${testCasesPython}
 
 # Test Harness:
 def run_tests():
     challenge_title = ${JSON.stringify(challenge.title)}
+    test_cases = ${testCasesPython}
     print(f"🚀 Running {len(test_cases)} test cases for '{challenge_title}'...")
     passed_count = 0
     failed_cases = []
@@ -102,11 +115,10 @@ def run_tests():
                 print(f"     - Expected: {expected_output}")
                 print(f"     - Got: {actual_output}")
                 failed_cases.append(i+1)
-        
         except Exception as e:
             print(f"  🔥 Test Case #{i+1}: ERROR")
             print(f"     - Input: {input_args}")
-            print(f"     - An error occurred during execution: {e}")
+            print(f"     - An error occurred: {e}")
             failed_cases.append(i+1)
             
     print("\\n--------------------------------------------------")
@@ -118,12 +130,11 @@ def run_tests():
     print("--------------------------------------------------")
 
 run_tests()
-# --- DEVCOVE_TEST_HARNESS_END ---
 `;
     };
     
     const buildJavaScriptTestRunner = (userSolution, testCases) => {
-        const functionNameMatch = userSolution.match(/(?:function\s+|const\s+)([a-zA-Z0-9_]+)\s*(?:=|\()/);
+        const functionNameMatch = userSolution.match(/(?:function\s+|const\s+|let\s+|var\s+)([a-zA-Z0-9_]+)\s*(?:=|\()/);
         if (!functionNameMatch) {
             alert("Could not find a valid JavaScript function definition (e.g., function name(...) or const name = (...) =>) in your solution.");
             return null;
@@ -132,15 +143,10 @@ run_tests()
         const testCasesJs = JSON.stringify(testCases);
 
         return `
-// --------------------------------------------------
-// ⚡ DevCove Challenge Runner
-// --------------------------------------------------
-
-// --- DEVCOVE_USER_CODE_START ---
+// Your Submitted Solution:
 ${userSolution}
-// --- DEVCOVE_USER_CODE_END ---
 
-// --- DEVCOVE_TEST_HARNESS_START ---
+// Test Harness:
 try {
     const testCases = ${testCasesJs};
     const challengeTitle = ${JSON.stringify(challenge.title)};
@@ -155,7 +161,6 @@ try {
         
         try {
             const actualOutput = ${functionName}(...inputArgs);
-            
             if (JSON.stringify(actualOutput) === JSON.stringify(expectedOutput)) {
                 console.log(\`  ✅ Test Case #\${i+1}: PASSED\`);
                 passedCount++;
@@ -182,27 +187,36 @@ try {
         console.warn(\`   Check failed cases: \${failedCases.join(', ')}\`);
     }
     console.log("--------------------------------------------------");
-
 } catch (e) {
     console.error("A critical error occurred in the test harness:", e.message);
 }
-// --- DEVCOVE_TEST_HARNESS_END ---
 `;
     };
 
     const handleSubmission = async () => {
         if (!userCode.trim()) {
-            alert("Please write some code before submitting.");
+            alert("Please provide a solution.");
             return;
         }
 
-        const fullTestCode = buildTestRunnerCode(userCode, challenge.test_cases, challenge.language);
+        const lang = challenge.language.toLowerCase();
+        
+        if (RUNNABLE_LANGUAGES.includes(lang)) {
+            handleRunInSandbox();
+        } else {
+            handleSubmitForReview();
+        }
+    };
 
+    const handleRunInSandbox = () => {
+        const buildRunner = challenge.language === 'python' ? buildPythonTestRunner : buildJavaScriptTestRunner;
+        const fullTestCode = buildRunner(userCode, challenge.test_cases);
         if (!fullTestCode) return;
 
         try {
             sessionStorage.setItem('sandbox_code', fullTestCode);
-            sessionStorage.setItem('sandbox_code_language', challenge.language); 
+            sessionStorage.setItem('sandbox_user_code', userCode);
+            sessionStorage.setItem('sandbox_language', challenge.language);
             
             window.open('/sandbox', '_blank');
             
@@ -210,16 +224,44 @@ try {
                 success: null,
                 message: "Your solution has been sent to the Sandbox for testing. Check the new tab for results!",
             });
-
         } catch (err) {
             console.error("Failed to send to sandbox:", err);
-            setError("Could not open the sandbox runner. Please check browser pop-up settings.");
+            setError("Could not open the sandbox runner.");
+        }
+    };
+
+    const handleSubmitForReview = async () => {
+        setIsSubmitting(true);
+        setSubmissionResult(null);
+
+        try {
+            const submissionData = {
+                challenge: challenge.id,
+                submitted_code: userCode,
+                language: challenge.language,
+            };
+            
+            const newSubmission = await apiService.submitChallengeForReview(submissionData);
+            setMySubmission(newSubmission);
+
+            setSubmissionResult({
+                success: true,
+                message: "Your solution has been submitted successfully! An admin will review it soon.",
+            });
+        } catch (err) {
+            console.error("Failed to submit for review:", err);
+            const errorMessage = err.data?.detail || err.message || "Failed to submit your solution.";
+            setSubmissionResult({ success: false, message: errorMessage });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     if (loading) return <div className={styles.statusMessage}>Loading Challenge...</div>;
     if (error) return <div className={styles.statusMessage} style={{color: '#ff8e8e'}}>{error}</div>;
     if (!challenge) return <div className={styles.statusMessage}>Challenge not found.</div>;
+
+    const isRunnable = challenge && RUNNABLE_LANGUAGES.includes(challenge.language.toLowerCase());
 
     return (
         <div className={styles.container}>
@@ -257,18 +299,34 @@ try {
                 </div>
 
                 <div className={styles.rightColumn}>
+                    {isAuthenticated && <SubmissionStatus submission={mySubmission} />}
                     <div className={styles.section}>
-                        <h2 className={styles.sectionTitle}><Code size={20}/> Your Solution</h2>
+                        <h2 className={styles.sectionTitle}>
+                            <Code size={20}/> Your Solution ({capitalize(challenge.language || '')})
+                        </h2>
                         <textarea
                             className={styles.codeInput}
                             value={userCode}
                             onChange={(e) => setUserCode(e.target.value)}
-                            placeholder={challenge.language === 'python' ? 'Write your Python solution here...' : 'Write your JavaScript solution here...'}
+                            placeholder={`Write your ${capitalize(challenge.language || '')} solution here...`}
                             rows={15}
+                            disabled={isSubmitting || mySubmission?.status === 'approved'}
                         />
-                         <button onClick={handleSubmission} className={styles.submitButton} disabled={isSubmitting}>
+                        <button 
+                            onClick={handleSubmission} 
+                            className={styles.submitButton} 
+                            disabled={isSubmitting || mySubmission?.status === 'approved'}>
                             <Upload size={18} />
-                            {isSubmitting ? 'Running...' : 'Submit Solution'}
+                            {isSubmitting 
+                                ? 'Submitting...' 
+                                : mySubmission?.status === 'approved'
+                                    ? 'Solution Approved!'
+                                    : mySubmission
+                                        ? 'Resubmit Solution'
+                                        : isRunnable
+                                            ? 'Submit & Run in Sandbox'
+                                            : 'Submit for Review'
+                            }
                         </button>
                     </div>
                    

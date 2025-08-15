@@ -1,0 +1,74 @@
+/* src/components/SubmissionStatus.module.css */
+.container {
+    border-left-width: 4px;
+    border-style: solid;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background-color: #1a1a1b;
+}
+
+.approved {
+    border-color: #2a7c5e;
+    background-color: rgba(42, 124, 94, 0.1);
+}
+
+.rejected {
+    border-color: #8f3434;
+    background-color: rgba(143, 52, 52, 0.1);
+}
+
+.pending {
+    border-color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.1);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.statusIcon {
+    display: flex;
+    align-items: center;
+}
+.approved .statusIcon { color: #2a7c5e; }
+.rejected .statusIcon { color: #8f3434; }
+.pending .statusIcon { color: #f59e0b; }
+
+.statusText {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.feedback {
+    margin-top: 1rem;
+}
+
+.feedbackTitle {
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+    color: #a0a3b1;
+    font-size: 0.9rem;
+}
+
+.feedbackContent {
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    padding-left: 1rem;
+    margin: 0;
+    font-style: italic;
+    color: #d7dadc;
+    white-space: pre-wrap; /* Preserve newlines in feedback */
+}
+
+.submittedAt {
+    font-size: 0.8rem;
+    color: #818384;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+    text-align: right;
+}

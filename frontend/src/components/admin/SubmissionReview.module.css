@@ -1,0 +1,28 @@
+/* src/components/admin/SubmissionReview.module.css */
+.container { max-width: 1400px; margin: 2rem auto; padding: 2rem; color: #d7dadc; }
+.mainTitle { font-size: 2.5rem; text-align: center; margin-bottom: 1rem; color: #fff; }
+.metaInfo { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; color: #818384; }
+.metaInfo span { display: flex; align-items: center; gap: 0.5rem; }
+.reviewLayout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.challengeInfo, .submissionPanel { background-color: #1a1a1b; border: 1px solid #343536; border-radius: 8px; padding: 1.5rem; }
+.description { line-height: 1.6; border-bottom: 1px solid #343536; padding-bottom: 1rem; margin-bottom: 1rem; }
+.codeBlock { background-color: #0d1117; padding: 1rem; border-radius: 6px; overflow-x: auto; font-family: 'Fira Code', monospace; white-space: pre-wrap; }
+.feedbackSection { margin-top: 1.5rem; }
+.feedbackInput { width: 100%; background-color: #272729; border: 1px solid #343536; color: #d7dadc; padding: 0.75rem; border-radius: 6px; resize: vertical; }
+.actionButtons { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.button { flex: 1; padding: 0.75rem; font-size: 1rem; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+.approve { background-color: #2a7c5e; color: white; }
+.approve:hover:not(:disabled) { background-color: #3a9d7c; }
+.reject { background-color: #8f3434; color: white; }
+.reject:hover:not(:disabled) { background-color: #a74545; }
+.statusMessage { text-align: center; padding: 4rem; font-size: 1.5rem; }
+
+/* Trạng thái */
+.pending { color: #f59e0b; }
+.approved { color: #2a7c5e; }
+.rejected { color: #8f3434; }
+
+@media (max-width: 992px) {
+    .reviewLayout { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,248 @@
+/* src/components/admin/ChallengeGenerator.module.css */
+
+.container {
+    width: 100%;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 40px;
+    background: linear-gradient(145deg, #0f1419, #1a1f2e);
+    border: 1px solid rgba(79, 172, 254, 0.1);
+    border-radius: 16px;
+    color: #e2e8f0;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
+                0 0 0 1px rgba(79, 172, 254, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #4facfe, transparent);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    position: relative;
+}
+
+.header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    border-radius: 1px;
+}
+
+.header h1 {
+    font-size: 2.8rem;
+    margin: 0;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.header p {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+.form {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 30px;
+    background: rgba(79, 172, 254, 0.03);
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(79, 172, 254, 0.08);
+}
+
+.input {
+    flex-grow: 1;
+    padding: 16px 20px;
+    font-size: 1rem;
+    background: rgba(15, 20, 25, 0.8);
+    border: 1px solid rgba(79, 172, 254, 0.2);
+    border-radius: 8px;
+    color: #e2e8f0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.input:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+    background: rgba(15, 20, 25, 0.95);
+}
+
+.button {
+    padding: 16px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.6s;
+}
+
+.button:hover::before {
+    left: 100%;
+}
+
+.button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
+}
+
+.button:disabled {
+    background: linear-gradient(135deg, #374151, #4b5563);
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.error {
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.success {
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(22, 163, 74, 0.1));
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.results {
+    margin-top: 40px;
+    padding: 32px;
+    background: linear-gradient(145deg, rgba(15, 20, 25, 0.6), rgba(26, 31, 46, 0.6));
+    border: 1px solid rgba(79, 172, 254, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+}
+
+.results h2 {
+    text-align: center;
+    margin: 0 0 32px 0;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.results h3, .results h4 {
+    color: #f1f5f9;
+    margin: 28px 0 16px 0;
+    padding-bottom: 12px;
+    position: relative;
+    font-weight: 600;
+}
+
+.results h4::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, #4facfe, transparent);
+    border-radius: 1px;
+}
+
+.challengeTitle {
+    font-style: italic;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+.prose {
+    line-height: 1.7;
+    color: #cbd5e1;
+}
+
+.codeBlock {
+    background: linear-gradient(145deg, #0c1015, #111827);
+    padding: 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    border: 1px solid rgba(79, 172, 254, 0.15);
+    white-space: pre-wrap;
+    color: #e2e8f0;
+    position: relative;
+}
+
+.codeBlock::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(79, 172, 254, 0.3), transparent);
+}
+
+.publishButton {
+    margin-top: 32px;
+    width: 100%;
+    padding: 20px;
+    font-size: 1.2rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    font-weight: 700;
+}
+
+.publishButton:hover {
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.3);
+}
