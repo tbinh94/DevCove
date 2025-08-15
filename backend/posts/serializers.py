@@ -529,6 +529,6 @@ class WeeklyChallengeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'topic', 'title', 'description', 
             'test_cases', 'solution_code', 'is_published', 
-            'published_at', 'created_by', 'created_at'
+            'published_at', 'created_by', 'created_at', 'language'
         ]
         read_only_fields = ['id', 'published_at', 'created_by', 'created_at']

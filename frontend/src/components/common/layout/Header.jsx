@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// Thêm icon FlaskConical cho Sandbox
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy } from 'lucide-react'; 
+// Thêm ChevronDown cho dropdown
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy, ChevronDown } from 'lucide-react'; 
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -22,10 +22,12 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const [headerProfile, setHeaderProfile] = useState(null); 
   
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false); // NEW: State cho Tools dropdown
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
   const userMenuRef = useRef(null);
+  const toolsMenuRef = useRef(null); // NEW: Ref cho Tools dropdown
 
   // useEffect để lấy profile y hệt UserProfile.jsx
   useEffect(() => {
@@ -49,7 +51,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
 
     fetchHeaderProfile();
   }, [user?.username]); // Chỉ chạy lại khi username của người dùng thay đổi
-
 
   const handleLogout = async () => {
     try {
@@ -75,10 +76,36 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     setIsCreatePostOpen(false);
   };
 
+  // NEW: Handlers cho Tools dropdown
+  const handleChatClick = (e) => {
+    e.preventDefault();
+    navigate('/chat');
+    setIsToolsMenuOpen(false);
+  };
+  
+  const handleSandboxClick = () => {
+    navigate('/sandbox');
+    setIsToolsMenuOpen(false);
+  };
+
+  const handleBugTrackerClick = () => {
+    navigate('/bug-tracker');
+    setIsToolsMenuOpen(false);
+  };
+
+  const handleGenerateChallengeClick = () => {
+    navigate('/challenge-generator');
+    setIsToolsMenuOpen(false);
+  };
+
+  // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
+      }
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target)) {
+        setIsToolsMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -87,13 +114,18 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
 
   useEffect(() => {
     const handleEscKey = (event) => {
-      if (event.key === 'Escape' && isCreatePostOpen) {
-        setIsCreatePostOpen(false);
+      if (event.key === 'Escape') {
+        if (isCreatePostOpen) {
+          setIsCreatePostOpen(false);
+        }
+        if (isToolsMenuOpen) {
+          setIsToolsMenuOpen(false);
+        }
       }
     };
     document.addEventListener('keydown', handleEscKey);
     return () => document.removeEventListener('keydown', handleEscKey);
-  }, [isCreatePostOpen]);
+  }, [isCreatePostOpen, isToolsMenuOpen]);
 
   // Component UserAvatar không cần thay đổi
   const UserAvatar = ({ user, profile, className }) => {
@@ -121,23 +153,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
         </div>
       </div>
     );
-  };
-
-  const handleChatClick = (e) => {
-    e.preventDefault();
-    navigate('/chat');
-  };
-  
-  // === NEW: Hàm xử lý khi nhấn nút Sandbox ===
-  const handleSandboxClick = () => {
-    navigate('/sandbox'); // Điều hướng tới trang /sandbox
-  };
-
-  const handleBugTrackerClick = () => {
-    navigate('/bug-tracker'); // Điều hướng tới trang /bug-tracker
-  };
-   const handleGenerateChallengeClick = () => {
-    navigate('/challenge-generator');
   };
 
   return (
@@ -173,15 +188,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
           <div className={styles.rightSide}>
             {isAuthenticated && user ? (
               <>
-                <button
-                    onClick={handleGenerateChallengeClick}
-                    className={styles.generateChallengeButton} // Tạo class CSS mới
-                    title="Generate AI Weekly Challenge"
-                  >
-                    <Trophy className={styles.buttonIcon} />
-                    <span className={styles.generateChallengeButtonText}>Challenge</span>
-                  </button>
-                  
+                {/* Primary Action - Create Post */}
                 <button
                   onClick={handleCreatePostClick}
                   className={styles.createPostButton}
@@ -191,36 +198,42 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                   <span className={styles.createPostButtonText}>Create</span>
                 </button>
                 
-                {/* NÚT CHAT */}
-                <button
-                  onClick={handleChatClick}
-                  className={styles.chatButton}
-                  title="Chat"
-                >
-                  <MessageSquare className={styles.buttonIcon} />
-                  <span className={styles.chatButtonText}>Chat</span>
-                </button>
-                
-                {/* === NEW: NÚT SANDBOX === */}
-                <button
-                  onClick={handleSandboxClick}
-                  className={styles.sandboxButton} // Thêm class mới cho styling
-                  title="Code Sandbox"
-                >
-                  <FlaskConical className={styles.buttonIcon} />
-                  <span className={styles.sandboxButtonText}>Sandbox</span>
-                </button>
+                {/* NEW: Developer Tools Dropdown */}
+                <div className={styles.toolsMenu} ref={toolsMenuRef}>
+                  <button
+                    onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                    className={styles.toolsMenuButton}
+                    title="Developer Tools"
+                  >
+                    <FlaskConical className={styles.buttonIcon} />
+                    <span className={styles.toolsMenuButtonText}>Tools</span>
+                    <ChevronDown className={`${styles.buttonIcon} ${styles.dropdownChevron} ${isToolsMenuOpen ? styles.dropdownChevronOpen : ''}`} />
+                  </button>
 
-
-                {/* ✅ BƯỚC 3: THÊM NÚT BUG TRACKER VÀO JSX */}
-                <button
-                  onClick={handleBugTrackerClick}
-                  className={styles.bugTrackerButton} // Thêm class mới cho styling
-                  title="Community Bug Tracker"
-                >
-                  <Bug className={styles.buttonIcon} />
-                  <span className={styles.bugTrackerButtonText}>Insights</span>
-                </button>
+                  {isToolsMenuOpen && (
+                    <div className={styles.toolsDropdownMenu}>
+                      <button onClick={handleChatClick} className={styles.toolsDropdownItem}>
+                        <MessageSquare className={styles.dropdownIcon} />
+                        <span>Chat</span>
+                      </button>
+                      
+                      <button onClick={handleSandboxClick} className={styles.toolsDropdownItem}>
+                        <FlaskConical className={styles.dropdownIcon} />
+                        <span>Code Sandbox</span>
+                      </button>
+                      
+                      <button onClick={handleBugTrackerClick} className={styles.toolsDropdownItem}>
+                        <Bug className={styles.dropdownIcon} />
+                        <span>Bug Tracker</span>
+                      </button>
+                      
+                      <button onClick={handleGenerateChallengeClick} className={styles.toolsDropdownItem}>
+                        <Trophy className={styles.dropdownIcon} />
+                        <span>Challenges</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className={styles.notificationWrapper}>
                   <NotificationManager />
@@ -257,7 +270,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                         <User className={styles.dropdownIcon} />
                         <span>Profile</span>
                       </button>
-                      
                       
                       <button onClick={() => { navigate('/settings'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}>
                         <Settings className={styles.dropdownIcon} />

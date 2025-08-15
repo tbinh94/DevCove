@@ -338,7 +338,7 @@ class WeeklyChallenge(models.Model):
     topic = models.CharField(max_length=255, help_text="Topic created by Administrator")
     title = models.CharField(max_length=255, help_text="Title of the challenge")
     description = models.TextField(help_text="Detailed description of the challenge")
-
+    language = models.CharField(max_length=50, default='python', help_text="Programming language of weekly challenge (python, javascript, etc.)")
     # Using JSONField is a perfect choice to store test cases
     test_cases = models.JSONField(help_text="A list of test cases, e.g., [{'input': [1, 2], 'expected': 3}]")
 

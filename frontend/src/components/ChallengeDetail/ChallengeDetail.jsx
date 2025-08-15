@@ -25,10 +25,16 @@ const ChallengeDetail = () => {
             try {
                 const data = await apiService.getChallengeDetail(challengeId);
                 setChallenge(data);
-                // Gợi ý code cho người dùng từ đáp án
                 if (data.solution_code) {
+                    // Tách signature của hàm để làm code mẫu
                     const functionSignature = data.solution_code.split('\n')[0];
-                    setUserCode(functionSignature + '\n  # Your code here\n  pass');
+                    let placeholder;
+                    if (data.language === 'python') {
+                        placeholder = '\n  # Your code here\n  pass';
+                    } else if (data.language === 'javascript') {
+                        placeholder = '\n  // Your code here\n}';
+                    }
+                    setUserCode(functionSignature + (placeholder || ''));
                 }
             } catch (err) {
                 console.error("Error fetching challenge:", err);
@@ -40,36 +46,43 @@ const ChallengeDetail = () => {
         fetchChallenge();
     }, [challengeId]);
 
-    const buildTestRunnerCode = (userSolution, testCases) => {
-        // Lấy tên hàm từ dòng đầu tiên của code người dùng
+    const buildTestRunnerCode = (userSolution, testCases, language) => {
+        if (language === 'python') {
+            return buildPythonTestRunner(userSolution, testCases);
+        } else if (language === 'javascript') {
+            return buildJavaScriptTestRunner(userSolution, testCases);
+        } else {
+            alert(`Sorry, automated testing for '${language}' is not supported yet.`);
+            return null;
+        }
+    };
+
+    const buildPythonTestRunner = (userSolution, testCases) => {
         const functionNameMatch = userSolution.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
         if (!functionNameMatch) {
-            // Trường hợp không tìm thấy tên hàm (ví dụ: người dùng xóa mất)
             alert("Could not find a valid Python function definition (def function_name(...):) in your solution.");
             return null;
         }
         const functionName = functionNameMatch[1];
-
-        // Chuyển đổi test cases từ JSON sang chuỗi Python
         const testCasesPython = JSON.stringify(testCases, null, 4);
 
-        // Tạo bộ khung test
-        const testRunnerTemplate = `
+        return `
 # --------------------------------------------------
 # 🐍 DevCove Challenge Runner
-# Your solution is being tested against the following cases.
 # --------------------------------------------------
 
-# Your Submitted Solution:
+# --- DEVCOVE_USER_CODE_START ---
 ${userSolution}
+# --- DEVCOVE_USER_CODE_END ---
 
+# --- DEVCOVE_TEST_HARNESS_START ---
 # Test Cases:
 test_cases = ${testCasesPython}
 
 # Test Harness:
 def run_tests():
-    challenge_title = ${JSON.stringify(challenge.title)} # <-- Gán title vào một biến Python
-    print(f"🚀 Running {len(test_cases)} test cases for '{challenge_title}'...") # <-- Sử dụng biến đó
+    challenge_title = ${JSON.stringify(challenge.title)}
+    print(f"🚀 Running {len(test_cases)} test cases for '{challenge_title}'...")
     passed_count = 0
     failed_cases = []
 
@@ -104,10 +117,77 @@ def run_tests():
         print(f"   Check failed cases: {failed_cases}")
     print("--------------------------------------------------")
 
-# Run the harness
 run_tests()
+# --- DEVCOVE_TEST_HARNESS_END ---
 `;
-        return testRunnerTemplate;
+    };
+    
+    const buildJavaScriptTestRunner = (userSolution, testCases) => {
+        const functionNameMatch = userSolution.match(/(?:function\s+|const\s+)([a-zA-Z0-9_]+)\s*(?:=|\()/);
+        if (!functionNameMatch) {
+            alert("Could not find a valid JavaScript function definition (e.g., function name(...) or const name = (...) =>) in your solution.");
+            return null;
+        }
+        const functionName = functionNameMatch[1];
+        const testCasesJs = JSON.stringify(testCases);
+
+        return `
+// --------------------------------------------------
+// ⚡ DevCove Challenge Runner
+// --------------------------------------------------
+
+// --- DEVCOVE_USER_CODE_START ---
+${userSolution}
+// --- DEVCOVE_USER_CODE_END ---
+
+// --- DEVCOVE_TEST_HARNESS_START ---
+try {
+    const testCases = ${testCasesJs};
+    const challengeTitle = ${JSON.stringify(challenge.title)};
+
+    console.log(\`🚀 Running \${testCases.length} test cases for '\${challengeTitle}'...\`);
+    let passedCount = 0;
+    const failedCases = [];
+
+    testCases.forEach((test, i) => {
+        const inputArgs = test.input;
+        const expectedOutput = test.expected;
+        
+        try {
+            const actualOutput = ${functionName}(...inputArgs);
+            
+            if (JSON.stringify(actualOutput) === JSON.stringify(expectedOutput)) {
+                console.log(\`  ✅ Test Case #\${i+1}: PASSED\`);
+                passedCount++;
+            } else {
+                console.error(\`  ❌ Test Case #\${i+1}: FAILED\`);
+                console.warn(\`     - Input: \`, ...inputArgs);
+                console.warn(\`     - Expected: \`, expectedOutput);
+                console.warn(\`     - Got: \`, actualOutput);
+                failedCases.push(i + 1);
+            }
+        } catch (e) {
+            console.error(\`  🔥 Test Case #\${i+1}: ERROR\`);
+            console.warn(\`     - Input: \`, ...inputArgs);
+            console.error(\`     - An error occurred: \`, e.message);
+            failedCases.push(i + 1);
+        }
+    });
+
+    console.log("\\n--------------------------------------------------");
+    if (passedCount === testCases.length) {
+        console.log(\`🎉 SUCCESS! All \${passedCount}/\${testCases.length} test cases passed!\`);
+    } else {
+        console.error(\`😕 FAILED. \${passedCount}/\${testCases.length} test cases passed.\`);
+        console.warn(\`   Check failed cases: \${failedCases.join(', ')}\`);
+    }
+    console.log("--------------------------------------------------");
+
+} catch (e) {
+    console.error("A critical error occurred in the test harness:", e.message);
+}
+// --- DEVCOVE_TEST_HARNESS_END ---
+`;
     };
 
     const handleSubmission = async () => {
@@ -116,26 +196,18 @@ run_tests()
             return;
         }
 
-        // Xây dựng code hoàn chỉnh để chạy
-        const fullTestCode = buildTestRunnerCode(userCode, challenge.test_cases);
+        const fullTestCode = buildTestRunnerCode(userCode, challenge.test_cases, challenge.language);
 
-        if (!fullTestCode) {
-            // Lỗi đã được alert trong hàm buildTestRunnerCode
-            return;
-        }
+        if (!fullTestCode) return;
 
         try {
-            // Lưu code vào sessionStorage để sandbox đọc
             sessionStorage.setItem('sandbox_code', fullTestCode);
-            // Gửi thông tin ngôn ngữ là 'python'
-            sessionStorage.setItem('sandbox_code_language', 'python'); 
+            sessionStorage.setItem('sandbox_code_language', challenge.language); 
             
-            // Mở sandbox trong một tab mới
             window.open('/sandbox', '_blank');
-
-            // Cập nhật UI ở trang hiện tại (tùy chọn)
+            
             setSubmissionResult({
-                success: null, // Chưa biết kết quả
+                success: null,
                 message: "Your solution has been sent to the Sandbox for testing. Check the new tab for results!",
             });
 
@@ -162,7 +234,6 @@ run_tests()
             </div>
 
             <div className={styles.mainContent}>
-                {/* Cột trái: Mô tả và Test Cases */}
                 <div className={styles.leftColumn}>
                     <div className={styles.section}>
                         <h2 className={styles.sectionTitle}>Description</h2>
@@ -185,7 +256,6 @@ run_tests()
                     </div>
                 </div>
 
-                {/* Cột phải: Khu vực code và submit */}
                 <div className={styles.rightColumn}>
                     <div className={styles.section}>
                         <h2 className={styles.sectionTitle}><Code size={20}/> Your Solution</h2>
@@ -193,7 +263,7 @@ run_tests()
                             className={styles.codeInput}
                             value={userCode}
                             onChange={(e) => setUserCode(e.target.value)}
-                            placeholder="Write your Python solution here..."
+                            placeholder={challenge.language === 'python' ? 'Write your Python solution here...' : 'Write your JavaScript solution here...'}
                             rows={15}
                         />
                          <button onClick={handleSubmission} className={styles.submitButton} disabled={isSubmitting}>
@@ -205,7 +275,7 @@ run_tests()
                     {submissionResult && (
                          <div className={styles.section}>
                             <h2 className={styles.sectionTitle}><Terminal size={20}/> Result</h2>
-                            <div className={`${styles.resultBox} ${submissionResult.success ? styles.success : styles.failure}`}>
+                            <div className={`${styles.resultBox} ${submissionResult.success === true ? styles.success : submissionResult.success === false ? styles.failure : styles.info}`}>
                                 <p>{submissionResult.message}</p>
                             </div>
                         </div>

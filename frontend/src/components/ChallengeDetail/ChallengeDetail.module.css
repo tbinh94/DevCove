@@ -1,7 +1,7 @@
 /* src/components/ChallengeDetail.module.css */
 .container {
     max-width: 1200px;
-    margin: 40px auto;
+    margin: 20px auto; /* Giảm margin trên/dưới cho màn hình nhỏ */
     padding: 20px;
     color: #d7dadc;
 }
@@ -27,9 +27,10 @@
 }
 
 .header h1 {
-    font-size: 2.5rem;
+    font-size: 2.2rem; /* Giảm nhẹ font size mặc định */
     margin: 0;
     color: #fff;
+    line-height: 1.2; /* Thêm line-height để không bị dính chữ */
 }
 
 .meta {
@@ -40,6 +41,7 @@
 
 .mainContent {
     display: grid;
+    /* Mặc định là 2 cột, tỉ lệ 2:1 */
     grid-template-columns: 2fr 1fr;
     gap: 40px;
 }
@@ -48,6 +50,7 @@
     display: flex;
     flex-direction: column;
     gap: 30px;
+    min-width: 0; /* Quan trọng: để các item bên trong có thể co lại */
 }
 
 .section {
@@ -69,6 +72,7 @@
 
 .prose {
     line-height: 1.7;
+    word-wrap: break-word; /* Đảm bảo chữ dài sẽ tự xuống dòng */
 }
 .prose h2, .prose h3 {
     margin-top: 20px;
@@ -81,6 +85,7 @@
     padding: 2px 5px;
     border-radius: 4px;
     font-family: 'Fira Code', monospace;
+    word-break: break-all; /* Ngăn code dài làm vỡ layout */
 }
 .prose pre {
     background-color: #0d1117;
@@ -99,6 +104,7 @@
     background-color: #272729;
     padding: 10px;
     border-radius: 4px;
+    overflow-x: auto; /* Thêm scroll ngang cho test case quá dài */
 }
 
 .testCaseLabel {
@@ -110,6 +116,7 @@
 .testCaseCode {
     font-family: 'Fira Code', monospace;
     font-size: 0.9rem;
+    white-space: pre-wrap; /* Cho phép xuống dòng trong code */
 }
 
 .codeInput {
@@ -123,6 +130,7 @@
     font-size: 0.95rem;
     line-height: 1.6;
     resize: vertical;
+    min-height: 300px; /* Thêm chiều cao tối thiểu */
 }
 .codeInput:focus {
     outline: none;
@@ -169,12 +177,48 @@
     color: #ff8e8e;
 }
 .resultBox.info {
-    background-color: #1e3a8a; /* Màu xanh dương đậm */
+    background-color: #1e3a8a;
     border: 1px solid #3b82f6;
     color: #93c5fd;
 }
-@media (max-width: 992px) {
+
+
+/* ✅ --- PHẦN RESPONSIVE QUAN TRỌNG --- ✅ */
+
+/* 
+ * Breakpoint cho màn hình HD và tablet lớn (ví dụ: 1280px trở xuống)
+ * Chúng ta sẽ chuyển layout về 1 cột.
+*/
+@media (max-width: 1200px) {
     .mainContent {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Chuyển thành 1 cột duy nhất */
+        gap: 30px; /* Giảm khoảng cách */
+    }
+
+    .header h1 {
+        font-size: 1.8rem; /* Giảm font-size tiêu đề cho vừa */
+    }
+}
+
+/* 
+ * Breakpoint cho thiết bị di động (ví dụ: 768px trở xuống)
+ * Tinh chỉnh thêm padding và font-size cho đẹp hơn.
+*/
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+        margin: 10px auto;
+    }
+
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
+    .section {
+        padding: 20px;
+    }
+
+    .sectionTitle {
+        font-size: 1.3rem;
     }
 }

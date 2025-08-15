@@ -1908,7 +1908,7 @@ class AIChallengeGeneratorView(APIView):
             generated_content = demjson3.decode(json_string)
 
             # 3. Kiểm tra các key cần thiết sau khi parse thành công
-            required_keys = ["title", "description", "solution_code", "test_cases"]
+            required_keys = ["title", "description", "language", "solution_code", "test_cases"]
             if not all(key in generated_content for key in required_keys):
                  raise ValueError("AI response is missing required keys after parsing.")
             
@@ -1930,11 +1930,12 @@ class AIChallengeGeneratorView(APIView):
         return f"""
         Generate a programming challenge based on the topic: "{topic}".
         The output must be a single, valid JSON object with NO markdown formatting around it.
-        The JSON object must have these exact keys: "title", "description", "solution_code", "test_cases".
+        The JSON object must have these exact keys: "title", "description", "language", "solution_code", "test_cases".
 
         - "title": A creative and clear title for the challenge.
         - "description": A detailed problem statement in Markdown format. Explain the task, input, and expected output clearly.
-        - "solution_code": A correct and well-commented solution in Python.
+        - "language": The programming language for the solution (e.g., "python", "javascript").
+        - "solution_code": A correct solution in the specified language.
         - "test_cases": An array of at least 5 JSON objects. Each object must have two keys: "input" (an array of function arguments) and "expected" (the expected return value).
 
         Here is a perfect example for the topic "sum of two numbers":

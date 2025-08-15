@@ -423,6 +423,7 @@ class UltraCodeAnalyzer {
                 htmlDocument: /<!DOCTYPE\s+html|<html[\s>]/i,
                 htmlTags: /<\/?\w+[^>]*>/,
                 cssRules: /[.#]?[\w-]+\s*\{[^}]*\}/,
+                jsKeywords: /\b(function|const|let|var|return|=>|class|import|export|async|await)\b/,
                 esModule: /^\s*(import|export)\s/m,
                 topLevelAwait: /(?:^|\n)\s*await\s+(?!.*(?:function|=>|\{))/m,
                 asyncFunction: /async\s+function|=\s*async\s*\(|=>\s*async|async\s*\(/,
@@ -434,7 +435,7 @@ class UltraCodeAnalyzer {
             }
             if (features.htmlDocument) codeType = 'html_document';
             else if (features.htmlTags) codeType = 'html_fragment';
-            else if (features.cssRules && !features.htmlTags && !features.htmlDocument) codeType = 'css_only';
+            else if (features.cssRules && !features.htmlTags && !features.htmlDocument && !features.jsKeywords) codeType = 'css_only';
             else if (features.reactJsx) codeType = 'react_jsx';
             else if (features.esModule || features.topLevelAwait) codeType = 'es_module';
             else if (features.asyncFunction) codeType = 'async_js';
@@ -790,7 +791,7 @@ main();
             return codeToUse.replace('</head>', `${injectedScript}</head>`);
         }
 
-        return `<!DOCTYPE html><html><head><title>JS Sandbox</title></head><body><div id="root"></div><script type="module">const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('message', async (event) => { if (!event.data?.code) return; logs.push({ type: 'info', message: '🚀 Executing JS code...' }); postLogs(); let success = true; try { const { code, strategy } = event.data; if (strategy === 'module') { const blob = new Blob([code], { type: 'text/javascript' }); const url = URL.createObjectURL(blob); await import(url); URL.revokeObjectURL(url); } else if (strategy === 'async') { await (Object.getPrototypeOf(async function(){}).constructor)(code)(); } else { (new Function(code))(); } logs.push({ type: 'success', message: '✅ Code executed successfully' }); } catch (error) { success = false; logs.push({ type: 'error', message: \`\${error.name}: \${error.message}\`, stack: error.stack }); } finally { postLogs(); event.source.postMessage({ type: 'execution_complete', success }, event.origin); } }); window.parent.postMessage({ type: 'js_ready' }, '*'); <\/script></body></html>`;
+        return `<!DOCTYPE html><html><head><title>JS Sandbox</title></head><body><div id="root"></div><script type="module">const logs = []; const postLogs = () => { if (logs.length > 0) window.parent.postMessage(logs.splice(0), '*'); }; setInterval(postLogs, 400); const createLogHandler = (type) => (...args) => logs.push({ type, message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ') }); console.log = createLogHandler('log'); console.error = createLogHandler('error'); console.warn = createLogHandler('warning'); console.info = createLogHandler('info'); window.addEventListener('error', e => logs.push({ type: 'error', message: e.message, stack: e.error?.stack })); window.addEventListener('message', async (event) => { if (!event.data?.code) return; logs.push({ type: 'info', message: '🚀 Executing JS code...' }); postLogs(); let success = true; try { const { code, strategy } = event.data; if (strategy === 'module') { const blob = new Blob([code], { type: 'text/javascript' }); const url = URL.createObjectURL(blob); await import(url); URL.revokeObjectURL(url); } else if (strategy === 'async') { await (Object.getPrototypeOf(async function(){}).constructor)(code)(); } else { (new Function(code))(); } if (logs.length === 1) { logs.push({ type: 'info', message: 'ℹ️ Code definitions were processed. To see output, try calling a function or using console.log().' }); } logs.push({ type: 'success', message: '✅ Code executed successfully' }); } catch (error) { success = false; logs.push({ type: 'error', message: \`\${error.name}: \${error.message}\`, stack: error.stack }); } finally { postLogs(); event.source.postMessage({ type: 'execution_complete', success }, event.origin); } }); window.parent.postMessage({ type: 'js_ready' }, '*'); <\/script></body></html>`;
     };
 
     useEffect(() => {
@@ -819,18 +820,15 @@ main();
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, []);
-
-    // *** START: REFACTORED handleRunCode ***
+    
     const handleRunCode = (codeOverride, options = {}) => {
         const codeToExecute = typeof codeOverride === 'string' ? codeOverride : code;
         if (iframeRef.current && !isRunning && codeToExecute.trim()) {
-            // 1. Reset all run-specific states.
             setHasError(false);
             setLastError(null);
             setAiReplay({ steps: [], currentIndex: -1, isPlaying: false });
             setIsRunning(true);
 
-            // 2. Perform pre-flight checks (linting).
             const analysis = UltraCodeAnalyzer.analyzeCode(codeToExecute);
             let linterErrors = [];
             if (analysis.codeType.includes('html')) {
@@ -839,7 +837,6 @@ main();
                 linterErrors = SimpleCssLinter.lint(codeToExecute);
             }
 
-            // 3. If linting fails, set error state and stop immediately.
             if (linterErrors.length > 0) {
                 const firstError = {
                     type: 'error',
@@ -853,7 +850,6 @@ main();
                 return;
             }
 
-            // 4. Atomically build and set the initial logs for this run.
             const initialLogs = [];
             if (options.initialLog) {
                 initialLogs.push(options.initialLog);
@@ -861,39 +857,43 @@ main();
             initialLogs.push({ type: 'info', message: '🔄 Analyzing and preparing execution...' });
             setOutput(initialLogs);
 
-            // 5. Proceed with iframe execution.
             const newIframeType = analysis.codeType;
             const currentIframeType = iframeRef.current.dataset.type;
             const message = analysis.codeType === 'python'
                 ? { code: codeToExecute, libraries: analysis.features.libraryList || [] }
                 : { code: codeToExecute, strategy: analysis.executionStrategy };
 
-            // --- START OF THE FIX ---
-            // We define types that MUST reload the iframe srcdoc every time.
             const forceReloadTypes = ['html_document', 'html_fragment', 'css_only'];
             const shouldReloadIframe = currentIframeType !== newIframeType || forceReloadTypes.includes(newIframeType);
-            // --- END OF THE FIX ---
 
-            if (shouldReloadIframe) { // Use the new condition here
+            if (shouldReloadIframe) {
+                // --- START OF FIX ---
                 if (analysis.codeType === 'python') {
                     iframeRef.current.srcdoc = createPythonIframe();
                     codeToRun.current = message; // Queue the code to run after pyodide loads
                 } else {
-                    // For HTML/CSS, the code is embedded directly into the srcdoc.
-                    // The injected script will handle the 'execution_complete' message on 'load'.
-                    iframeRef.current.srcdoc = createJavaScriptIframe(codeToExecute, analysis.codeType);
-                    // No message needs to be sent for these types as they run on load.
-                    codeToRun.current = null;
+                    const isSrcDocExecution = forceReloadTypes.includes(analysis.codeType);
+                    // Create the appropriate iframe content
+                    const newSrcDoc = createJavaScriptIframe(
+                        isSrcDocExecution ? codeToExecute : '', // Embed code for HTML/CSS, otherwise load blank listener
+                        analysis.codeType
+                    );
+                    iframeRef.current.srcdoc = newSrcDoc;
+
+                    // If it's not a type where code is embedded directly, we must queue it.
+                    if (!isSrcDocExecution) {
+                        codeToRun.current = message; // THIS LINE FIXES THE BUG
+                    } else {
+                        codeToRun.current = null; // Code is already in srcdoc, no message needed
+                    }
                 }
+                // --- END OF FIX ---
                 iframeRef.current.dataset.type = newIframeType;
             } else {
-                // This path is now only for JS/Python reruns where the iframe is already loaded
-                // and is waiting for a message.
                 iframeRef.current.contentWindow.postMessage(message, '*');
             }
         }
     };
-    // *** END: REFACTORED handleRunCode ***
 
     const handleClear = () => {
         setHasError(false); setLastError(null); setOutput([]);

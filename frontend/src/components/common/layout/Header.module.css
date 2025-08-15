@@ -1,4 +1,4 @@
-/* Header.module.css - Enhanced Dark Theme */
+/* Header.module.css - Enhanced Dark Theme with Tools Dropdown */
 
 .header {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -163,11 +163,12 @@
   height: 18px;
 }
 
-/* Secondary Action Buttons */
-.generateChallengeButton,
-.chatButton,
-.sandboxButton,
-.bugTrackerButton {
+/* NEW: Tools Menu Dropdown */
+.toolsMenu {
+  position: relative;
+}
+
+.toolsMenuButton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -183,30 +184,67 @@
   text-decoration: none;
 }
 
-.generateChallengeButton:hover,
-.chatButton:hover,
-.sandboxButton:hover,
-.bugTrackerButton:hover {
+.toolsMenuButton:hover {
   background: rgba(59, 130, 246, 0.1);
   border-color: rgba(59, 130, 246, 0.3);
   color: #60a5fa;
   transform: translateY(-1px);
 }
 
-.chatButton .buttonIcon,
-.sandboxButton .buttonIcon,
-.bugTrackerButton .buttonIcon,
-.generateChallengeButton .buttonIcon {
+.toolsMenuButton .buttonIcon {
   width: 18px;
   height: 18px;
 }
 
+.dropdownChevron {
+  transition: transform 0.2s ease;
+}
+
+.dropdownChevronOpen {
+  transform: rotate(180deg);
+}
+
+.toolsMenuButtonText {
+  white-space: nowrap;
+}
+
+.toolsDropdownMenu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 12rem;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  z-index: 60;
+  animation: fadeIn 0.2s ease-out;
+  backdrop-filter: blur(8px);
+  padding: 0.5rem 0;
+}
+
+.toolsDropdownItem {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  color: #cbd5e0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.toolsDropdownItem:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
 /* Button text for responsive hiding */
-.createPostButtonText,
-.chatButtonText,
-.sandboxButtonText,
-.bugTrackerButtonText,
-.generateChallengeButtonText {
+.createPostButtonText {
   white-space: nowrap;
 }
 
@@ -508,16 +546,12 @@
 /* Responsive Design */
 @media (max-width: 992px) {
   .createPostButtonText,
-  .chatButtonText,
-  .sandboxButtonText,
-  .bugTrackerButtonText {
+  .toolsMenuButtonText {
     display: none;
   }
   
   .createPostButton,
-  .chatButton,
-  .sandboxButton,
-  .bugTrackerButton {
+  .toolsMenuButton {
     padding: 0.625rem;
   }
   
@@ -566,5 +600,12 @@
   
   .modalContent { 
     width: 95%; 
+  }
+  
+  /* Tools dropdown becomes full width on mobile */
+  .toolsDropdownMenu {
+    right: -1rem;
+    left: -1rem;
+    width: auto;
   }
 }
