@@ -331,3 +331,29 @@ class LoggedBug(models.Model):
 
     def __str__(self):
         return f"{self.error_category or 'Bug'} in {self.language.name if self.language else 'N/A'} at {self.logged_at.strftime('%Y-%m-%d')}"
+    
+
+class WeeklyChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    topic = models.CharField(max_length=255, help_text="Topic created by Administrator")
+    title = models.CharField(max_length=255, help_text="Title of the challenge")
+    description = models.TextField(help_text="Detailed description of the challenge")
+
+    # Using JSONField is a perfect choice to store test cases
+    test_cases = models.JSONField(help_text="A list of test cases, e.g., [{'input': [1, 2], 'expected': 3}]")
+
+    solution_code = models.TextField(help_text="Suggested answer")
+    
+    # Managing post publication
+    is_published = models.BooleanField(default=False, db_index=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    # Tracking
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Challenge: {self.title}"
+
+    class Meta:
+        ordering = ['-created_at']

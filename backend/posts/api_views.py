@@ -22,6 +22,7 @@ from django.http import JsonResponse
 from rest_framework.decorators import action
 from django.http import HttpResponse
 from django.db.models.functions import TruncDay, TruncWeek
+import demjson3
 
 # Import thư viện Gemini
 from google import genai
@@ -42,11 +43,12 @@ from rest_framework.permissions import (
     AllowAny,
     IsAuthenticated,
     IsAuthenticatedOrReadOnly,
+    IsAdminUser
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language, WeeklyChallenge
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -63,7 +65,8 @@ from .serializers import (
     UserSerializer,
     VoteSerializer,
     ConversationSerializer, ChatMessageSerializer,
-    LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer
+    LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer,
+    WeeklyChallengeSerializer
 )
 from dotenv import load_dotenv
 
@@ -1874,3 +1877,125 @@ def ai_generate_title_view(request):
             {"error": "An error occurred while communicating with the AI service."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
+    
+class AIChallengeGeneratorView(APIView):
+    """
+    API endpoint chỉ dành cho Admin để tạo weekly challenge bằng AI.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        topic = request.data.get('topic')
+        if not topic:
+            return Response({'error': 'Topic is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        prompt = self._build_challenge_prompt(topic)
+        ai_response_raw = get_ai_response(prompt)
+
+        if ai_response_raw is None:
+            return Response({'error': 'AI service failed to respond.'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        # ✅ --- LOGIC PARSE JSON ĐƯỢC NÂNG CẤP --- ✅
+        try:
+            # 1. Trích xuất nội dung từ khối markdown nếu có
+            json_string = ai_response_raw
+            match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
+            if match:
+                json_string = match.group(1)
+            
+            # 2. Sử dụng demjson3 để parse. Nó có thể xử lý lỗi cú pháp nhỏ.
+            # `decode` của demjson3 sẽ cố gắng hết sức để đọc chuỗi.
+            generated_content = demjson3.decode(json_string)
+
+            # 3. Kiểm tra các key cần thiết sau khi parse thành công
+            required_keys = ["title", "description", "solution_code", "test_cases"]
+            if not all(key in generated_content for key in required_keys):
+                 raise ValueError("AI response is missing required keys after parsing.")
+            
+            # 4. Đảm bảo test_cases là một list
+            if not isinstance(generated_content.get('test_cases'), list):
+                 raise ValueError("'test_cases' must be a list.")
+
+            return Response(generated_content, status=status.HTTP_200_OK)
+
+        except (demjson3.JSONDecodeError, ValueError, TypeError) as e:
+            logger.error(f"Failed to parse AI response for challenge generation: {e}\nRaw response: {ai_response_raw}")
+            return Response({
+                'error': 'AI returned an invalid format that could not be repaired. Please try again.',
+                'raw_response': ai_response_raw
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _build_challenge_prompt(self, topic):
+        """Helper function để tạo prompt chi tiết."""
+        return f"""
+        Generate a programming challenge based on the topic: "{topic}".
+        The output must be a single, valid JSON object with NO markdown formatting around it.
+        The JSON object must have these exact keys: "title", "description", "solution_code", "test_cases".
+
+        - "title": A creative and clear title for the challenge.
+        - "description": A detailed problem statement in Markdown format. Explain the task, input, and expected output clearly.
+        - "solution_code": A correct and well-commented solution in Python.
+        - "test_cases": An array of at least 5 JSON objects. Each object must have two keys: "input" (an array of function arguments) and "expected" (the expected return value).
+
+        Here is a perfect example for the topic "sum of two numbers":
+        {{
+            "title": "Two Number Sum",
+            "description": "## Problem\\nWrite a function that takes two numbers `a` and `b` and returns their sum.\\n\\n### Input\\n- `a` (integer)\\n- `b` (integer)\\n\\n### Output\\n- The sum of `a` and `b` (integer).",
+            "solution_code": "def two_sum(a, b):\\n  # Simple addition\\n  return a + b",
+            "test_cases": [
+                {{"input": [1, 2], "expected": 3}},
+                {{"input": [-5, 5], "expected": 0}},
+                {{"input": [100, 200], "expected": 300}},
+                {{"input": [0, 0], "expected": 0}},
+                {{"input": [-10, -20], "expected": -30}}
+            ]
+        }}
+        """
+
+class WeeklyChallengeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet để quản lý Weekly Challenges.
+    - Chỉ Admin mới có quyền tạo/sửa/xóa.
+    - Mọi người đều có thể xem (nếu cần).
+    """
+    queryset = WeeklyChallenge.objects.all().order_by('-created_at')
+    serializer_class = WeeklyChallengeSerializer
+    
+    def get_permissions(self):
+        """
+        - Yêu cầu quyền Admin cho các hành động 'unsafe' (create, update, destroy).
+        - Cho phép bất kỳ ai đọc (list, retrieve) nếu challenge đã published.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            self.permission_classes = [permissions.IsAdminUser]
+        else:
+            self.permission_classes = [permissions.AllowAny]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        """
+        Ghi đè để tự động gán created_by là user hiện tại (admin).
+        Và xử lý việc publish.
+        """
+        is_published = self.request.data.get('is_published', False)
+        published_at = timezone.now() if is_published else None
+        
+        serializer.save(
+            created_by=self.request.user, 
+            is_published=is_published,
+            published_at=published_at
+        )
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def latest(self, request):
+        """
+        Trả về weekly challenge mới nhất đã được publish.
+        """
+        latest_challenge = WeeklyChallenge.objects.filter(is_published=True).order_by('-published_at').first()
+        
+        if latest_challenge:
+            serializer = self.get_serializer(latest_challenge)
+            return Response(serializer.data)
+        
+        # Trả về rỗng nếu không có challenge nào
+        return Response(None, status=status.HTTP_204_NO_CONTENT)

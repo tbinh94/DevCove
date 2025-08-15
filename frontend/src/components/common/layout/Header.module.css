@@ -164,6 +164,7 @@
 }
 
 /* Secondary Action Buttons */
+.generateChallengeButton,
 .chatButton,
 .sandboxButton,
 .bugTrackerButton {
@@ -182,6 +183,7 @@
   text-decoration: none;
 }
 
+.generateChallengeButton:hover,
 .chatButton:hover,
 .sandboxButton:hover,
 .bugTrackerButton:hover {
@@ -193,7 +195,8 @@
 
 .chatButton .buttonIcon,
 .sandboxButton .buttonIcon,
-.bugTrackerButton .buttonIcon {
+.bugTrackerButton .buttonIcon,
+.generateChallengeButton .buttonIcon {
   width: 18px;
   height: 18px;
 }
@@ -202,7 +205,8 @@
 .createPostButtonText,
 .chatButtonText,
 .sandboxButtonText,
-.bugTrackerButtonText {
+.bugTrackerButtonText,
+.generateChallengeButtonText {
   white-space: nowrap;
 }
 

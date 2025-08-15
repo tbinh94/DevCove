@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug # MODIFIED: Import Language
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug, WeeklyChallenge
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -519,3 +519,16 @@ class HeatmapDataSerializer(serializers.Serializer):
     """Serializer for heatmap data points."""
     day = serializers.CharField() # Or 'week', etc., depending on the period
     errors = serializers.IntegerField()
+
+class WeeklyChallengeSerializer(serializers.ModelSerializer):
+    """Serializer cho model WeeklyChallenge."""
+    created_by = UserBasicSerializer(read_only=True)
+
+    class Meta:
+        model = WeeklyChallenge
+        fields = [
+            'id', 'topic', 'title', 'description', 
+            'test_cases', 'solution_code', 'is_published', 
+            'published_at', 'created_by', 'created_at'
+        ]
+        read_only_fields = ['id', 'published_at', 'created_by', 'created_at']

@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import api_views
-from .api_views import ai_refactor_code_view, ai_generate_title_view  # Import hàm get_ai_response từ api_views
+from .api_views import ai_refactor_code_view, ai_generate_title_view, AIChallengeGeneratorView, WeeklyChallengeViewSet # Import hàm get_ai_response từ api_views
 # Khởi tạo router
 router = DefaultRouter()
 router.register(r"posts", api_views.PostViewSet, basename="posts")
@@ -14,6 +14,7 @@ router.register(r"profiles", api_views.ProfileViewSet, basename="profiles")
 router.register(r"notifications", api_views.NotificationViewSet, basename="notifications")
 router.register(r"communities", api_views.CommunityViewSet, basename="communities")
 router.register(r'conversations', api_views.ConversationViewSet, basename='conversation')
+router.register(r'challenges', WeeklyChallengeViewSet, basename='challenge') 
 
 app_name = 'posts'
 
@@ -38,6 +39,7 @@ urlpatterns = [
     
     path('ai/refactor-code/', ai_refactor_code_view, name='ai_refactor_code'),
     path('ai/generate-title/', ai_generate_title_view, name='ai_generate_title'),
+    path('ai/generate-challenge/', AIChallengeGeneratorView.as_view(), name='ai_generate_challenge'),
 
     path('bugs/log/', api_views.log_bug_view, name='log_bug'),
     path('bugs/stats/', api_views.bug_stats_view, name='bug_stats'),

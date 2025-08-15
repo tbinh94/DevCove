@@ -1,0 +1,72 @@
+/* src/components/ChallengeCard.module.css */
+.card {
+    background-color: #2a2b38; /* Màu nền đặc biệt */
+    border: 1px solid #4a90e2; /* Viền màu xanh */
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.1);
+}
+
+.pinIcon {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 0.8rem;
+    color: #a0a3b1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.contentArea {
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.trophyIcon {
+    color: #ffc107; /* Màu vàng */
+    flex-shrink: 0;
+}
+
+.title {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #fff;
+}
+
+.meta {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #a0a3b1;
+}
+
+.description {
+    color: #d7dadc;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.ctaButton {
+    align-self: flex-start;
+    background-color: #4a90e2;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.ctaButton:hover {
+    background-color: #5b9ee8;
+}

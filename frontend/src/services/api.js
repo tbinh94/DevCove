@@ -526,7 +526,25 @@ class APIService {
     const params = new URLSearchParams({ error_message: errorMessage });
     return this.request(`/api/bugs/reviews/?${params}`);
   }
-  
+  async generateAiChallenge(payload) {
+    // payload sẽ là { topic: "..." }
+    return this.request('/api/ai/generate-challenge/', { 
+        method: 'POST', 
+        body: payload 
+    });
+  }
+  async publishChallenge(challengeData) {
+    return this.request('/api/challenges/', { 
+        method: 'POST', 
+        body: { ...challengeData, is_published: true }
+    });
+  }
+  async getLatestChallenge() {
+        return this.request('/api/challenges/latest/');
+  }
+  async getChallengeDetail(id) {
+    return this.request(`/api/challenges/${id}/`);
+  }
   // --- Utility Accessor ---
   get utils() {
     return {

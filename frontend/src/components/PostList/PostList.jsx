@@ -6,6 +6,8 @@ import styles from './PostList.module.css';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
 import DOMPurify from 'dompurify';
+import ChallengeCard from './ChallengeCard';
+
 
 DOMPurify.addHook('afterSanitizeAttributes', function (node) {
   if ('target' in node) {
@@ -31,6 +33,8 @@ const PostList = ({ showAllTags = false }) => {
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [postsPerPage] = useState(10);
 
+  const [latestChallenge, setLatestChallenge] = useState(null);
+
   // urlParams được tính toán lại mỗi khi URL thay đổi
   const urlParams = useMemo(() => {
     return {
@@ -42,29 +46,46 @@ const PostList = ({ showAllTags = false }) => {
 
   // useEffect để fetch dữ liệu
   useEffect(() => {
-    const fetchPosts = async () => {
+    const fetchAllData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        const params = {
+        // --- Phần fetch posts giữ nguyên như của bạn ---
+        const postParams = {
           page: currentPage,
           page_size: postsPerPage,
           ordering: urlParams.ordering,
         };
+        if (urlParams.tags) postParams.tags = urlParams.tags;
+        if (urlParams.search) postParams.search = urlParams.search;
 
-        if (urlParams.tags) params.tags = urlParams.tags;
-        if (urlParams.search) params.search = urlParams.search;
-
-        const data = await apiService.getPosts(params);
-        const postData = Array.isArray(data) ? data : data.results || [];
-        setPosts(postData);
-        setTotalPosts(data.count || postData.length);
+        // Gọi API fetch posts
+        const postsDataResponse = await apiService.getPosts(postParams);
+        const postResults = Array.isArray(postsDataResponse) ? postsDataResponse : postsDataResponse.results || [];
+        setPosts(postResults);
+        setTotalPosts(postsDataResponse.count || postResults.length);
         
-        // GỌI CALLBACK ĐỂ GỬI DỮ LIỆU LÊN MAINLAYOUT
         if (onPostsLoaded) {
-          onPostsLoaded(postData);
+          onPostsLoaded(postResults);
         }
+
+        // --- Thêm phần fetch challenge ---
+        // Chỉ fetch challenge ở trang đầu tiên và không có filter
+        if (currentPage === 1 && !urlParams.tags && !urlParams.search) {
+            try {
+                const challengeData = await apiService.getLatestChallenge();
+                setLatestChallenge(challengeData);
+            } catch (challengeError) {
+                // Không làm sập cả trang nếu chỉ lỗi fetch challenge
+                console.warn('Could not fetch the latest challenge:', challengeError);
+                setLatestChallenge(null);
+            }
+        } else {
+            // Xóa challenge nếu người dùng chuyển trang hoặc filter
+            setLatestChallenge(null);
+        }
+
       } catch (err) {
         console.error('Error fetching posts:', err);
         setError(err.message || 'Failed to fetch posts');
@@ -73,8 +94,9 @@ const PostList = ({ showAllTags = false }) => {
       }
     };
 
-    fetchPosts();
+    fetchAllData();
   }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering, onPostsLoaded]);
+
 
   // ✨ HỆ THỐNG VOTE VỚI OPTIMISTIC UPDATE
   const handleVote = async (postId, voteType) => {
@@ -194,10 +216,14 @@ const PostList = ({ showAllTags = false }) => {
   // ----- RENDER LOGIC -----
   if (loading) return <div className={styles.message}>Loading posts...</div>;
   if (error) return <div className={styles.message}>Error: {error}<button onClick={() => window.location.reload()}>Retry</button></div>;
-  if (!posts.length) return <div className={styles.message}>No posts found matching your filters.</div>;
+  if (!posts.length && !latestChallenge) return <div className={styles.message}>No posts found.</div>;
 
   return (
     <div className={styles.postListContainer}>
+      {/* ✅ 5. RENDER CHALLENGE CARD Ở TRÊN CÙNG */}
+      {currentPage === 1 && !urlParams.tags && !urlParams.search && (
+          <ChallengeCard challenge={latestChallenge} />
+      )}
       {posts.map(post => (
         <div key={post.id} className={styles.postCard}>
           <div className={styles.voteSection}>

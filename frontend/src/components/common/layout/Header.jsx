@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 // Thêm icon FlaskConical cho Sandbox
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug } from 'lucide-react'; 
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy } from 'lucide-react'; 
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -136,6 +136,9 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const handleBugTrackerClick = () => {
     navigate('/bug-tracker'); // Điều hướng tới trang /bug-tracker
   };
+   const handleGenerateChallengeClick = () => {
+    navigate('/challenge-generator');
+  };
 
   return (
     <>
@@ -170,6 +173,15 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
           <div className={styles.rightSide}>
             {isAuthenticated && user ? (
               <>
+                <button
+                    onClick={handleGenerateChallengeClick}
+                    className={styles.generateChallengeButton} // Tạo class CSS mới
+                    title="Generate AI Weekly Challenge"
+                  >
+                    <Trophy className={styles.buttonIcon} />
+                    <span className={styles.generateChallengeButtonText}>Challenge</span>
+                  </button>
+                  
                 <button
                   onClick={handleCreatePostClick}
                   className={styles.createPostButton}

@@ -1,0 +1,159 @@
+/* src/components/admin/ChallengeGenerator.module.css */
+
+.container {
+    width: 100%;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #1a1a1b; /* Nền tối giống post */
+    border: 1px solid #343536;
+    border-radius: 8px;
+    color: #d7dadc;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #343536;
+    padding-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    margin: 0;
+    color: #fff;
+}
+
+.header p {
+    font-size: 1rem;
+    color: #818384;
+    margin-top: 8px;
+}
+
+.form {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.input {
+    flex-grow: 1;
+    padding: 12px 15px;
+    font-size: 1rem;
+    background-color: #272729;
+    border: 1px solid #343536;
+    border-radius: 6px;
+    color: #d7dadc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #4f5153;
+    box-shadow: 0 0 0 2px rgba(129, 131, 132, 0.2);
+}
+
+.button {
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background-color: #4a90e2; /* Màu xanh dương chính */
+    color: white;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.button:hover {
+    background-color: #5b9ee8;
+}
+
+.button:disabled {
+    background-color: #3a3b3c;
+    color: #818384;
+    cursor: not-allowed;
+}
+
+.error, .success {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.error {
+    background-color: #4d2323;
+    color: #ff8e8e;
+    border: 1px solid #8f3434;
+}
+.success {
+    background-color: #1c4b3a;
+    color: #a3e9c5;
+    border: 1px solid #2a7c5e;
+}
+
+.results {
+    margin-top: 30px;
+    padding: 25px;
+    background-color: #272729;
+    border: 1px solid #343536;
+    border-radius: 6px;
+}
+
+.results h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #fff;
+    font-size: 1.8rem;
+}
+
+.results h3, .results h4 {
+    color: #d7dadc;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #343536;
+    padding-bottom: 8px;
+}
+
+.challengeTitle {
+    font-style: italic;
+    color: #fff;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+/* Style cho description và code block */
+.prose {
+    line-height: 1.6;
+    color: #d7dadc;
+}
+
+.codeBlock {
+    background-color: #0d1117; /* Màu nền code editor */
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    border: 1px solid #30363d;
+    white-space: pre-wrap; /* Wrap long lines */
+}
+
+.publishButton {
+    margin-top: 30px;
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    background-color: #2a7c5e; /* Màu xanh lá cây */
+}
+
+.publishButton:hover {
+    background-color: #3a9d7c;
+}
