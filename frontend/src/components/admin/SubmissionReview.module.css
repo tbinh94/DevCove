@@ -22,7 +22,19 @@
 .pending { color: #f59e0b; }
 .approved { color: #2a7c5e; }
 .rejected { color: #8f3434; }
+.aiButton {
+    background-color: transparent;
+    color: #a0a3b1;
+    border: 1px dashed #4b5563;
+    width: 100%;
+    margin-top: 1.5rem;
+}
 
+.aiButton:hover:not(:disabled) {
+    background-color: #272729;
+    color: #fff;
+    border-color: #6b7280;
+}
 @media (max-width: 992px) {
     .reviewLayout { grid-template-columns: 1fr; }
 }
