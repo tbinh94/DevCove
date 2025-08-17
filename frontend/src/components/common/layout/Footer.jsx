@@ -9,7 +9,7 @@ export default function Footer() {
       <div className={styles.container}>
         <span className={styles.footerText}>
           © 2025 DevCove. All rights reserved. | Developed with ❤️
-          <a href="#" className={styles.link}>Thanh Binh</a>
+          <a href="https://www.linkedin.com/in/ca-diep-thanh-binh" target="_blank" className={styles.link}>Thanh Binh</a>
         </span>
       </div>
     </footer>
