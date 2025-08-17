@@ -1,0 +1,511 @@
+.container {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #0f1419 0%, #1a1625 50%, #0d1117 100%);
+  box-shadow: 
+    0 32px 64px -12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  animation: containerGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes containerGlow {
+  0% { box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05); }
+  100% { box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.3); }
+}
+
+.mainContent {
+  display: flex;
+  height: 650px;
+}
+
+.editorWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(15, 20, 25, 0.9) 0%, rgba(5, 6, 7, 0.95) 100%);
+  position: relative;
+  min-width: 0;
+}
+
+.editorWrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5), transparent);
+}
+
+.header {
+  background: 
+    linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #f8fafc;
+  backdrop-filter: blur(12px);
+  position: relative;
+  min-height: 60px;
+  flex-shrink: 0; /* Important for flex layouts */
+}
+
+.header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent);
+}
+
+.runButton, .createPostButton, .clearButton, .aiFixButton, .applyFixButton {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+
+.runButton::before, .createPostButton::before, .clearButton::before, 
+.aiFixButton::before, .applyFixButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s;
+}
+
+.runButton:hover::before, .createPostButton:hover::before, .clearButton:hover::before,
+.aiFixButton:hover::before, .applyFixButton:hover::before {
+  left: 100%;
+}
+
+.runButton {
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  color: white;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4);
+}
+
+.runButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(59, 130, 246, 0.6);
+}
+
+.createPostButton {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.4);
+}
+
+.clearButton {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+  box-shadow: 0 8px 32px rgba(100, 116, 139, 0.3);
+}
+
+.templateSelect {
+  background: 
+    linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-right: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  min-width: 140px;
+}
+
+.templateSelect:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+}
+
+.codeTypeIndicator {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.codeTypeIndicator::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.textarea {
+  flex: 1;
+  border: none;
+  padding: 24px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  resize: none;
+  outline: none;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0e13 0%, #050609 100%);
+  color: #e2e8f0;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  -webkit-background-composite: rgba(139, 92, 246, 0.3);
+}
+
+.previewWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 20, 25, 0.9) 0%, rgba(5, 6, 7, 0.95) 100%);
+  min-width: 0;
+  min-height: 0; /* Add this to help with nested flex sizing */
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+  border-radius: 0 0 12px 0;
+  transform-origin: top left;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.iframeContainer {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: 
+    radial-gradient(ellipse at center, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+  min-height: 0; /* Add this to help with nested flex sizing */
+}
+
+.output {
+  height: 280px;
+  background: 
+    radial-gradient(ellipse at top, rgba(139, 92, 246, 0.05) 0%, transparent 70%),
+    linear-gradient(180deg, #0a0e13 0%, #040507 100%);
+  color: #cbd5e1;
+  padding: 20px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.output::-webkit-scrollbar {
+  width: 8px;
+}
+
+.output::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.output::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(59, 130, 246, 0.6));
+  border-radius: 4px;
+}
+
+.error {
+  color: #f87171;
+  text-shadow: 0 0 20px rgba(248, 113, 113, 0.4);
+  animation: errorPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes errorPulse {
+  0% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.warning { color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+.success { color: #4ade80; text-shadow: 0 0 15px rgba(74, 222, 128, 0.3); }
+.info { color: #60a5fa; text-shadow: 0 0 15px rgba(96, 165, 250, 0.3); }
+
+.brandTitle {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 15px;
+  font-weight: 800;
+  animation: titleShimmer 3s ease-in-out infinite alternate;
+  white-space: nowrap;
+}
+
+@keyframes titleShimmer {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.2); }
+}
+
+.errorBox {
+  margin-bottom: 16px;
+  padding: 20px;
+  background: 
+    radial-gradient(circle at top left, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(127, 29, 29, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.errorBox::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+  animation: errorScan 2s linear infinite;
+}
+
+@keyframes errorScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* --- AI REPLAY STYLES --- */
+.replayContainer {
+  padding: 24px;
+  background: 
+    radial-gradient(circle at center, rgba(139, 92, 246, 0.1) 0%, transparent 70%),
+    linear-gradient(160deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  position: relative;
+}
+
+.replayControls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.replayButton {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.replayButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.replayButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.replayButton.playPause {
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: white;
+}
+
+.replayFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.applyFixButton {
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  color: white;
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5);
+  padding: 10px 20px;
+}
+
+.applyFixButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(139, 92, 246, 0.7);
+}
+
+/* --- PREVIEW CONTROLS --- */
+.previewControls {
+  padding: 12px 20px;
+  background: rgba(15, 23, 42, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0; /* Important for flex layouts */
+}
+
+.zoomButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.zoomButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+
+/*
+==============================================
+--- START: REBUILT FULLSCREEN CSS LOGIC ---
+==============================================
+*/
+
+/* 1. Base style for the fullscreen wrapper */
+.previewWrapper.previewFullscreenActive {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background: #0a0e13;
+  border-right: none;
+  
+  /* Re-assert the flex layout for fullscreen mode */
+  display: flex;
+  flex-direction: column;
+
+  /* Animation for smooth entry */
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 2. Hide the zoom controls in fullscreen mode */
+.previewWrapper.previewFullscreenActive .previewControls {
+  display: none;
+}
+
+/* 3. The CRITICAL FIX: Ensure the iframe container expands properly */
+.previewWrapper.previewFullscreenActive .iframeContainer {
+  flex-grow: 1; /* Make it take all available space */
+  min-height: 0; /* This is the magic trick to prevent flexbox collapsing */
+  border-radius: 0;
+}
+
+/* 4. Reset the iframe itself to fill its now-correctly-sized container */
+.previewWrapper.previewFullscreenActive .iframe {
+  transform: none !important; /* Override inline style from zoom */
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+}
+
+/* 5. Style for the exit button */
+.exitFullscreen {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+  flex-shrink: 0; 
+}
+
+.exitFullscreen:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.5);
+}
+
+/* --- END: REBUILT FULLSCREEN CSS LOGIC --- */
+
+
+/* --- RESPONSIVE STYLES --- */
+@media (max-width: 1024px) {
+  .container { border-radius: 16px; margin: 10px; }
+  .mainContent { flex-direction: column; height: auto; }
+  .editorWrapper { flex: none; height: 400px; }
+  .previewWrapper { flex: none; height: 350px; }
+  .header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+  .header > div { gap: 8px; }
+  .textarea { padding: 16px; font-size: 13px; }
+  .output { height: 250px; padding: 16px; }
+  .runButton, .createPostButton, .clearButton { padding: 6px 12px; font-size: 12px; }
+}
