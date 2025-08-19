@@ -1,3 +1,7 @@
+# File để backup dữ liệu db
+# Cách dùng: chạy cmd và gõ 
+# pg_restore -h localhost -p 5432 -U postgres -d DevCove -v --clean "full_path_to_file.dump"
+
 import subprocess
 import datetime
 import os
