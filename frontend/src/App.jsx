@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react'; // Thêm useEffect
+// App.jsx
+
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import "react-datepicker/dist/react-datepicker.css";
 // ✅ Import AdminRoute từ AuthContext
 import { AuthProvider, AdminRoute } from './contexts/AuthContext';
 import apiService from './services/api';
@@ -17,15 +20,16 @@ import PasswordChange from './components/users/PasswordChange';
 import AuthTest from './AuthTest';
 import Chatting from './components/Chatting';
 import SandboxPage from './components/pages/SandboxPage/SandboxPage';
-import BugTracker from './components/admin/BugTracker'; // Trang mới chứa CommunityBugTracker
+import BugTracker from './components/admin/BugTracker';
 import ChallengeGenerator from './components/admin/ChallengeGenerator';
 import ChallengeDetail from './components/admin/ChallengeDetail';
 import SubmissionReview from './components/admin/SubmissionReview';
+// =====>>>>> IMPORT COMPONENT MỚI <<<<<=====
+import CodeQualityAudit from './components/admin/CodeQualityAudit'; 
+
 // Main App Component
 const App = () => {
   useEffect(() => {
-    // Tự động khởi tạo CSRF token khi ứng dụng được tải
-    // Điều này đảm bảo mọi request POST/PUT/DELETE sau này đều sẽ có token
     apiService.utils.initCSRF();
   }, [])
   document.body.classList.add('dark-theme');
@@ -36,41 +40,59 @@ const App = () => {
         <Routes>
           {/* Routes có MainLayout (sidebar + content) */}
           <Route path="/" element={<MainLayout />}>
-            {/* Home page - shows all posts with Hot/New/Top filters */}
+            {/* ... (các route công khai khác không đổi) ... */}
             <Route index element={<PostList />} />
             <Route path="hot" element={<PostList filter="hot" />} />
             <Route path="new" element={<PostList filter="new" />} />
             <Route path="top" element={<PostList filter="top" />} />
-            
-            {/* Post routes */}
             <Route path="posts" element={<PostList />} />
-            
-            {/* Tag routes - individual tags with filters */}
             <Route path="tags" element={<PostList showAllTags={true} />} />
             <Route path="tag/:tagName" element={<PostList />} />
-            <Route path="tag/:tagName/hot" element={<PostList filter="hot" />} />
-            <Route path="tag/:tagName/new" element={<PostList filter="new" />} />
-            <Route path="tag/:tagName/top" element={<PostList filter="top" />} />
-            
-            {/* Search routes */}
-            <Route path="search" element={<SearchResults />} />
-            
-            {/* Community routes */}
+            {/* ... */}
+            // <Route path="search" element={<SearchResults />} />
+            {/* ... */}
             <Route path="communities" element={<PostList />} />
             <Route path="community/:name" element={<PostList />} />
-            <Route path="community/:name/hot" element={<PostList filter="hot" />} />
-            <Route path="community/:name/new" element={<PostList filter="new" />} />
-            <Route path="community/:name/top" element={<PostList filter="top" />} />
+            {/* ... */}
 
             <Route path="/challenges/:challengeId" element={<ChallengeDetail />} />
-             <Route 
+            
+            {/* =====>>>>> NHÓM CÁC ROUTE ADMIN LẠI VỚI NHAU <<<<<===== */}
+            <Route 
                 path="admin/review/:submissionId" 
                 element={
                   <AdminRoute>
                     <SubmissionReview />
                   </AdminRoute>
                 } 
-              />
+            />
+            {/* Sử dụng MainLayout cho các trang admin để có sidebar và header */}
+            <Route 
+              path="admin/bug-tracker" 
+              element={
+                <AdminRoute>
+                  <BugTracker />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="admin/challenge-generator" 
+              element={
+                <AdminRoute>
+                  <ChallengeGenerator />
+                </AdminRoute>
+              } 
+            />
+            {/* =====>>>>> THÊM ROUTE MỚI Ở ĐÂY <<<<<===== */}
+            <Route 
+              path="admin/code-audit" // URL mới cho trang audit
+              element={
+                <AdminRoute>
+                  <CodeQualityAudit />
+                </AdminRoute>
+              } 
+            />
+
           </Route>
           
           {/* Routes không cần MainLayout (fullscreen) */}
@@ -81,29 +103,14 @@ const App = () => {
           <Route path="/chat" element={<Chatting />} />
           <Route path="/sandbox" element={<SandboxPage />} />
           
-          {/* ✅ BẢO VỆ ROUTE /bug-tracker BẰNG AdminRoute */}
-          <Route 
-            path="/bug-tracker" 
-            element={
-              <AdminRoute>
-                <BugTracker />
-              </AdminRoute>
-            } 
-          />
-          <Route 
-              path="/challenge-generator" 
-              element={
-                <AdminRoute>
-                  <ChallengeGenerator />
-                </AdminRoute>
-              } 
-          />
+          {/* XÓA CÁC ROUTE ADMIN BỊ LẶP Ở ĐÂY VÀ CHUYỂN VÀO TRONG MainLayout */}
+          
           {/* User Profile routes */}
           <Route path="/user/:username" element={<UserProfile />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/profile/:username" element={<UserProfile />} />
           
-          {/* Settings routes - có thể cần authentication wrapper */}
+          {/* Settings routes */}
           <Route path="/settings" element={<Settings />} />
           <Route path="/change-password" element={<PasswordChange />} />
           

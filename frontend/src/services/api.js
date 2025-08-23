@@ -428,6 +428,10 @@ class APIService {
     return this.request(`/api/users/${username}/follow/`, { method: 'POST', body: {} });
   }
 
+  async getUserPosts(username, page = 1) {
+      return this.request(`/api/users/${username}/posts/?page=${page}`);
+  }
+
   // Voting
   async vote(postId, voteType) {
     return this.request(`/api/posts/${postId}/vote/`, {
@@ -445,14 +449,56 @@ class APIService {
   }
 
   // Search
-  async searchPosts(query, filters = {}) {
-    const params = new URLSearchParams({ q: query, ...filters });
-    const data = await this.request(`/api/posts/search/?${params}`);
-    if (data?.results) {
-      data.results = data.results.map(post => this.normalizePostData(post));
-    }
-    return data;
+  // Performs a unified search for posts, users, or both.
+  async search(query, type = 'all') {
+    const params = new URLSearchParams({ q: query, type });
+    // Endpoint này là endpoint tìm kiếm hợp nhất của bạn
+    return this.request(`/api/search/?${params}`);
   }
+
+  // A convenience function to search specifically for users.
+  async searchUsers(query) {
+    // Gọi hàm search tổng quát với type='users'
+    return this.search(query, 'users');
+  }
+
+  // Code quality audit
+  async postAuditReport(payload) {
+        try {
+            const response = await fetch(`${this.baseURL}/api/admin/code-quality-audit/`, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': this.getCSRFToken(),
+                },
+                credentials: 'include',
+            });
+
+            // Nếu response KHÔNG OK (ví dụ: 500, 400, 403)
+            if (!response.ok) {
+                let errorData;
+                // Đọc body MỘT LẦN DUY NHẤT dưới dạng text
+                const errorText = await response.text(); 
+                try {
+                    // Cố gắng parse text đó thành JSON
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    // Nếu không phải JSON, dùng chính text đó làm thông báo lỗi
+                    errorData = { error: errorText }; 
+                }
+                // Ném lỗi đã được xử lý
+                throw new APIError(response.status, errorData);
+            }
+            
+            // Nếu response OK, trả về để component xử lý
+            return response;
+        } catch (error) {
+            console.error('API Post Audit Report Error:', error);
+            throw error;
+        }
+    }
 
   // Bot
   async askBot(postId, payload) {

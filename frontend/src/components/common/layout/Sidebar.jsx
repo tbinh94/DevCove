@@ -147,8 +147,6 @@ const Sidebar = ({
     const currentTagSlugs = selectedTags.map(tag => tag.slug);
     updateUrlParams(currentTagSlugs, null, newOrdering);
   };
-  // ... (Kết thúc phần code không thay đổi)
-
 
   // THAY ĐỔI 2: Xóa bỏ hoàn toàn logic gọi API trong Sidebar
   // Hàm này giờ chỉ đơn giản là gọi prop được truyền vào

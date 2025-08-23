@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 // Thêm ChevronDown cho dropdown
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy, ChevronDown } from 'lucide-react'; 
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy, ChevronDown, ClipboardCheck } from 'lucide-react';
 import apiService from '../../../services/api'; 
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
@@ -89,12 +89,18 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   };
 
   const handleBugTrackerClick = () => {
-    navigate('/bug-tracker');
+    navigate('/admin/bug-tracker'); // ✅ Cập nhật lại đường dẫn cho đúng với App.jsx
     setIsToolsMenuOpen(false);
   };
 
   const handleGenerateChallengeClick = () => {
-    navigate('/challenge-generator');
+    navigate('/admin/challenge-generator'); // ✅ Cập nhật lại đường dẫn
+    setIsToolsMenuOpen(false);
+  };
+
+  // ✅ NEW: Handler cho Code Quality Audit
+  const handleCodeAuditClick = () => {
+    navigate('/admin/code-audit');
     setIsToolsMenuOpen(false);
   };
 
@@ -231,6 +237,11 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                         <Trophy className={styles.dropdownIcon} />
                         <span>Challenges</span>
                       </button>
+
+                      <button onClick={handleCodeAuditClick} className={styles.toolsDropdownItem}>
+                            <ClipboardCheck className={styles.dropdownIcon} />
+                            <span>Code Quality Audit</span>
+                          </button>
                     </div>
                   )}
                 </div>

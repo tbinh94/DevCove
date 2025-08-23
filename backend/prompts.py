@@ -192,7 +192,59 @@ Trả về code đã sửa với đúng language identifier trong fenced code bl
             Here is the code to analyze:
             {code_content}
         """
-    }
+    },
+    'code_quality_multi_audit': {
+        'title': 'AI Code Quality Multi-File Audit',
+        # ✅ PROMPT ĐÃ ĐƯỢC NÂNG CẤP HOÀN TOÀN
+        'instruction': """
+You are a world-class Senior Software Engineer and Code Reviewer. Your task is to conduct a detailed, evidence-based code quality audit based on a collection of a user's posts. Each post includes metadata (Title, Score) and content.
+
+Your response MUST be a single, raw JSON object, starting with `{{` and ending with `}}`. Do NOT include any explanations or markdown formatting outside the JSON.
+
+**The JSON object must have these exact keys:**
+- "overall_quality_score": A score from 0-100 reflecting overall code quality.
+- "main_strengths": An array of objects. Each object must have a "point" (e.g., "Effective Use of SQL Constraints") and an "evidence" (e.g., "In Post ID X, the use of `NOT NULL` and `UNIQUE` constraints is a good practice.").
+- "common_weaknesses": An array of objects. Each object must have a "point" (e.g., "Lack of Input Validation") and an "evidence" (e.g., "The Python function in Post ID Y does not check if the input is of the correct type, which could lead to a TypeError.").
+- "most_frequent_issue_type": A single, specific string (e.g., "Data Integrity", "Performance", "Security", "Readability", "Error Handling").
+- "key_recommendations": An array of strings with actionable advice.
+
+**EXAMPLE OF THE ONLY VALID OUTPUT FORMAT:**
+{{
+    "overall_quality_score": 75,
+    "main_strengths": [
+        {{
+            "point": "Clear and readable SQL schema",
+            "evidence": "The SQL in Post ID 123 uses clear naming conventions (e.g., `user_profiles`) and appropriate data types, making it easy to understand."
+        }},
+        {{
+            "point": "Concise and well-documented Python function",
+            "evidence": "The `greet_user` function in Post ID 456 includes a docstring explaining its purpose, which is excellent practice."
+        }}
+    ],
+    "common_weaknesses": [
+        {{
+            "point": "Incomplete `updated_at` field management in SQL",
+            "evidence": "The `posts` table in Post ID 123 is missing an automatic update trigger (like `ON UPDATE CURRENT_TIMESTAMP`), requiring manual updates."
+        }},
+        {{
+            "point": "Potential accessibility oversights in CSS",
+            "evidence": "The CSS in Post ID 789 uses a light-gray text on a white gradient background, which may fail color contrast accessibility checks."
+        }}
+    ],
+    "most_frequent_issue_type": "Data Integrity",
+    "key_recommendations": [
+        "Implement `ON UPDATE CURRENT_TIMESTAMP` triggers for `updated_at` columns in SQL.",
+        "For more complex Python functions, include robust input validation and error handling.",
+        "Conduct accessibility audits for UI elements, especially checking color contrast."
+    ]
+}}
+
+Analyze the following posts:
+---
+{content}
+---
+"""
+    },
 }
 
 CUSTOM_PROMPT_TEMPLATE = """
@@ -208,7 +260,6 @@ Nếu câu trả lời có chứa code, đảm bảo sử dụng fenced code blo
 def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text: str = None, **kwargs) -> str:
     """
     Constructs the final prompt string to send to the AI.
-    Enhanced with better language detection and formatting.
     """
     if prompt_type == "summarize_post_list":
         task_data = TASK_PROMPTS[prompt_type]
@@ -217,15 +268,20 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
     if prompt_type == 'refactor_code':
         task_data = TASK_PROMPTS[prompt_type]
         instruction = task_data['instruction'].format(code=content, recommendation_text=kwargs.get('recommendation_text', ''))
-        # Include system prompt for consistency
         return f"{SYSTEM_PROMPT}\n\n{instruction}"
     
     if prompt_type == "generate_title":
-        # Đây là logic đặc biệt cho việc tạo tiêu đề.
-        # Nó chỉ cần instruction, không cần system prompt hay phần content kèm theo.
         instruction_template = TASK_PROMPTS[prompt_type]['instruction']
         return instruction_template.format(code_content=content)
 
+    # ✅ BƯỚC QUAN TRỌNG NHẤT: THÊM TRƯỜNG HỢP ĐẶC BIỆT NÀY
+    if prompt_type == 'code_quality_multi_audit':
+        instruction_template = TASK_PROMPTS[prompt_type]['instruction']
+        # Trả về trực tiếp prompt đã được format, không thêm bất kỳ wrapper nào khác.
+        # Prompt này đã tự chứa tất cả chỉ dẫn cần thiết.
+        return instruction_template.format(content=content)
+
+    # --- Phần còn lại của hàm dành cho các prompt khác ---
     if prompt_type == 'custom_analysis' and user_prompt_text:
         task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text)
     else:
@@ -236,22 +292,11 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
         try:
             task_instruction = instruction_template.format(**kwargs)
         except KeyError:
-            # Fallback for prompts with dynamic placeholders that might be missing
             task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text or "Phân tích nội dung này.")
 
-    # Enhanced language mapping for better detection
-    language_map = {
-        'js': 'javascript',
-        'ts': 'typescript', 
-        'py': 'python',
-        'sh': 'bash',
-        'yml': 'yaml',
-        'md': 'markdown'
-    }
-    
+    language_map = { 'js': 'javascript', 'ts': 'typescript', 'py': 'python', 'sh': 'bash', 'yml': 'yaml', 'md': 'markdown' }
     detected_language = language_map.get(language.lower() if language else '', language or 'text')
     
-    # Final prompt construction
     final_prompt = f"""{SYSTEM_PROMPT}
 
 {task_instruction}
@@ -259,8 +304,6 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
 **Content to analyze (detected language: {detected_language}):**
 ```{detected_language}
 {content}
-```
-
 Remember: Use proper fenced code blocks with specific language identifiers for all code in your response.
 """
     return final_prompt

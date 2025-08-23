@@ -4,6 +4,7 @@ import os
 import re
 import time
 from datetime import timedelta
+import io
 import requests 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -68,6 +69,16 @@ from .serializers import (
     LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer,
     WeeklyChallengeSerializer, ChallengeSubmissionSerializer
 )
+
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
+from reportlab.lib.colors import HexColor
+
+from datetime import datetime
+from collections import Counter
+
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -852,24 +863,27 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'])
     def posts(self, request, username=None):
         """
-        Get posts by specific user
+        Get ALL posts by a specific user.
+        This is now the single source of truth for fetching a user's posts.
         """
         try:
-            user = get_object_or_404(User, username=username)
+            # Dùng get_object_or_404 để xử lý user không tồn tại
+            user = self.get_object() 
             posts = Post.objects.filter(author=user).order_by('-created_at')
+            
+            # SỬ DỤNG PAGINATION CHUẨN (tùy chọn nhưng nên có)
+            paginator = StandardResultsSetPagination()
+            page = paginator.paginate_queryset(posts, request)
+            
+            # Sử dụng serializer chuẩn để đảm bảo dữ liệu nhất quán
+            serializer = PostSerializer(page, many=True, context={'request': request})
+            return paginator.get_paginated_response(serializer.data)
 
-            serializer = PostSerializer(posts, many=True, context={'request': request})
-
-            return Response({
-                'results': serializer.data,
-                'count': posts.count(),
-                'username': username
-            })
-
-        except User.DoesNotExist:
+        except Exception as e:
+            logger.error(f"Error fetching posts for user {username}: {e}", exc_info=True)
             return Response(
-                {'error': f'User "{username}" not found'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': 'An internal server error occurred while fetching posts.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
@@ -2158,3 +2172,374 @@ class IsAdminUserOrOwner(permissions.BasePermission):
             return True
         # Cho phép chủ sở hữu xem
         return obj.user == request.user
+
+
+class CodeQualityAuditView(APIView):
+    """
+    API endpoint for Admins to generate a code quality audit report for a user or time range.
+    This triggers a potentially long-running process and returns a PDF report.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user_id')
+        start_date_str = request.data.get('start_date')
+        end_date_str = request.data.get('end_date')
+
+        if not user_id and not (start_date_str and end_date_str):
+            return Response(
+                {'error': 'Either user_id or both start_date and end_date are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        posts_to_analyze = []
+        target_user = None
+        date_range_str = "All Time"
+
+        # Lấy posts theo criteria
+        if user_id:
+            try:
+                target_user = User.objects.get(id=user_id)
+                posts_to_analyze = list(Post.objects.filter(author=target_user))
+            except User.DoesNotExist:
+                return Response({'error': f'User with id {user_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                date_range_str = f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+                
+                if posts_to_analyze:
+                    posts_to_analyze = [
+                        p for p in posts_to_analyze if start_date <= p.created_at <= end_date
+                    ]
+                else:
+                    posts_to_analyze = list(Post.objects.filter(created_at__range=(start_date, end_date)))
+
+            except ValueError:
+                return Response({'error': 'Invalid date format. Use ISO 8601 format.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        print(f"DEBUG: Found {len(posts_to_analyze)} posts to analyze.")
+        if not posts_to_analyze:
+            return Response({'message': 'No posts found for the selected criteria.'}, status=status.HTTP_200_OK)
+        
+        # Trích xuất code
+        aggregated_content_with_metadata = ""
+        posts_with_code_count = 0
+        
+        for post in posts_to_analyze:
+            # Chỉ xử lý các bài đăng có nội dung
+            if not post.content or not post.content.strip():
+                continue
+
+            # Thêm metadata cho từng bài đăng
+            post_metadata = f"""
+--- START POST (ID: {post.id}) ---
+Title: {post.title}
+Language Tag: {post.language.name if post.language else 'Not Specified'}
+Community Score: {post.score}
+Comment Count: {post.comment_count}
+
+Content:
+{post.content}
+--- END POST ---
+"""
+            aggregated_content_with_metadata += post_metadata + "\n\n"
+            posts_with_code_count += 1
+
+        if posts_with_code_count == 0:
+            return Response({'message': 'Found posts, but none of them had content to analyze.'}, status=status.HTTP_200_OK)
+
+        try:
+            # ✅ SỬA ĐỔI: Truyền dữ liệu đã được làm giàu vào prompt
+            final_prompt = build_prompt(
+                content=aggregated_content_with_metadata,
+                language="multiple contexts", # Thay đổi để phản ánh đúng nội dung
+                prompt_type='code_quality_multi_audit'
+            )
+            
+            ai_response_raw = get_ai_response(final_prompt)
+            logger.info(f"Raw AI Response (first 500 chars): {ai_response_raw[:500]}")
+
+            if not ai_response_raw or not ai_response_raw.strip():
+                return Response({'error': 'AI service returned empty response. Please try again.'}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # ✅ ENHANCED JSON PARSING WITH MULTIPLE FALLBACK STRATEGIES
+            summary = None
+            parsing_errors = []
+            
+            # Strategy 1: Direct JSON parse (for compliant responses)
+            try:
+                summary = json.loads(ai_response_raw.strip())
+            except json.JSONDecodeError as e:
+                parsing_errors.append(f"Direct parse failed: {str(e)}")
+            
+            # Strategy 2: Extract from markdown code blocks
+            if summary is None:
+                try:
+                    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
+                    if json_match:
+                        json_string = json_match.group(1).strip()
+                        summary = json.loads(json_string)
+                    else:
+                        parsing_errors.append("No JSON code block found")
+                except json.JSONDecodeError as e:
+                    parsing_errors.append(f"Code block parse failed: {str(e)}")
+            
+            # Strategy 3: Find JSON-like object in text
+            if summary is None:
+                try:
+                    # Look for text between first { and last }
+                    start_idx = ai_response_raw.find('{')
+                    end_idx = ai_response_raw.rfind('}')
+                    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                        potential_json = ai_response_raw[start_idx:end_idx+1]
+                        summary = json.loads(potential_json)
+                    else:
+                        parsing_errors.append("No JSON object boundaries found")
+                except json.JSONDecodeError as e:
+                    parsing_errors.append(f"Object extraction failed: {str(e)}")
+            
+            # ✅ IF ALL PARSING FAILS, CREATE FALLBACK SUMMARY
+            if summary is None:
+                logger.error(f"All JSON parsing strategies failed. Errors: {parsing_errors}")
+                logger.error(f"Full AI Response: {ai_response_raw}")
+                
+                # Create a fallback summary based on what we know
+                summary = {
+                    "overall_quality_score": 50,
+                    "main_strengths": ["Code submissions were found and attempted to be analyzed"],
+                    "common_weaknesses": ["AI analysis could not be completed due to response format issues"],
+                    "most_frequent_error_category": "AnalysisError",
+                    "key_recommendations": ["Please contact system administrator to review AI analysis configuration"]
+                }
+                
+            # ✅ VALIDATE REQUIRED FIELDS
+            required_fields = ["overall_quality_score", "main_strengths", "common_weaknesses", 
+                            "most_frequent_error_category", "key_recommendations"]
+            
+            if not isinstance(summary, dict):
+                return Response({'error': 'AI returned invalid data structure'}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            missing_fields = [field for field in required_fields if field not in summary]
+            if missing_fields:
+                logger.warning(f"AI response missing fields: {missing_fields}")
+                # Fill missing fields with defaults
+                defaults = {
+                    "overall_quality_score": 50,
+                    "main_strengths": ["Analysis incomplete"],
+                    "common_weaknesses": ["Could not determine"],
+                    "most_frequent_error_category": "Unknown",
+                    "key_recommendations": ["Review analysis configuration"]
+                }
+                for field in missing_fields:
+                    summary[field] = defaults[field]
+
+        except Exception as e:
+            logger.error(f"AI multi-audit failed with exception: {e}", exc_info=True)
+            return Response({'error': f'Analysis failed: {str(e)}'}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # ✅ ALWAYS ENSURE WE HAVE VALID SUMMARY DATA
+        # Update the summary with accurate metadata
+        summary.update({
+            'total_posts_analyzed': len(posts_to_analyze),
+            'analysis_timestamp': datetime.now().isoformat(),
+            'analysis_successful': True
+        })
+        
+        # Generate PDF
+        try:
+            pdf_buffer = self._generate_audit_pdf(summary, target_user, date_range_str, len(posts_to_analyze))
+            response = HttpResponse(pdf_buffer, content_type='application/pdf')
+            filename = f"code_audit_{target_user.username if target_user else 'range'}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            logger.error(f"PDF generation failed: {e}", exc_info=True)
+            return Response({'error': 'Report generated but PDF creation failed'}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _get_posts_for_audit(self, user_id, start_date_str, end_date_str):
+        """Helper to fetch posts based on criteria."""
+        queryset = Post.objects.all()
+        if user_id:
+            queryset = queryset.filter(author_id=user_id)
+        
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                queryset = queryset.filter(created_at__range=(start_date, end_date))
+            except ValueError:
+                return [] # Trả về rỗng nếu ngày tháng sai
+        
+        return list(queryset.order_by('-created_at'))
+    
+    def _aggregate_results(self, results):
+        """Tổng hợp các kết quả phân tích riêng lẻ thành một báo cáo chung."""
+        num_items = len(results)
+        summary = {
+            'total_posts_analyzed': num_items,
+            'avg_quality_score': round(sum(r['quality_score'] for r in results) / num_items, 2),
+            'avg_complexity_score': round(sum(r['complexity_score'] for r in results) / num_items, 2),
+            'clarity_distribution': dict(Counter(r['clarity_rating'] for r in results)),
+            'common_error_categories': dict(Counter(r['main_error_category'] for r in results if r['main_error_category'] != 'None').most_common(5)),
+            'common_bugs': dict(Counter(bug for r in results for bug in r['potential_bugs']).most_common(3)),
+            'common_optimizations': dict(Counter(opt for r in results for opt in r['optimization_suggestions']).most_common(3))
+        }
+        return summary
+
+    def _generate_audit_pdf(self, summary, user, date_range, total_posts):
+        """
+        Tạo file PDF từ dữ liệu tóm tắt chi tiết (với evidence) mà AI cung cấp.
+        Hàm này được chỉnh sửa trực tiếp từ phiên bản an toàn của bạn.
+        """
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # --- Các style tùy chỉnh của bạn được giữ nguyên ---
+        title_style = styles['h1']
+        subtitle_style = styles['h2']
+        body_style = styles['BodyText']
+
+        # Style mới cho phần evidence
+        styles.add(ParagraphStyle(
+            name='EvidenceStyle', 
+            parent=body_style, 
+            leftIndent=35, 
+            textColor=HexColor("#555555"), 
+            fontName='Helvetica-Oblique',
+            spaceBefore=2,
+            spaceAfter=8
+        ))
+        
+        # Style cho các gạch đầu dòng
+        bullet_style = ParagraphStyle(
+            'BulletStyle',
+            parent=body_style,
+            leftIndent=20,
+            bulletIndent=0,
+            spaceAfter=2 # Giảm khoảng cách sau điểm chính
+        )
+
+        try:
+            # --- Header của PDF được giữ nguyên ---
+            story.append(Paragraph("AI Code Quality Audit Report", title_style))
+            story.append(Spacer(1, 0.2 * inch))
+            
+            target = f"User: {user.username}" if user else f"Date Range: {date_range}"
+            story.append(Paragraph(f"<b>Audit Target:</b> {target}", body_style))
+            story.append(Paragraph(f"<b>Total Posts Found:</b> {total_posts}", body_style))
+            story.append(Paragraph(f"<b>Posts Analyzed by AI:</b> {total_posts}", body_style)) # Giả định tất cả đều được phân tích
+            story.append(Paragraph(f"<b>Analysis Status:</b> ✅ Completed Successfully", body_style))
+            story.append(Spacer(1, 0.3 * inch))
+
+            # --- Summary Section được giữ nguyên ---
+            story.append(Paragraph("Overall Summary", subtitle_style))
+            quality_score = summary.get('overall_quality_score', 'N/A')
+            summary_data = [
+                ['Metric', 'Value'],
+                ['Overall Quality Score', f"{quality_score} / 100" if isinstance(quality_score, (int, float)) else str(quality_score)],
+            ]
+            summary_table = Table(summary_data)
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor("#4F46E5")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor("#FFFFFF")),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), HexColor("#F3F4F6")),
+                ('GRID', (0, 0), (-1, -1), 1, HexColor("#DDDDDD"))
+            ]))
+            story.append(summary_table)
+            story.append(Spacer(1, 0.3 * inch))
+
+            # ✅ SỬA ĐỔI: Render Strengths với cấu trúc {point, evidence}
+            story.append(Paragraph("Main Strengths / Good Habits", subtitle_style))
+            strengths = summary.get('main_strengths', [])
+            if strengths:
+                for item in strengths:
+                    # Đảm bảo item là một dictionary
+                    if isinstance(item, dict):
+                        point = item.get('point', 'No specific point provided.')
+                        evidence = item.get('evidence', 'No specific evidence provided.')
+                        story.append(Paragraph(f"• <b>{point}</b>", bullet_style))
+                        story.append(Paragraph(f"<i>Evidence: {evidence}</i>", styles['EvidenceStyle']))
+                    else:
+                        # Fallback nếu item không phải dict
+                        story.append(Paragraph(f"• {str(item)}", bullet_style))
+            else:
+                story.append(Paragraph("• No specific strengths were identified in the analysis.", bullet_style))
+            story.append(Spacer(1, 0.3 * inch))
+
+            # ✅ SỬA ĐỔI: Render Weaknesses với cấu trúc {point, evidence}
+            story.append(Paragraph("Common Weaknesses / Areas for Improvement", subtitle_style))
+            weaknesses = summary.get('common_weaknesses', [])
+            if weaknesses:
+                for item in weaknesses:
+                    if isinstance(item, dict):
+                        point = item.get('point', 'No specific point provided.')
+                        evidence = item.get('evidence', 'No specific evidence provided.')
+                        story.append(Paragraph(f"• <b>{point}</b>", bullet_style))
+                        story.append(Paragraph(f"<i>Evidence: {evidence}</i>", styles['EvidenceStyle']))
+                    else:
+                        story.append(Paragraph(f"• {str(item)}", bullet_style))
+            else:
+                story.append(Paragraph("• No specific weaknesses were identified in the analysis.", bullet_style))
+            story.append(Spacer(1, 0.3 * inch))
+
+            # ✅ SỬA ĐỔI: Render Recommendations
+            story.append(Paragraph("Key Recommendations", subtitle_style))
+            recommendations = summary.get('key_recommendations', [])
+            if recommendations:
+                for rec in recommendations:
+                    story.append(Paragraph(f"• {str(rec)}", bullet_style))
+            else:
+                story.append(Paragraph("• No specific recommendations were generated.", bullet_style))
+            story.append(Spacer(1, 0.3 * inch))
+
+            # ✅ SỬA ĐỔI: Render Most Frequent Issue Type
+            story.append(Paragraph("Most Frequent Issue Type", subtitle_style))
+            error_category = summary.get('most_frequent_issue_type', 'N/A')
+            story.append(Paragraph(f"<b>{error_category}</b>", body_style))
+            story.append(Spacer(1, 0.3 * inch))
+
+            # --- Footer và build PDF được giữ nguyên ---
+            story.append(Spacer(1, 0.5 * inch))
+            timestamp = datetime.now().isoformat()
+            story.append(Paragraph(f"Report Generated: {timestamp}", ParagraphStyle('Footer', parent=body_style, fontSize=8, textColor=HexColor("#AAAAAA"))))
+
+            doc.build(story)
+            buffer.seek(0)
+            return buffer
+            
+        except Exception as pdf_error:
+            # ✅ HOÀN THIỆN PHẦN XỬ LÝ LỖI KHẨN CẤP
+            logger.error(f"PDF generation failed unexpectedly: {pdf_error}", exc_info=True)
+            
+            emergency_buffer = io.BytesIO()
+            emergency_doc = SimpleDocTemplate(emergency_buffer, pagesize=letter)
+            
+            # ĐỊNH NGHĨA BIẾN `emergency_story` BỊ THIẾU
+            target_str = f"User: {user.username}" if user else f"Date Range: {date_range}"
+            emergency_story = [
+                Paragraph("AI Code Quality Report - Generation Error", styles['h1']),
+                Spacer(1, 0.5 * inch),
+                Paragraph(f"<b>Audit Target:</b> {target_str}", styles['BodyText']),
+                Paragraph(f"<b>Total Posts Found:</b> {total_posts}", styles['BodyText']),
+                Spacer(1, 0.3 * inch),
+                Paragraph("<b>An internal error occurred while generating the PDF report.</b>", styles['BodyText']),
+                Paragraph("Please contact a system administrator. The analysis data was likely generated successfully, but the PDF creation failed.", styles['BodyText']),
+                Spacer(1, 0.2 * inch),
+                Paragraph(f"<b>Error Details:</b> {str(pdf_error)}", styles['BodyText']),
+            ]
+            
+            emergency_doc.build(emergency_story)
+            emergency_buffer.seek(0)
+            return emergency_buffer

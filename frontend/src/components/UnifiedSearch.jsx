@@ -1,6 +1,7 @@
+// component chứa logic tìm kiếm thống nhất cho posts và users
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import apiService from '../services/api'; 
 import styles from './UnifiedSearch.module.css';
 
 const UnifiedSearch = () => {
@@ -21,16 +22,8 @@ const UnifiedSearch = () => {
     
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/search/?q=${encodeURIComponent(searchQuery)}&type=${searchType}`,
-        {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        }
-      );
-      
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const data = await response.json();
+      // ✅ 2. Thay thế `fetch` bằng `apiService.search`
+      const data = await apiService.search(searchQuery, searchType);
       setResults(data);
       setIsDropdownOpen(true);
     } catch (error) {
@@ -65,7 +58,8 @@ const UnifiedSearch = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (query.trim()) {
-      navigate(`/search/?q=${encodeURIComponent(query)}`);
+      // ✅ Điều hướng đến trang search results, component đó cũng sẽ dùng apiService
+      navigate(`/search?q=${encodeURIComponent(query)}&type=${searchType}`);
       setIsDropdownOpen(false);
     }
   };
