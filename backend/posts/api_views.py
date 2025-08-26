@@ -24,7 +24,7 @@ from rest_framework.decorators import action
 from django.http import HttpResponse
 from django.db.models.functions import TruncDay, TruncWeek
 import demjson3
-
+import matplotlib.pyplot as plt
 # Import thư viện Gemini
 from google import genai
 client = genai.Client()
@@ -75,9 +75,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor
-
+from collections import Counter
 from datetime import datetime
 from collections import Counter
+from reportlab.platypus import Image
 
 from dotenv import load_dotenv
 
@@ -2173,13 +2174,9 @@ class IsAdminUserOrOwner(permissions.BasePermission):
         # Cho phép chủ sở hữu xem
         return obj.user == request.user
 
-
 class CodeQualityAuditView(APIView):
-    """
-    API endpoint for Admins to generate a code quality audit report for a user or time range.
-    This triggers a potentially long-running process and returns a PDF report.
-    """
-    permission_classes = [IsAdminUser]
+    """API endpoint for Admins to generate code quality audit report for a user or time range."""
+    permission_classes = [permissions.IsAdminUser]
 
     def post(self, request, *args, **kwargs):
         user_id = request.data.get('user_id')
@@ -2187,359 +2184,354 @@ class CodeQualityAuditView(APIView):
         end_date_str = request.data.get('end_date')
 
         if not user_id and not (start_date_str and end_date_str):
-            return Response(
-                {'error': 'Either user_id or both start_date and end_date are required.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Either user_id or both start_date and end_date are required.'}, status=400)
 
-        posts_to_analyze = []
-        target_user = None
-        date_range_str = "All Time"
-
-        # Lấy posts theo criteria
-        if user_id:
-            try:
-                target_user = User.objects.get(id=user_id)
-                posts_to_analyze = list(Post.objects.filter(author=target_user))
-            except User.DoesNotExist:
-                return Response({'error': f'User with id {user_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if start_date_str and end_date_str:
-            try:
-                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
-                date_range_str = f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
-                
-                if posts_to_analyze:
-                    posts_to_analyze = [
-                        p for p in posts_to_analyze if start_date <= p.created_at <= end_date
-                    ]
-                else:
-                    posts_to_analyze = list(Post.objects.filter(created_at__range=(start_date, end_date)))
-
-            except ValueError:
-                return Response({'error': 'Invalid date format. Use ISO 8601 format.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        print(f"DEBUG: Found {len(posts_to_analyze)} posts to analyze.")
+        posts_to_analyze = self._get_posts_for_audit(user_id, start_date_str, end_date_str)
         if not posts_to_analyze:
-            return Response({'message': 'No posts found for the selected criteria.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'No posts were found matching the selected criteria.'}, status=200)
+
+        # Prepare analysis data
+        target_user = User.objects.get(id=user_id) if user_id else None
+        date_range_str = f"{start_date_str.split('T')[0]} to {end_date_str.split('T')[0]}" if start_date_str else "All Time"
+        language_counts = Counter(post.language.name for post in posts_to_analyze if post.language)
         
-        # Trích xuất code
-        aggregated_content_with_metadata = ""
-        posts_with_code_count = 0
-        
-        for post in posts_to_analyze:
-            # Chỉ xử lý các bài đăng có nội dung
-            if not post.content or not post.content.strip():
-                continue
+        # Aggregate content
+        aggregated_content = self._aggregate_post_content(posts_to_analyze)
+        if not aggregated_content:
+            return Response({'message': 'Found posts, but none had content to analyze.'}, status=200)
 
-            # Thêm metadata cho từng bài đăng
-            post_metadata = f"""
---- START POST (ID: {post.id}) ---
-Title: {post.title}
-Language Tag: {post.language.name if post.language else 'Not Specified'}
-Community Score: {post.score}
-Comment Count: {post.comment_count}
-
-Content:
-{post.content}
---- END POST ---
-"""
-            aggregated_content_with_metadata += post_metadata + "\n\n"
-            posts_with_code_count += 1
-
-        if posts_with_code_count == 0:
-            return Response({'message': 'Found posts, but none of them had content to analyze.'}, status=status.HTTP_200_OK)
-
+        # Get AI analysis
         try:
-            # ✅ SỬA ĐỔI: Truyền dữ liệu đã được làm giàu vào prompt
-            final_prompt = build_prompt(
-                content=aggregated_content_with_metadata,
-                language="multiple contexts", # Thay đổi để phản ánh đúng nội dung
-                prompt_type='code_quality_multi_audit'
-            )
-            
-            ai_response_raw = get_ai_response(final_prompt)
-            logger.info(f"Raw AI Response (first 500 chars): {ai_response_raw[:500]}")
-
-            if not ai_response_raw or not ai_response_raw.strip():
-                return Response({'error': 'AI service returned empty response. Please try again.'}, 
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            # ✅ ENHANCED JSON PARSING WITH MULTIPLE FALLBACK STRATEGIES
-            summary = None
-            parsing_errors = []
-            
-            # Strategy 1: Direct JSON parse (for compliant responses)
-            try:
-                summary = json.loads(ai_response_raw.strip())
-            except json.JSONDecodeError as e:
-                parsing_errors.append(f"Direct parse failed: {str(e)}")
-            
-            # Strategy 2: Extract from markdown code blocks
-            if summary is None:
-                try:
-                    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
-                    if json_match:
-                        json_string = json_match.group(1).strip()
-                        summary = json.loads(json_string)
-                    else:
-                        parsing_errors.append("No JSON code block found")
-                except json.JSONDecodeError as e:
-                    parsing_errors.append(f"Code block parse failed: {str(e)}")
-            
-            # Strategy 3: Find JSON-like object in text
-            if summary is None:
-                try:
-                    # Look for text between first { and last }
-                    start_idx = ai_response_raw.find('{')
-                    end_idx = ai_response_raw.rfind('}')
-                    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                        potential_json = ai_response_raw[start_idx:end_idx+1]
-                        summary = json.loads(potential_json)
-                    else:
-                        parsing_errors.append("No JSON object boundaries found")
-                except json.JSONDecodeError as e:
-                    parsing_errors.append(f"Object extraction failed: {str(e)}")
-            
-            # ✅ IF ALL PARSING FAILS, CREATE FALLBACK SUMMARY
-            if summary is None:
-                logger.error(f"All JSON parsing strategies failed. Errors: {parsing_errors}")
-                logger.error(f"Full AI Response: {ai_response_raw}")
-                
-                # Create a fallback summary based on what we know
-                summary = {
-                    "overall_quality_score": 50,
-                    "main_strengths": ["Code submissions were found and attempted to be analyzed"],
-                    "common_weaknesses": ["AI analysis could not be completed due to response format issues"],
-                    "most_frequent_error_category": "AnalysisError",
-                    "key_recommendations": ["Please contact system administrator to review AI analysis configuration"]
-                }
-                
-            # ✅ VALIDATE REQUIRED FIELDS
-            required_fields = ["overall_quality_score", "main_strengths", "common_weaknesses", 
-                            "most_frequent_error_category", "key_recommendations"]
-            
-            if not isinstance(summary, dict):
-                return Response({'error': 'AI returned invalid data structure'}, 
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            missing_fields = [field for field in required_fields if field not in summary]
-            if missing_fields:
-                logger.warning(f"AI response missing fields: {missing_fields}")
-                # Fill missing fields with defaults
-                defaults = {
-                    "overall_quality_score": 50,
-                    "main_strengths": ["Analysis incomplete"],
-                    "common_weaknesses": ["Could not determine"],
-                    "most_frequent_error_category": "Unknown",
-                    "key_recommendations": ["Review analysis configuration"]
-                }
-                for field in missing_fields:
-                    summary[field] = defaults[field]
-
+            summary = self._get_ai_analysis(aggregated_content)
         except Exception as e:
-            logger.error(f"AI multi-audit failed with exception: {e}", exc_info=True)
-            return Response({'error': f'Analysis failed: {str(e)}'}, 
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # ✅ ALWAYS ENSURE WE HAVE VALID SUMMARY DATA
-        # Update the summary with accurate metadata
-        summary.update({
-            'total_posts_analyzed': len(posts_to_analyze),
-            'analysis_timestamp': datetime.now().isoformat(),
-            'analysis_successful': True
-        })
+            logger.error(f"AI analysis failed: {e}", exc_info=True)
+            return Response({'error': f'Analysis failed: {str(e)}'}, status=500)
         
         # Generate PDF
         try:
-            pdf_buffer = self._generate_audit_pdf(summary, target_user, date_range_str, len(posts_to_analyze))
-            response = HttpResponse(pdf_buffer, content_type='application/pdf')
+            pdf_buffer = self._generate_pdf_report(summary, target_user, date_range_str, len(posts_to_analyze), language_counts)
             filename = f"code_audit_{target_user.username if target_user else 'range'}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            response = HttpResponse(pdf_buffer, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
         except Exception as e:
             logger.error(f"PDF generation failed: {e}", exc_info=True)
-            return Response({'error': 'Report generated but PDF creation failed'}, 
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Report generated but PDF creation failed'}, status=500)
 
     def _get_posts_for_audit(self, user_id, start_date_str, end_date_str):
-        """Helper to fetch posts based on criteria."""
-        queryset = Post.objects.all()
+        """Get posts based on user_id or date range filters"""
+        queryset = Post.objects.select_related('author', 'language').all()
+        
         if user_id:
             queryset = queryset.filter(author_id=user_id)
-        
+            
         if start_date_str and end_date_str:
             try:
                 start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
                 end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
                 queryset = queryset.filter(created_at__range=(start_date, end_date))
             except ValueError:
-                return [] # Trả về rỗng nếu ngày tháng sai
-        
+                return []
+                
         return list(queryset.order_by('-created_at'))
-    
-    def _aggregate_results(self, results):
-        """Tổng hợp các kết quả phân tích riêng lẻ thành một báo cáo chung."""
-        num_items = len(results)
-        summary = {
-            'total_posts_analyzed': num_items,
-            'avg_quality_score': round(sum(r['quality_score'] for r in results) / num_items, 2),
-            'avg_complexity_score': round(sum(r['complexity_score'] for r in results) / num_items, 2),
-            'clarity_distribution': dict(Counter(r['clarity_rating'] for r in results)),
-            'common_error_categories': dict(Counter(r['main_error_category'] for r in results if r['main_error_category'] != 'None').most_common(5)),
-            'common_bugs': dict(Counter(bug for r in results for bug in r['potential_bugs']).most_common(3)),
-            'common_optimizations': dict(Counter(opt for r in results for opt in r['optimization_suggestions']).most_common(3))
+
+    def _aggregate_post_content(self, posts):
+        """Combine all post content with metadata for analysis"""
+        content_parts = []
+        for post in posts:
+            if post.content and post.content.strip():
+                content_parts.append(f"""
+--- POST {post.id} ---
+Title: {post.title}
+Language: {post.language.name if post.language else 'Not Specified'}
+Score: {post.score} | Comments: {post.comment_count}
+Content:
+{post.content}
+--- END POST ---
+""")
+        return "\n".join(content_parts) if content_parts else ""
+
+    def _get_ai_analysis(self, content):
+        """Get AI analysis and parse response with fallback parsing strategies"""
+        final_prompt = build_prompt(content=content, language="multiple", prompt_type='code_quality_multi_audit')
+        ai_response = get_ai_response(final_prompt)
+        
+        if not ai_response or not ai_response.strip():
+            raise ValueError("AI service returned empty response")
+
+        # Try multiple parsing strategies
+        for parse_method in [self._parse_json, self._parse_code_block, self._parse_json_substring]:
+            try:
+                summary = parse_method(ai_response)
+                if summary:
+                    self._validate_summary(summary)
+                    return summary
+            except (json.JSONDecodeError, ValueError):
+                continue
+                
+        raise ValueError("Could not parse valid JSON from AI response")
+
+    def _parse_json(self, text):
+        """Try direct JSON parsing"""
+        return json.loads(text.strip())
+
+    def _parse_code_block(self, text):
+        """Extract JSON from code blocks"""
+        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text, re.DOTALL)
+        return json.loads(match.group(1).strip()) if match else None
+
+    def _parse_json_substring(self, text):
+        """Extract JSON from first { to last }"""
+        start, end = text.find('{'), text.rfind('}')
+        if start != -1 and end > start:
+            return json.loads(text[start:end+1])
+        return None
+
+    def _validate_summary(self, summary):
+        """Ensure all required fields exist, fill with defaults if missing"""
+        defaults = {
+            "developer_profile": "Profile could not be determined.",
+            "overall_quality_score": 40,
+            "main_strengths": [{"point": "Analysis Incomplete", "evidence": "Missing data"}],
+            "common_weaknesses": [{"point": "Analysis Incomplete", "evidence": "Missing data"}],
+            "recurring_anti_patterns": ["Could not determine patterns"],
+            "suggested_topics_for_growth": ["Review configuration"],
+            "most_frequent_issue_type": "Analysis Incomplete"
         }
-        return summary
+        
+        for field, default_value in defaults.items():
+            if field not in summary:
+                summary[field] = default_value
+                logger.warning(f"Missing field '{field}' filled with default")
 
-    def _generate_audit_pdf(self, summary, user, date_range, total_posts):
-        """
-        Tạo file PDF từ dữ liệu tóm tắt chi tiết (với evidence) mà AI cung cấp.
-        Hàm này được chỉnh sửa trực tiếp từ phiên bản an toàn của bạn.
-        """
+    def _generate_pdf_report(self, summary, user, date_range, total_posts, language_counts):
+        """Generate professional PDF report with tables instead of charts"""
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                              leftMargin=0.75*inch, rightMargin=0.75*inch, 
+                              topMargin=0.75*inch, bottomMargin=0.75*inch)
+        
+        # Create enhanced styles
         styles = getSampleStyleSheet()
-        story = []
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, 
+                                   spaceAfter=30, textColor=HexColor("#1a365d"), 
+                                   fontName='Helvetica-Bold', alignment=1)
         
-        # --- Các style tùy chỉnh của bạn được giữ nguyên ---
-        title_style = styles['h1']
-        subtitle_style = styles['h2']
-        body_style = styles['BodyText']
-
-        # Style mới cho phần evidence
-        styles.add(ParagraphStyle(
-            name='EvidenceStyle', 
-            parent=body_style, 
-            leftIndent=35, 
-            textColor=HexColor("#555555"), 
-            fontName='Helvetica-Oblique',
-            spaceBefore=2,
-            spaceAfter=8
-        ))
+        subtitle_style = ParagraphStyle('Subtitle', parent=styles['Heading2'], fontSize=16, 
+                                      spaceBefore=20, spaceAfter=12, textColor=HexColor("#2d3748"),
+                                      fontName='Helvetica-Bold')
         
-        # Style cho các gạch đầu dòng
-        bullet_style = ParagraphStyle(
-            'BulletStyle',
-            parent=body_style,
-            leftIndent=20,
-            bulletIndent=0,
-            spaceAfter=2 # Giảm khoảng cách sau điểm chính
-        )
-
-        try:
-            # --- Header của PDF được giữ nguyên ---
-            story.append(Paragraph("AI Code Quality Audit Report", title_style))
-            story.append(Spacer(1, 0.2 * inch))
+        body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=11, 
+                                  leading=16, spaceBefore=6, spaceAfter=6, 
+                                  textColor=HexColor("#2d3748"))
+        
+        # Build content
+        story = [
+            Paragraph("AI Code Quality Audit Report", title_style),
+            Spacer(1, 0.3*inch),
+            self._create_header_table(user, date_range, total_posts),
+            Spacer(1, 0.3*inch),
             
-            target = f"User: {user.username}" if user else f"Date Range: {date_range}"
-            story.append(Paragraph(f"<b>Audit Target:</b> {target}", body_style))
-            story.append(Paragraph(f"<b>Total Posts Found:</b> {total_posts}", body_style))
-            story.append(Paragraph(f"<b>Posts Analyzed by AI:</b> {total_posts}", body_style)) # Giả định tất cả đều được phân tích
-            story.append(Paragraph(f"<b>Analysis Status:</b> ✅ Completed Successfully", body_style))
-            story.append(Spacer(1, 0.3 * inch))
+            # Developer Profile Section
+            Paragraph("🧑‍💻 Developer Profile", subtitle_style),
+            Paragraph(summary.get('developer_profile', 'N/A'), body_style),
+            Spacer(1, 0.25*inch),
+            
+            # Quality Overview with Language Distribution Table
+            Paragraph("📊 Quality Overview & Analytics", subtitle_style),
+            self._create_quality_overview_table(summary, language_counts),
+            Spacer(1, 0.25*inch),
+        ]
 
-            # --- Summary Section được giữ nguyên ---
-            story.append(Paragraph("Overall Summary", subtitle_style))
-            quality_score = summary.get('overall_quality_score', 'N/A')
-            summary_data = [
-                ['Metric', 'Value'],
-                ['Overall Quality Score', f"{quality_score} / 100" if isinstance(quality_score, (int, float)) else str(quality_score)],
-            ]
-            summary_table = Table(summary_data)
-            summary_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), HexColor("#4F46E5")),
-                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor("#FFFFFF")),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        # Add content sections with better formatting
+        sections = [
+            ("✅ Key Strengths & Best Practices", summary.get('main_strengths', [])),
+            ("⚠️ Areas for Improvement", summary.get('common_weaknesses', [])),
+            ("🚫 Recurring Anti-Patterns", summary.get('recurring_anti_patterns', [])),
+            ("🎯 Recommended Learning Topics", summary.get('suggested_topics_for_growth', []))
+        ]
+
+        for title, items in sections:
+            story.append(Paragraph(title, subtitle_style))
+            story.extend(self._format_section_items(items, body_style))
+            story.append(Spacer(1, 0.25*inch))
+
+        # Add footer
+        story.append(Spacer(1, 0.4*inch))
+        story.extend(self._create_footer())
+
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+
+    def _create_header_table(self, user, date_range, total_posts):
+        """Create professionally formatted header information table"""
+        target = f"{user.username}" if user else "Date Range Analysis"
+        period = f"{date_range}" if not user else "All Time"
+        
+        data = [
+            ['Report Target:', target],
+            ['Analysis Period:', period],
+            ['Posts Analyzed:', str(total_posts)],
+            ['Generated On:', datetime.now().strftime('%B %d, %Y at %H:%M UTC')]
+        ]
+        
+        table = Table(data, colWidths=[2*inch, 4.5*inch])
+        table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('TEXTCOLOR', (0, 0), (0, -1), HexColor("#4a5568")),
+            ('TEXTCOLOR', (1, 0), (1, -1), HexColor("#2d3748")),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('LINEBELOW', (0, -1), (-1, -1), 1, HexColor("#e2e8f0")),
+        ]))
+        return table
+
+    def _create_quality_overview_table(self, summary, language_counts):
+        """Create quality metrics and language distribution tables side by side"""
+        # Quality Score Table
+        quality_score = summary.get('overall_quality_score', 'N/A')
+        
+        # Determine score color and status
+        if isinstance(quality_score, (int, float)):
+            if quality_score >= 80:
+                score_color, status = "#22c55e", "Excellent"
+            elif quality_score >= 60:
+                score_color, status = "#f59e0b", "Good" 
+            else:
+                score_color, status = "#ef4444", "Needs Improvement"
+        else:
+            score_color, status = "#6b7280", "Unknown"
+        
+        quality_data = [
+            ['Metric', 'Value', 'Status'],
+            ['Overall Quality Score', f'{quality_score}/100', status],
+            ['Primary Issue Type', summary.get('most_frequent_issue_type', 'N/A'), ''],
+        ]
+        
+        quality_table = Table(quality_data, colWidths=[1.8*inch, 1.2*inch, 1.2*inch])
+        quality_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), HexColor("#3b82f6")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), HexColor("#ffffff")),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BACKGROUND', (0, 1), (-1, -1), HexColor("#f8fafc")),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            # Color the quality score row based on score
+            ('TEXTCOLOR', (1, 1), (1, 1), HexColor(score_color)),
+            ('FONTNAME', (1, 1), (2, 1), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (2, 1), (2, 1), HexColor(score_color)),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, HexColor("#cbd5e0")),
+        ]))
+
+        # Language Distribution Table
+        if language_counts:
+            total_posts = sum(language_counts.values())
+            lang_data = [['Language', 'Posts', '% Share']]
+            
+            # Sort by count descending and show top languages
+            sorted_langs = sorted(language_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+            
+            for lang, count in sorted_langs:
+                percentage = f"{(count/total_posts*100):.1f}%"
+                lang_data.append([lang, str(count), percentage])
+            
+            # Add "Others" if there are more languages
+            if len(language_counts) > 6:
+                others_count = sum(count for lang, count in sorted(language_counts.items(), key=lambda x: x[1], reverse=True)[6:])
+                others_pct = f"{(others_count/total_posts*100):.1f}%"
+                lang_data.append(['Others', str(others_count), others_pct])
+                
+            lang_table = Table(lang_data, colWidths=[1.2*inch, 0.8*inch, 0.8*inch])
+            lang_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor("#10b981")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor("#ffffff")),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), HexColor("#F3F4F6")),
-                ('GRID', (0, 0), (-1, -1), 1, HexColor("#DDDDDD"))
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BACKGROUND', (0, 1), (-1, -1), HexColor("#f0fdf4")),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor("#cbd5e0")),
+                # Alternate row colors for better readability
+                ('BACKGROUND', (0, 2), (-1, 2), HexColor("#ffffff")),
+                ('BACKGROUND', (0, 4), (-1, 4), HexColor("#ffffff")),
+                ('BACKGROUND', (0, 6), (-1, 6), HexColor("#ffffff")),
             ]))
-            story.append(summary_table)
-            story.append(Spacer(1, 0.3 * inch))
+            
+            # Combine tables side by side
+            combined_table = Table([[quality_table, Spacer(0.2*inch, 0), lang_table]], 
+                                 colWidths=[4.2*inch, 0.2*inch, 2.8*inch])
+            combined_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+            return combined_table
+        else:
+            return quality_table
 
-            # ✅ SỬA ĐỔI: Render Strengths với cấu trúc {point, evidence}
-            story.append(Paragraph("Main Strengths / Good Habits", subtitle_style))
-            strengths = summary.get('main_strengths', [])
-            if strengths:
-                for item in strengths:
-                    # Đảm bảo item là một dictionary
-                    if isinstance(item, dict):
-                        point = item.get('point', 'No specific point provided.')
-                        evidence = item.get('evidence', 'No specific evidence provided.')
-                        story.append(Paragraph(f"• <b>{point}</b>", bullet_style))
-                        story.append(Paragraph(f"<i>Evidence: {evidence}</i>", styles['EvidenceStyle']))
-                    else:
-                        # Fallback nếu item không phải dict
-                        story.append(Paragraph(f"• {str(item)}", bullet_style))
+    def _format_section_items(self, items, body_style):
+        """Format items with consistent spacing and professional styling"""
+        elements = []
+        if not items:
+            elements.append(Paragraph("• No items identified in this category", body_style))
+            return elements
+
+        for i, item in enumerate(items, 1):
+            if isinstance(item, dict):
+                point = item.get('point', str(item))
+                evidence = item.get('evidence', '')
+                
+                # Main point with proper numbering
+                point_style = ParagraphStyle('Point', parent=body_style, 
+                                           leftIndent=0, spaceBefore=8, spaceAfter=4,
+                                           fontName='Helvetica-Bold')
+                elements.append(Paragraph(f"{i}. {point}", point_style))
+                
+                # Evidence with indentation and styling
+                if evidence:
+                    evidence_style = ParagraphStyle('Evidence', parent=body_style,
+                                                  fontSize=10, leftIndent=25, rightIndent=10,
+                                                  spaceBefore=2, spaceAfter=6,
+                                                  textColor=HexColor("#718096"),
+                                                  fontName='Helvetica-Oblique')
+                    elements.append(Paragraph(f"💡 <i>Evidence:</i> {evidence}", evidence_style))
             else:
-                story.append(Paragraph("• No specific strengths were identified in the analysis.", bullet_style))
-            story.append(Spacer(1, 0.3 * inch))
+                # Simple string items
+                item_style = ParagraphStyle('Item', parent=body_style,
+                                          leftIndent=0, spaceBefore=6, spaceAfter=4)
+                elements.append(Paragraph(f"{i}. {str(item)}", item_style))
+        
+        return elements
 
-            # ✅ SỬA ĐỔI: Render Weaknesses với cấu trúc {point, evidence}
-            story.append(Paragraph("Common Weaknesses / Areas for Improvement", subtitle_style))
-            weaknesses = summary.get('common_weaknesses', [])
-            if weaknesses:
-                for item in weaknesses:
-                    if isinstance(item, dict):
-                        point = item.get('point', 'No specific point provided.')
-                        evidence = item.get('evidence', 'No specific evidence provided.')
-                        story.append(Paragraph(f"• <b>{point}</b>", bullet_style))
-                        story.append(Paragraph(f"<i>Evidence: {evidence}</i>", styles['EvidenceStyle']))
-                    else:
-                        story.append(Paragraph(f"• {str(item)}", bullet_style))
-            else:
-                story.append(Paragraph("• No specific weaknesses were identified in the analysis.", bullet_style))
-            story.append(Spacer(1, 0.3 * inch))
-
-            # ✅ SỬA ĐỔI: Render Recommendations
-            story.append(Paragraph("Key Recommendations", subtitle_style))
-            recommendations = summary.get('key_recommendations', [])
-            if recommendations:
-                for rec in recommendations:
-                    story.append(Paragraph(f"• {str(rec)}", bullet_style))
-            else:
-                story.append(Paragraph("• No specific recommendations were generated.", bullet_style))
-            story.append(Spacer(1, 0.3 * inch))
-
-            # ✅ SỬA ĐỔI: Render Most Frequent Issue Type
-            story.append(Paragraph("Most Frequent Issue Type", subtitle_style))
-            error_category = summary.get('most_frequent_issue_type', 'N/A')
-            story.append(Paragraph(f"<b>{error_category}</b>", body_style))
-            story.append(Spacer(1, 0.3 * inch))
-
-            # --- Footer và build PDF được giữ nguyên ---
-            story.append(Spacer(1, 0.5 * inch))
-            timestamp = datetime.now().isoformat()
-            story.append(Paragraph(f"Report Generated: {timestamp}", ParagraphStyle('Footer', parent=body_style, fontSize=8, textColor=HexColor("#AAAAAA"))))
-
-            doc.build(story)
-            buffer.seek(0)
-            return buffer
-            
-        except Exception as pdf_error:
-            # ✅ HOÀN THIỆN PHẦN XỬ LÝ LỖI KHẨN CẤP
-            logger.error(f"PDF generation failed unexpectedly: {pdf_error}", exc_info=True)
-            
-            emergency_buffer = io.BytesIO()
-            emergency_doc = SimpleDocTemplate(emergency_buffer, pagesize=letter)
-            
-            # ĐỊNH NGHĨA BIẾN `emergency_story` BỊ THIẾU
-            target_str = f"User: {user.username}" if user else f"Date Range: {date_range}"
-            emergency_story = [
-                Paragraph("AI Code Quality Report - Generation Error", styles['h1']),
-                Spacer(1, 0.5 * inch),
-                Paragraph(f"<b>Audit Target:</b> {target_str}", styles['BodyText']),
-                Paragraph(f"<b>Total Posts Found:</b> {total_posts}", styles['BodyText']),
-                Spacer(1, 0.3 * inch),
-                Paragraph("<b>An internal error occurred while generating the PDF report.</b>", styles['BodyText']),
-                Paragraph("Please contact a system administrator. The analysis data was likely generated successfully, but the PDF creation failed.", styles['BodyText']),
-                Spacer(1, 0.2 * inch),
-                Paragraph(f"<b>Error Details:</b> {str(pdf_error)}", styles['BodyText']),
-            ]
-            
-            emergency_doc.build(emergency_story)
-            emergency_buffer.seek(0)
-            return emergency_buffer
+    def _create_footer(self):
+        """Create professional footer with separator line"""
+        footer_elements = []
+        
+        # Add separator line
+        line_table = Table([['']], colWidths=[6.5*inch])
+        line_table.setStyle(TableStyle([
+            ('LINEABOVE', (0, 0), (-1, 0), 1, HexColor("#e2e8f0")),
+            ('TOPPADDING', (0, 0), (-1, 0), 10)
+        ]))
+        footer_elements.append(line_table)
+        
+        # Add footer text
+        footer_style = ParagraphStyle('Footer', 
+                                    fontSize=8, 
+                                    textColor=HexColor("#718096"), 
+                                    alignment=2,  # Right align
+                                    spaceBefore=8)
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
+        footer_text = f"Report generated by AI Code Quality System | {timestamp}"
+        footer_elements.append(Paragraph(footer_text, footer_style))
+        
+        return footer_elements

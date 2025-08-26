@@ -609,3 +609,9 @@
     width: auto;
   }
 }
+.toolsDropdownSeparator {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #374151; /* Hoặc màu phù hợp với theme */
+  background: transparent;
+}

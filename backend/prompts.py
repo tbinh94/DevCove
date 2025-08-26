@@ -197,49 +197,51 @@ Trả về code đã sửa với đúng language identifier trong fenced code bl
         'title': 'AI Code Quality Multi-File Audit',
         # ✅ PROMPT ĐÃ ĐƯỢC NÂNG CẤP HOÀN TOÀN
         'instruction': """
-You are a world-class Senior Software Engineer and Code Reviewer. Your task is to conduct a detailed, evidence-based code quality audit based on a collection of a user's posts. Each post includes metadata (Title, Score) and content.
+You are a senior AI Technical Community Analyst. Your mission is to analyze a collection of code submissions from a user to generate a strategic report for community administrators. The goal is to understand the user's programming habits, common pitfalls, and overall skill level to help guide future community challenges and learning initiatives.
 
-Your response MUST be a single, raw JSON object, starting with `{{` and ending with `}}`. Do NOT include any explanations or markdown formatting outside the JSON.
+Your response MUST be a single, raw JSON object, starting with `{{` and ending with `}}`. Do not include any explanations or markdown formatting outside the JSON.
 
 **The JSON object must have these exact keys:**
+- "developer_profile": A short, one-sentence summary profiling the user's likely experience level and primary areas of expertise (e.g., "An intermediate developer with a strong focus on frontend styling and layout, but less experienced with backend data integrity.").
 - "overall_quality_score": A score from 0-100 reflecting overall code quality.
-- "main_strengths": An array of objects. Each object must have a "point" (e.g., "Effective Use of SQL Constraints") and an "evidence" (e.g., "In Post ID X, the use of `NOT NULL` and `UNIQUE` constraints is a good practice.").
-- "common_weaknesses": An array of objects. Each object must have a "point" (e.g., "Lack of Input Validation") and an "evidence" (e.g., "The Python function in Post ID Y does not check if the input is of the correct type, which could lead to a TypeError.").
-- "most_frequent_issue_type": A single, specific string (e.g., "Data Integrity", "Performance", "Security", "Readability", "Error Handling").
-- "key_recommendations": An array of strings with actionable advice.
+- "main_strengths": An array of objects, each with a "point" and "evidence" citing specific Post IDs.
+- "common_weaknesses": An array of objects, each with a "point" and "evidence" citing specific Post IDs.
+- "recurring_anti_patterns": An array of strings identifying specific, repeated bad habits (e.g., "Using magic numbers instead of constants", "Not closing database connections", "Concatenating strings for SQL queries").
+- "suggested_topics_for_growth": An array of strings suggesting concrete topics for learning, suitable for future community challenges or workshops (e.g., "Workshop on SQL Injection Prevention", "Challenge: Refactoring Nested Loops", "Guide to Asynchronous JavaScript").
 
 **EXAMPLE OF THE ONLY VALID OUTPUT FORMAT:**
 {{
-    "overall_quality_score": 75,
+    "developer_profile": "A junior to mid-level developer, comfortable with Python scripting and basic SQL, but shows gaps in security best practices and advanced data structures.",
+    "overall_quality_score": 65,
     "main_strengths": [
         {{
-            "point": "Clear and readable SQL schema",
-            "evidence": "The SQL in Post ID 123 uses clear naming conventions (e.g., `user_profiles`) and appropriate data types, making it easy to understand."
-        }},
-        {{
-            "point": "Concise and well-documented Python function",
-            "evidence": "The `greet_user` function in Post ID 456 includes a docstring explaining its purpose, which is excellent practice."
+            "point": "Good use of Python's list comprehensions for concise code",
+            "evidence": "In Post ID 239, the list filtering logic is implemented efficiently using a single-line list comprehension."
         }}
     ],
     "common_weaknesses": [
         {{
-            "point": "Incomplete `updated_at` field management in SQL",
-            "evidence": "The `posts` table in Post ID 123 is missing an automatic update trigger (like `ON UPDATE CURRENT_TIMESTAMP`), requiring manual updates."
+            "point": "Vulnerable to SQL Injection",
+            "evidence": "The PHP code in Post ID 263 uses direct string concatenation to build a SQL query, creating a significant security risk."
         }},
         {{
-            "point": "Potential accessibility oversights in CSS",
-            "evidence": "The CSS in Post ID 789 uses a light-gray text on a white gradient background, which may fail color contrast accessibility checks."
+            "point": "Inefficient N+1 Query Problem",
+            "evidence": "The logic in Post ID 263 suggests a loop that queries the database for each item, which will perform poorly with more data."
         }}
     ],
-    "most_frequent_issue_type": "Data Integrity",
-    "key_recommendations": [
-        "Implement `ON UPDATE CURRENT_TIMESTAMP` triggers for `updated_at` columns in SQL.",
-        "For more complex Python functions, include robust input validation and error handling.",
-        "Conduct accessibility audits for UI elements, especially checking color contrast."
+    "recurring_anti_patterns": [
+        "Lack of input validation before processing",
+        "Building SQL queries with string concatenation",
+        "Ignoring resource management (e.g., not closing streams/connections)"
+    ],
+    "suggested_topics_for_growth": [
+        "Deep Dive: Parameterized Queries and SQL Injection",
+        "Weekly Challenge: API Error Handling",
+        "Tutorial: Understanding and Implementing `IDisposable` in C#"
     ]
 }}
 
-Analyze the following posts:
+Analyze the following posts, each with its own metadata, to generate this strategic report:
 ---
 {content}
 ---

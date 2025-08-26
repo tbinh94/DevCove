@@ -15,19 +15,29 @@ import UnifiedSearch from '../../UnifiedSearch';
 import Logo from '../../../assets/imgs/logo.svg';
 
 const Header = ({ onToggleSidebar, isSidebarOpen }) => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin } = useAuth(); // ✅ Thêm isAdmin từ AuthContext
   const navigate = useNavigate();
 
   // State để lưu profile cho header, tách biệt với context
   const [headerProfile, setHeaderProfile] = useState(null); 
   
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false); // NEW: State cho Tools dropdown
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
   const userMenuRef = useRef(null);
-  const toolsMenuRef = useRef(null); // NEW: Ref cho Tools dropdown
+  const toolsMenuRef = useRef(null);
+
+  // ✅ Debug để xem user object chứa gì
+  console.log('Header - Current user:', user);
+  console.log('Header - isAdmin from AuthContext:', isAdmin);
+  
+  // ✅ Sử dụng isAdmin từ AuthContext (giống như AdminRoute)
+  // Nếu AuthContext không có isAdmin, thì fallback về kiểm tra thông thường
+  const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.is_admin === true || user?.role === 'admin');
+  
+  console.log('Header - Final userIsAdmin:', userIsAdmin);
 
   // useEffect để lấy profile y hệt UserProfile.jsx
   useEffect(() => {
@@ -76,7 +86,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     setIsCreatePostOpen(false);
   };
 
-  // NEW: Handlers cho Tools dropdown
+  // Handlers cho Tools dropdown
   const handleChatClick = (e) => {
     e.preventDefault();
     navigate('/chat');
@@ -88,20 +98,26 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
     setIsToolsMenuOpen(false);
   };
 
+  // ✅ Các handler admin - chỉ gọi khi đã kiểm tra quyền
   const handleBugTrackerClick = () => {
-    navigate('/admin/bug-tracker'); // ✅ Cập nhật lại đường dẫn cho đúng với App.jsx
-    setIsToolsMenuOpen(false);
+    if (userIsAdmin) {
+      navigate('/admin/bug-tracker');
+      setIsToolsMenuOpen(false);
+    }
   };
 
   const handleGenerateChallengeClick = () => {
-    navigate('/admin/challenge-generator'); // ✅ Cập nhật lại đường dẫn
-    setIsToolsMenuOpen(false);
+    if (userIsAdmin) {
+      navigate('/admin/challenge-generator');
+      setIsToolsMenuOpen(false);
+    }
   };
 
-  // ✅ NEW: Handler cho Code Quality Audit
   const handleCodeAuditClick = () => {
-    navigate('/admin/code-audit');
-    setIsToolsMenuOpen(false);
+    if (userIsAdmin) {
+      navigate('/admin/code-audit');
+      setIsToolsMenuOpen(false);
+    }
   };
 
   // Click outside handlers
@@ -204,47 +220,58 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
                   <span className={styles.createPostButtonText}>Create</span>
                 </button>
                 
-                {/* NEW: Developer Tools Dropdown */}
-                <div className={styles.toolsMenu} ref={toolsMenuRef}>
-                  <button
-                    onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
-                    className={styles.toolsMenuButton}
-                    title="Developer Tools"
-                  >
-                    <FlaskConical className={styles.buttonIcon} />
-                    <span className={styles.toolsMenuButtonText}>Tools</span>
-                    <ChevronDown className={`${styles.buttonIcon} ${styles.dropdownChevron} ${isToolsMenuOpen ? styles.dropdownChevronOpen : ''}`} />
-                  </button>
+                {/* ✅ Chỉ hiển thị Tools dropdown nếu có ít nhất 1 tool khả dụng */}
+                {(true || userIsAdmin) && ( // true cho Chat và Sandbox, userIsAdmin cho các tool khác
+                  <div className={styles.toolsMenu} ref={toolsMenuRef}>
+                    <button
+                      onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                      className={styles.toolsMenuButton}
+                      title="Developer Tools"
+                    >
+                      <FlaskConical className={styles.buttonIcon} />
+                      <span className={styles.toolsMenuButtonText}>Tools</span>
+                      <ChevronDown className={`${styles.buttonIcon} ${styles.dropdownChevron} ${isToolsMenuOpen ? styles.dropdownChevronOpen : ''}`} />
+                    </button>
 
-                  {isToolsMenuOpen && (
-                    <div className={styles.toolsDropdownMenu}>
-                      <button onClick={handleChatClick} className={styles.toolsDropdownItem}>
-                        <MessageSquare className={styles.dropdownIcon} />
-                        <span>Chat</span>
-                      </button>
-                      
-                      <button onClick={handleSandboxClick} className={styles.toolsDropdownItem}>
-                        <FlaskConical className={styles.dropdownIcon} />
-                        <span>Code Sandbox</span>
-                      </button>
-                      
-                      <button onClick={handleBugTrackerClick} className={styles.toolsDropdownItem}>
-                        <Bug className={styles.dropdownIcon} />
-                        <span>Bug Tracker</span>
-                      </button>
-                      
-                      <button onClick={handleGenerateChallengeClick} className={styles.toolsDropdownItem}>
-                        <Trophy className={styles.dropdownIcon} />
-                        <span>Challenges</span>
-                      </button>
+                    {isToolsMenuOpen && (
+                      <div className={styles.toolsDropdownMenu}>
+                        {/* ✅ Các tool công khai - hiển thị cho tất cả user */}
+                        <button onClick={handleChatClick} className={styles.toolsDropdownItem}>
+                          <MessageSquare className={styles.dropdownIcon} />
+                          <span>Chat</span>
+                        </button>
+                        
+                        <button onClick={handleSandboxClick} className={styles.toolsDropdownItem}>
+                          <FlaskConical className={styles.dropdownIcon} />
+                          <span>Code Sandbox</span>
+                        </button>
+                        
+                        {/* ✅ Separator nếu có cả tool công khai và admin tool */}
+                        {userIsAdmin && <hr className={styles.toolsDropdownSeparator} />}
+                        
+                        {/* ✅ Chỉ hiển thị admin tools nếu user là admin */}
+                        {userIsAdmin && (
+                          <>
+                            <button onClick={handleBugTrackerClick} className={styles.toolsDropdownItem}>
+                              <Bug className={styles.dropdownIcon} />
+                              <span>Bug Tracker</span>
+                            </button>
+                            
+                            <button onClick={handleGenerateChallengeClick} className={styles.toolsDropdownItem}>
+                              <Trophy className={styles.dropdownIcon} />
+                              <span>Challenges</span>
+                            </button>
 
-                      <button onClick={handleCodeAuditClick} className={styles.toolsDropdownItem}>
-                            <ClipboardCheck className={styles.dropdownIcon} />
-                            <span>Code Quality Audit</span>
-                          </button>
-                    </div>
-                  )}
-                </div>
+                            <button onClick={handleCodeAuditClick} className={styles.toolsDropdownItem}>
+                              <ClipboardCheck className={styles.dropdownIcon} />
+                              <span>Code Quality Audit</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className={styles.notificationWrapper}>
                   <NotificationManager />

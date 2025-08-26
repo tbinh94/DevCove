@@ -1,6 +1,4 @@
-// src/contexts/AuthContext.js
-
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
 // ✅ Thêm Navigate và Outlet để xử lý điều hướng trong React Router v6
 import { Navigate } from 'react-router-dom';
 import apiService, { AuthError } from '../services/api'; // Import AuthError
@@ -94,6 +92,15 @@ const getCSRFToken = () => {
 // Provider component
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+
+  const isAdmin = useMemo(() => {
+    // Luôn kiểm tra `state.user` để đảm bảo an toàn
+    if (!state.user) {
+      return false;
+    }
+    // Kiểm tra các trường có thể có. Dùng 'ADMIN' (viết hoa) để nhất quán với backend.
+    return state.user.role === 'ADMIN' || state.user.is_admin === true;
+  }, [state.user]);
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -267,6 +274,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     ...state,
+    isAdmin,
     login,
     register,
     logout,
