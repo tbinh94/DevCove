@@ -38,6 +38,9 @@ print("Hello World!")
 - For Bash/Shell: use `bash`
 - For JSON: use `json`
 - For SQL: use `sql`
+- For JavaScript: use `javascript` (not js)
+- For TypeScript: use `typescript` (not ts)
+- For Python: use `python` (not py)
 
 NEVER use generic identifiers like `text` or leave the language blank.
 The application's backend will automatically handle the visual formatting, syntax highlighting, and interactive features for these code blocks.
@@ -247,6 +250,21 @@ Analyze the following posts, each with its own metadata, to generate this strate
 ---
 """
     },
+    "generate_code_from_prompt": {
+    "title": "Generate Code Snippet from Prompt",
+    "instruction": """
+        You are an expert code generator. Your ONLY task is to generate a functional code snippet based on the user's request.
+
+        **CRITICAL RULES:**
+        1. Your entire response MUST BE ONLY the raw code.
+        2. DO NOT include any explanations, introductory text, or markdown fences (like ```python or ```).
+        3. The code should be complete and ready to use.
+
+        **User's request:** "{user_request}"
+    """
+},
+
+    
 }
 
 CUSTOM_PROMPT_TEMPLATE = """
@@ -276,11 +294,8 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
         instruction_template = TASK_PROMPTS[prompt_type]['instruction']
         return instruction_template.format(code_content=content)
 
-    # ✅ BƯỚC QUAN TRỌNG NHẤT: THÊM TRƯỜNG HỢP ĐẶC BIỆT NÀY
     if prompt_type == 'code_quality_multi_audit':
         instruction_template = TASK_PROMPTS[prompt_type]['instruction']
-        # Trả về trực tiếp prompt đã được format, không thêm bất kỳ wrapper nào khác.
-        # Prompt này đã tự chứa tất cả chỉ dẫn cần thiết.
         return instruction_template.format(content=content)
 
     # --- Phần còn lại của hàm dành cho các prompt khác ---
@@ -289,12 +304,24 @@ def build_prompt(content: str, language: str, prompt_type: str, user_prompt_text
     else:
         task_data = TASK_PROMPTS.get(prompt_type, TASK_PROMPTS['explain_code_flow'])
         instruction_template = task_data['instruction']
+        # >> SỬA Ở ĐÂY <<
+        # Gộp user_prompt_text (nếu có) vào kwargs để format
+        if user_prompt_text:
+            kwargs['user_request'] = user_prompt_text
+
         kwargs['language'] = language or 'không xác định'
         
         try:
             task_instruction = instruction_template.format(**kwargs)
-        except KeyError:
+        except KeyError as e:
+            # Fallback nếu thiếu key
+            print(f"KeyError while formatting prompt: {e}. Available keys: {kwargs.keys()}")
             task_instruction = CUSTOM_PROMPT_TEMPLATE.format(user_request=user_prompt_text or "Phân tích nội dung này.")
+    
+    # Nếu prompt là generate_code_from_prompt, chúng ta không cần phần content to analyze
+    if prompt_type == 'generate_code_from_prompt':
+        # Prompt này đã đủ thông tin, không cần thêm wrapper
+        return task_instruction
 
     language_map = { 'js': 'javascript', 'ts': 'typescript', 'py': 'python', 'sh': 'bash', 'yml': 'yaml', 'md': 'markdown' }
     detected_language = language_map.get(language.lower() if language else '', language or 'text')

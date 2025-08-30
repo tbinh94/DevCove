@@ -414,3 +414,110 @@
     transform: translateY(0);
   }
 }
+
+.contentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.contentHeader .label {
+  margin-bottom: 0;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a0aec0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.checkboxLabel:hover {
+  background-color: rgba(66, 153, 225, 0.1);
+  color: #4299e1;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  margin-right: 4px;
+  transform: scale(1.1);
+  accent-color: #4299e1;
+}
+
+.aiGeneratorBox {
+  background-color: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.aiGeneratorInput {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #ffffff;
+  background-color: #1a202c; /* Nền tối hơn một chút */
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.aiGeneratorInput:focus {
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  outline: none;
+}
+
+.aiGeneratorButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #38a169, #2f855a);
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-end;
+  min-width: 160px;
+}
+
+.aiGeneratorButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2f855a, #276749);
+  transform: translateY(-1px);
+}
+
+.aiGeneratorButton:disabled {
+  background: #4a5568;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.generatorError {
+  color: #ff6b6b;
+  font-size: 14px;
+  margin-top: -5px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

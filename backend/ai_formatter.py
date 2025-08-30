@@ -403,27 +403,30 @@ class AICommentFormatter:
             ('height:', 5)
         ]
         
-        # Java patterns
+        # Java patterns (ĐIỀU CHỈNH ĐIỂM SỐ)
         java_patterns = [
-            ('public class', 10),
-            ('public static void main', 10),
-            ('System.out.', 9),
+            ('System.out.println', 15),
             ('String[] args', 9),
-            ('public ', 4),
-            ('private ', 4),
-            ('protected ', 6),
+            ('import java.', 12),
+            # Mẫu chung, giảm điểm
+            ('public class', 5),
+            ('public static void main', 6),
             ('extends ', 5),
-            ('implements ', 6)
+            ('implements ', 6),
+            ('private ', 3),
+            ('protected ', 4),
         ]
         
-        # C# patterns
+        # C# patterns (ĐIỀU CHỈNH ĐIỂM SỐ)
         csharp_patterns = [
-            ('using System', 10),
-            ('namespace ', 7),
-            ('Console.WriteLine', 9),
-            ('public class', 6),
-            ('static void Main', 10),
-            ('string[] args', 8)
+            ('using System', 15),
+            ('Console.WriteLine', 12),
+            ('namespace ', 10),
+            ('static void Main', 9), # 'Main' viết hoa
+            ('string[] args', 8),
+            ('public class', 5),
+            ('get;', 7), # Đặc trưng cho properties
+            ('set;', 7),
         ]
         
         # Rust patterns
@@ -464,7 +467,7 @@ class AICommentFormatter:
         
         for lang, patterns in pattern_sets.items():
             for pattern, weight in patterns:
-                if pattern in code_lower:
+                if pattern in code_content:
                     scores[lang] += weight
         
         # Special JSON detection
@@ -477,7 +480,7 @@ class AICommentFormatter:
         
         # Find language with highest score
         max_score = max(scores.values())
-        if max_score >= 6:  # Minimum threshold
+        if max_score >= 8:  # Minimum threshold
             detected_lang = max(scores, key=scores.get)
             return detected_lang
         

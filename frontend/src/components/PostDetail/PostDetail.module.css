@@ -1,28 +1,32 @@
-/* PostDetail.module.css - Optimized Dark Theme */
+/* PostDetail.module.css - Optimized & Readable with Improved Contrast */
 
-/* Base Variables & Reset */
 :root {
-  --bg-primary: #1a1b23;
-  --bg-secondary: #2d3748;
-  --bg-tertiary: #1a202c;
-  --text-primary: #f7fafc;
+  --bg-primary: #0f0f14;
+  --bg-secondary: #1a1a22;
+  --bg-tertiary: #262633;
+  --text-primary: #ffffff;
   --text-secondary: #e2e8f0;
-  --text-muted: #a0aec0;
-  --accent: #4299e1;
-  --accent-hover: #63b3ed;
-  --border: #4a5568;
-  --error: #c62828;
-  --success: #48bb78;
-  --shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
-  --gradient: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  --text-muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --border: #374151;
+  --error: #ef4444;
+  --success: #22c55e;
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   --radius: 16px;
   --radius-sm: 12px;
   --radius-xs: 6px;
   --transition: all 0.2s ease;
+  
+  /* Code block colors */
+  --code-bg: #1e1e2e;
+  --code-border: #45475a;
+  --code-text: #cdd6f4;
+  --code-header-bg: #313244;
 }
 
-/* Layout & Typography */
+/* Base Layout */
 .container {
   min-height: 100vh;
   background: var(--bg-primary);
@@ -35,67 +39,7 @@
   padding: 0 1rem;
 }
 
-/* Common Components */
-.card {
-  background: var(--bg-secondary);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: var(--transition);
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-  border-color: var(--accent);
-}
-
-.button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.75rem 1rem;
-  border-radius: 50px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: var(--transition);
-  border: 1px solid transparent;
-}
-
-.button:hover {
-  background: rgba(66, 153, 225, 0.1);
-  color: var(--accent);
-  transform: translateY(-1px);
-  border-color: rgba(66, 153, 225, 0.2);
-}
-
-.buttonPrimary {
-  background: var(--gradient);
-  color: white;
-  border: 1px solid var(--accent);
-}
-
-.buttonPrimary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3);
-}
-
-.buttonDanger {
-  background: var(--error);
-  color: white;
-  border: 1px solid var(--error);
-}
-
-.buttonDanger:hover {
-  background: #d32f2f;
-  box-shadow: 0 5px 15px rgba(198, 40, 40, 0.3);
-}
-
-/* Loading & Error States */
+/* Loading & Error */
 .loadingContainer, .errorContainer {
   display: flex;
   flex-direction: column;
@@ -110,7 +54,7 @@
 .loadingSpinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(66, 153, 225, 0.3);
+  border: 4px solid rgba(96, 165, 250, 0.3);
   border-top: 4px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -130,12 +74,12 @@
 }
 
 .errorIcon { font-size: 3rem; margin-bottom: 1rem; }
-.errorTitle { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
-.errorMessage { opacity: 0.8; color: var(--text-muted); }
+.errorTitle { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
+.errorMessage { color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; }
+.loadingText { color: var(--text-secondary); font-size: 1.1rem; margin-top: 1rem; }
 
 /* Post Card */
 .postCard {
-  /* @extend .card; */
   background: var(--bg-secondary);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -147,7 +91,7 @@
 
 .postCard:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   border-color: var(--accent);
 }
 
@@ -156,32 +100,20 @@
   background: var(--gradient);
   color: white;
   position: relative;
-  overflow: hidden;
 }
-
-.postHeader::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.1) 0%, transparent 50%);
-  opacity: 0.5;
-}
-
-.postHeaderContent { position: relative; z-index: 1; }
 
 .postTitle {
   font-size: 2rem;
   font-weight: 700;
   margin: 0 0 1.5rem 0;
-  line-height: 1.2;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  line-height: 1.3;
   color: white;
 }
 
 .botReviewedBadgeDetail {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   color: white;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 15px;
   font-size: 0.8em;
   font-weight: 600;
@@ -189,77 +121,46 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: var(--transition);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-.authorInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+.authorInfo { display: flex; align-items: center; gap: 0.75rem; }
 
 .authorAvatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 1.2rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   color: white;
 }
 
-.authorName {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: white;
-}
-
-.postStats {
-  display: flex;
-  gap: 1rem;
-  margin-top: 0.25rem;
-}
-
+.authorName { font-weight: 600; font-size: 1.1rem; color: white; }
+.postStats { display: flex; gap: 1rem; margin-top: 0.25rem; }
 .statItem {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.85rem;
-  opacity: 0.9;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
 }
 
-/* Image Components */
-.postImageContainer {
-  position: relative;
-  overflow: hidden;
-  background: var(--bg-tertiary);
-}
-
+/* Image */
+.postImageContainer { position: relative; overflow: hidden; }
 .postImageWrapper {
   position: relative;
   cursor: pointer;
   overflow: hidden;
   transition: var(--transition);
 }
-
-.postImageWrapper:hover {
-  transform: scale(1.02);
-}
-
-.postImage {
-  width: 100%;
-  height: 400px;
-  object-fit: cover;
-  transition: var(--transition);
-}
+.postImageWrapper:hover { transform: scale(1.02); }
+.postImage { width: 100%; height: 400px; object-fit: cover; }
 
 .imageOverlay {
   position: absolute;
@@ -271,170 +172,24 @@
   opacity: 0;
   transition: var(--transition);
 }
-
 .postImageWrapper:hover .imageOverlay { opacity: 1; }
 
 .zoomIcon {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 50%;
   padding: 12px;
   color: var(--bg-secondary);
-  backdrop-filter: blur(10px);
   transform: scale(0.8);
   transition: var(--transition);
 }
-
 .postImageWrapper:hover .zoomIcon { transform: scale(1); }
 
-/* Modal Base */
-.modal {
-  position: fixed; /* Rất quan trọng để modal nằm trên mọi thứ */
-  inset: 0; /* Chiếm toàn bộ màn hình */
-  background: rgba(0, 0, 0, 0.95); /* Màu nền overlay */
-  display: flex; /* Để căn giữa nội dung modal */
-  align-items: center;
-  justify-content: center;
-  z-index: 1000; /* Đảm bảo nó nằm trên các phần tử khác */
-  backdrop-filter: blur(10px);
-  animation: fadeIn 0.3s ease;
-}
-
-.modalContent {
-  position: relative;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border);
-  animation: slideIn 0.3s ease;
-}
-
-.closeButton {
-  position: absolute;
-  top: -60px;
-  right: -10px;
-  background: rgba(45, 55, 72, 0.8);
-  border: none;
-  border-radius: 50%;
-  padding: 12px;
-  cursor: pointer;
-  color: white;
-  transition: var(--transition);
-  backdrop-filter: blur(10px);
-  z-index: 1001;
-  border: 1px solid var(--border);
-}
-
-.closeButton:hover {
-  background: rgba(66, 153, 225, 0.8);
-  border-color: var(--accent);
-}
-
-/* Image Modal */
-.imageModal {
-  /* @extend .modal; */
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-  animation: fadeIn 0.3s ease;
-}
-
-.imageModalContent {
-  /* @extend .modalContent; */
-  position: relative;
-  background: var(--bg-secondary); /* This will be overridden by transparent */
-  border-radius: var(--radius-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border); /* This will be overridden by none */
-  animation: slideIn 0.3s ease;
-  max-width: 95vw;
-  max-height: 95vh;
-  background: transparent;
-  border: none;
-}
-
-.modalImage {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-}
-
-/* Bot Chat Modal */
-.botChatModal {
-  /* @extend .modal; */
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-  animation: fadeIn 0.3s ease;
-}
-
-.botChatModalContent {
-  /* @extend .modalContent; */
-  position: relative;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border);
-  animation: slideIn 0.3s ease;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.botChatHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.botChatTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.botChatBody {
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 1.5rem;
-}
-
-.botChatFooter {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-/* Content & Actions */
-.postContent {
-  padding: 2rem;
-  background: var(--bg-secondary);
-}
-
+/* Content */
+.postContent { padding: 2rem; }
 .contentText {
   font-size: 1.1rem;
   line-height: 1.7;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   white-space: pre-line;
 }
 
@@ -443,28 +198,28 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1.5rem 2rem;
-  background: var(--bg-secondary);
   border-top: 1px solid var(--border);
 }
 
 .tagItem {
-  background: rgba(66, 153, 225, 0.1);
+  background: rgba(96, 165, 250, 0.15);
   color: var(--accent);
-  padding: 0.25rem 0.75rem;
+  padding: 0.4rem 1rem;
   border-radius: 20px;
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
-  border: 1px solid rgba(66, 153, 225, 0.2);
+  font-weight: 600;
+  border: 1px solid rgba(96, 165, 250, 0.3);
   transition: var(--transition);
 }
 
 .tagItem:hover {
-  background: rgba(66, 153, 225, 0.2);
+  background: rgba(96, 165, 250, 0.25);
   border-color: var(--accent);
   transform: translateY(-1px);
 }
 
+/* Actions */
 .postActions {
   display: flex;
   align-items: center;
@@ -474,23 +229,74 @@
   border-top: 1px solid var(--border);
 }
 
-.leftActions, .rightActions {
+.leftActions, .rightActions { display: flex; align-items: center; gap: 1rem; }
+.rightActions { gap: 0.5rem; }
+
+/* Buttons */
+.button, .actionButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border-radius: 50px;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: var(--transition);
+  border: 1px solid transparent;
 }
 
-.rightActions { gap: 0.5rem; }
+.button:hover, .actionButton:hover {
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--accent);
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.buttonPrimary, .commentSubmitButton {
+  background: var(--gradient);
+  color: white;
+  border: 1px solid var(--accent);
+  font-weight: 600;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.buttonPrimary:hover:not(:disabled), .commentSubmitButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(96, 165, 250, 0.3);
+}
+
+.buttonDanger, .deleteConfirmButton {
+  background: var(--error);
+  color: white;
+  border: 1px solid var(--error);
+  font-weight: 600;
+}
+
+.actionButton.bookmarked {
+  color: var(--accent);
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.deleteButton { color: var(--error); }
+.deleteButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
 
 /* Vote Section */
 .voteSection {
   display: flex;
   align-items: center;
-  background: rgba(66, 153, 225, 0.1);
+  background: rgba(96, 165, 250, 0.15);
   border-radius: 50px;
   padding: 0.25rem;
   gap: 0.25rem;
-  border: 1px solid rgba(66, 153, 225, 0.2);
+  border: 1px solid rgba(96, 165, 250, 0.3);
 }
 
 .voteButton {
@@ -506,18 +312,10 @@
   transition: var(--transition);
 }
 
-.voteButton:hover {
-  background: rgba(66, 153, 225, 0.2);
-  transform: scale(1.1);
-}
-
-.voteButton.active {
-  background: var(--accent);
-  color: white;
-}
-
+.voteButton:hover { background: rgba(96, 165, 250, 0.25); transform: scale(1.1); }
+.voteButton.active { background: var(--accent); color: white; }
 .voteScore {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--accent);
   padding: 0 0.75rem;
@@ -525,70 +323,19 @@
   text-align: center;
 }
 
-/* Action Buttons Extensions */
-.actionButton {
-  /* @extend .button; */
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.75rem 1rem;
-  border-radius: 50px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: var(--transition);
-  border: 1px solid transparent;
-}
-
-.actionButton.bookmarked {
-  color: var(--accent);
-  background: rgba(66, 153, 225, 0.1);
-  border-color: rgba(66, 153, 225, 0.2);
-}
-
-.deleteButton:hover {
-  background: #ffebee;
-  color: var(--error);
-}
-
-/* Comments Section */
+/* Comments */
 .commentsSection {
-  /* @extend .card; */
   background: var(--bg-secondary);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
-  transition: var(--transition);
   padding: 2rem;
 }
 
-.commentsSection:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-  border-color: var(--accent);
-}
-
-.commentsHeader {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.commentsTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
+.commentsTitle { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 2rem 0; }
 
 /* Comment Form */
-.commentFormContainer {
-  margin-bottom: 2rem;
-}
-
+.commentFormContainer { margin-bottom: 2rem; }
 .commentForm {
   background: var(--bg-tertiary);
   border-radius: var(--radius);
@@ -596,12 +343,7 @@
   border: 1px solid var(--border);
 }
 
-.commentInputWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
+.commentInputWrapper { display: flex; flex-direction: column; gap: 1rem; }
 .commentTextarea {
   width: 100%;
   min-height: 120px;
@@ -609,52 +351,23 @@
   border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 1rem;
-  font-family: inherit;
   resize: vertical;
   background: var(--bg-secondary);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   box-sizing: border-box;
   transition: var(--transition);
+  line-height: 1.5;
 }
 
-.commentTextarea::placeholder {
-  color: var(--text-muted);
-}
-
+.commentTextarea::placeholder { color: var(--text-muted); }
 .commentTextarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
 }
 
-.commentFormActions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.commentSubmitButton {
-  /* @extend .buttonPrimary; */
-  background: var(--gradient);
-  color: white;
-  border: 1px solid var(--accent);
-  min-width: 120px;
-  justify-content: center;
-}
-
-.commentSubmitButton:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3);
-}
-
-.buttonSpinner {
-  /* @extend .loadingSpinnerSmall; */
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
+.commentFormActions { display: flex; justify-content: flex-end; }
+.buttonSpinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; }
 
 /* Login Prompt */
 .loginPrompt {
@@ -666,31 +379,12 @@
   margin-bottom: 2rem;
 }
 
-.loginPrompt p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 1rem;
-}
-
-.loginLink {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
-  transition: var(--transition);
-}
-
-.loginLink:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
+.loginPrompt p { margin: 0; color: var(--text-secondary); font-size: 1rem; }
+.loginLink { color: var(--accent); text-decoration: none; font-weight: 600; transition: var(--transition); }
+.loginLink:hover { color: var(--accent-hover); text-decoration: underline; }
 
 /* Comments List */
-.commentsList {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
+.commentsList { display: flex; flex-direction: column; gap: 1.5rem; }
 .commentItem {
   background: var(--bg-tertiary);
   border-radius: var(--radius);
@@ -700,26 +394,19 @@
 }
 
 .commentItem:hover {
-  background: var(--bg-secondary);
+  background: rgba(38, 38, 51, 0.8);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border-color: var(--accent);
 }
 
 .commentItem.botComment {
   border-left: 4px solid var(--accent);
-  background: linear-gradient(135deg, rgba(66, 153, 225, 0.05) 0%, rgba(66, 153, 225, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(96, 165, 250, 0.03) 100%);
 }
 
-.commentHeader {
-  margin-bottom: 1rem;
-}
-
-.commentAuthor {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+.commentHeader { margin-bottom: 1rem; }
+.commentAuthor { display: flex; align-items: center; gap: 0.75rem; }
 
 .commentAvatar {
   width: 36px;
@@ -734,44 +421,21 @@
   font-size: 0.9rem;
 }
 
-.commentAvatar.botAvatar {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-}
+.commentAvatar.botAvatar { background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); }
+.commentAuthorInfo { display: flex; flex-direction: column; gap: 0.25rem; }
+.commentAuthorName { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+.commentTime { font-size: 0.85rem; color: var(--text-muted); }
 
-.commentAuthorInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.commentAuthorName {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.commentTime {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.commentContent {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
+.commentContent { display: flex; flex-direction: column; gap: 1rem; }
 .commentText {
   margin: 0;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.7;
   white-space: pre-line;
+  font-size: 1rem;
 }
 
-.commentActions {
-  display: flex;
-  gap: 1rem;
-}
-
+.commentActions { display: flex; gap: 1rem; }
 .commentActionButton {
   background: none;
   border: none;
@@ -788,37 +452,18 @@
 }
 
 .commentActionButton:hover {
-  background: rgba(66, 153, 225, 0.1);
+  background: rgba(96, 165, 250, 0.15);
   color: var(--accent);
 }
 
-/* No Comments State */
-.noComments {
-  text-align: center;
-  padding: 3rem 2rem;
-  color: var(--text-muted);
-}
+/* No Comments */
+.noComments { text-align: center; padding: 3rem 2rem; color: var(--text-muted); }
+.noCommentsIcon { font-size: 3rem; margin-bottom: 1rem; }
+.noCommentsTitle { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-secondary); }
+.noCommentsText { font-size: 1rem; margin: 0; }
 
-.noCommentsIcon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.noCommentsTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--text-secondary);
-}
-
-.noCommentsText {
-  font-size: 1rem;
-  margin: 0;
-}
-
-/* Delete Confirmation Modal */
-.deleteConfirmModalOverlay {
-  /* @extend .modal; */
+/* Modals */
+.modal, .imageModal, .deleteConfirmModalOverlay, .successModalOverlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.95);
@@ -830,404 +475,260 @@
   animation: fadeIn 0.3s ease;
 }
 
-.deleteConfirmModal {
-  /* @extend .modalContent; */
+.modalContent, .imageModalContent, .deleteConfirmModal, .successModal {
   position: relative;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
   border: 1px solid var(--border);
   animation: slideIn 0.3s ease;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  padding: 2rem;
 }
 
-.deleteConfirmTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-}
-
-.deleteConfirmMessage {
-  font-size: 1rem;
-  color: var(--text-muted);
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.deleteConfirmActions {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.deleteConfirmButton {
-  /* @extend .buttonDanger; */
-  background: var(--error);
+.closeButton {
+  position: absolute;
+  top: -60px;
+  right: -10px;
+  background: rgba(26, 26, 34, 0.9);
+  border: none;
+  border-radius: 50%;
+  padding: 12px;
+  cursor: pointer;
   color: white;
-  border: 1px solid var(--error);
-  min-width: 100px;
-  justify-content: center;
+  transition: var(--transition);
+  z-index: 1001;
 }
 
-.deleteConfirmButton:hover {
-  background: #d32f2f;
-  box-shadow: 0 5px 15px rgba(198, 40, 40, 0.3);
-}
+.closeButton:hover { background: rgba(96, 165, 250, 0.9); }
+
+.imageModalContent { max-width: 95vw; max-height: 95vh; background: transparent; border: none; }
+.modalImage { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-sm); }
+
+.deleteConfirmModal, .successModal { max-width: 400px; width: 90%; text-align: center; padding: 2rem; }
+.deleteConfirmTitle, .successTitle { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem; }
+.deleteConfirmMessage, .successMessage { font-size: 1rem; color: var(--text-secondary); margin-bottom: 2rem; line-height: 1.6; }
+.deleteConfirmActions { display: flex; justify-content: center; gap: 1rem; }
 
 .deleteConfirmCancel {
-  /* @extend .button; */
   background: none;
-  border: none;
+  border: 1px solid var(--border);
   cursor: pointer;
   padding: 0.75rem 1rem;
   border-radius: 50px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
   font-weight: 500;
   transition: var(--transition);
-  border: 1px solid transparent;
   min-width: 100px;
   justify-content: center;
 }
 
 .deleteConfirmCancel:hover {
-  background: rgba(66, 153, 225, 0.1);
+  background: rgba(96, 165, 250, 0.15);
   color: var(--accent);
-  transform: translateY(-1px);
-  border-color: rgba(66, 153, 225, 0.2);
+  border-color: rgba(96, 165, 250, 0.3);
 }
 
-/* Success Modal */
-.successModalOverlay {
-  /* @extend .modal; */
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-  animation: fadeIn 0.3s ease;
+.successModal { max-width: 350px; display: flex; flex-direction: column; align-items: center; }
+.successIcon { color: var(--success); margin-bottom: 1rem; }
+
+/* Bot Error */
+.botError {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-weight: 500;
 }
 
-.successModal {
-  /* @extend .modalContent; */
-  position: relative;
-  background: var(--bg-secondary);
+/* Code Styling - Improved contrast without syntax highlighting */
+.commentText code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+  background-color: var(--code-bg) !important;
+  color: var(--code-text) !important;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.9em;
+  border: 1px solid var(--code-border);
+  font-weight: 500;
+}
+
+.commentText .code-block-container {
+  border: 1px solid var(--code-border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border);
-  animation: slideIn 0.3s ease;
-  max-width: 350px;
-  width: 90%;
-  text-align: center;
-  padding: 2rem;
+  margin: 1.5em 0;
+  overflow: hidden;
+  background-color: var(--code-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.commentText .code-block-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
+  background-color: var(--code-header-bg);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--code-border);
 }
 
-.successIcon {
-  color: var(--success);
-  margin-bottom: 1rem;
-}
-
-.successTitle {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.successMessage {
-  font-size: 1.1rem;
+.commentText .lang-name {
   color: var(--text-muted);
-  line-height: 1.5;
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.commentText .copy-btn {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.commentText .copy-btn:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.commentText .copy-btn.copied { 
+  background-color: var(--success);
+}
+
+/* Code blocks - plain text, no highlighting, improved readability */
+.commentText .code-block-container pre,
+.commentText .code-block-container pre > code {
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  background-color: var(--code-bg) !important;
+  color: var(--code-text) !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+  font-size: 0.9em;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  border: none !important;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+}
+
+/* Scrollbar for code blocks */
+.commentText .code-block-container pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+.commentText .code-block-container pre::-webkit-scrollbar-track {
+  background: var(--code-bg);
+}
+
+.commentText .code-block-container pre::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.commentText .code-block-container pre::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Text formatting with improved contrast */
+.commentText h1, .commentText h2, .commentText h3, .commentText h4, .commentText h5, .commentText h6 {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  margin: 1.5em 0 1em 0;
+}
+
+.commentText p { 
+  color: var(--text-secondary) !important; 
+  line-height: 1.7; 
+  margin: 1em 0; 
+}
+
+.commentText strong, .commentText b { 
+  color: var(--text-primary) !important; 
+  font-weight: 700; 
+}
+
+.commentText a { 
+  color: var(--accent) !important; 
+  text-decoration: underline; 
+  font-weight: 500;
+}
+
+.commentText a:hover { 
+  color: var(--accent-hover) !important; 
+}
+
+.commentText em, .commentText i {
+  color: var(--text-primary) !important;
+  font-style: italic;
+}
+
+.commentText ul, .commentText ol {
+  color: var(--text-secondary) !important;
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.commentText li {
+  margin: 0.5em 0;
+  color: var(--text-secondary) !important;
+}
+
+.commentText blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 1rem;
+  margin: 1em 0;
+  background: rgba(96, 165, 250, 0.05);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  color: var(--text-secondary) !important;
 }
 
 /* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes highlightPulse {
-  0%, 100% {
-    border-color: var(--accent);
-    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.2);
-  }
-  50% {
-    border-color: #7c3aed;
-    box-shadow: 0 8px 30px rgba(124, 58, 237, 0.3);
-  }
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .highlightComment {
   animation: highlightPulse 3s ease-in-out;
   border: 2px solid var(--accent) !important;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
-  transform: scale(1.02);
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(96, 165, 250, 0.05) 100%) !important;
 }
 
-.commentItem, .postCard {
-  animation: fadeInUp 0.4s ease-out;
+@keyframes highlightPulse {
+  0%, 100% { border-color: var(--accent); box-shadow: 0 4px 20px rgba(96, 165, 250, 0.25); }
+  50% { border-color: #a855f7; box-shadow: 0 8px 30px rgba(168, 85, 247, 0.3); }
 }
 
-.commentsSection {
-  animation: fadeInUp 0.6s ease-out 0.2s both;
-}
-
-/* Bot Error */
-.botError {
-  background: rgba(198, 40, 40, 0.1);
-  color: #ff6b6b;
-  padding: 0.5rem 1rem;
-  border-radius: 50px;
-  font-size: 0.8rem;
-  border: 1px solid rgba(198, 40, 40, 0.2);
-}
-
-/* Responsive Design */
+/* Responsive */
 @media (max-width: 768px) {
   .container { padding: 1rem 0; }
   .maxWidth { padding: 0 0.5rem; }
-  .postCard { margin-bottom: 1rem; }
   .postHeader, .postContent, .commentsSection { padding: 1.5rem; }
-  .postTitle { font-size: 1.5rem; }
-
-  .postActions {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1.5rem;
-  }
-
-  .leftActions, .rightActions {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .botChatModalContent {
-    width: 95%;
-    max-height: 90vh;
-    padding: 1.5rem;
-  }
+  .postTitle { font-size: 1.6rem; }
+  .postActions { flex-direction: column; gap: 1rem; padding: 1.5rem; }
+  .leftActions, .rightActions { width: 100%; justify-content: center; }
 }
 
 @media (max-width: 480px) {
   .container { padding: 0.5rem 0; }
   .postHeader, .postContent, .commentsSection, .commentForm, .commentItem { padding: 1rem; }
-  .postTitle { font-size: 1.25rem; }
+  .postTitle { font-size: 1.4rem; }
   .authorInfo { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .voteSection { flex-direction: column; padding: 0.5rem; }
-  .commentTextarea { min-height: 100px; font-size: 0.9rem; }
-
-  .botChatModalContent {
-    width: 95%;
-    margin: 0.5rem;
-    padding: 1rem;
-  }
-
-  .botChatFooter {
-    flex-direction: column;
-  }
-}
-
-/* Focus States for Accessibility */
-.commentTextarea:focus,
-.button:focus,
-.voteButton:focus,
-.commentActionButton:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Custom Scrollbar */
-.commentTextarea::-webkit-scrollbar,
-.botChatBody::-webkit-scrollbar {
-  width: 8px;
-}
-
-.commentTextarea::-webkit-scrollbar-track,
-.botChatBody::-webkit-scrollbar-track {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-.commentTextarea::-webkit-scrollbar-thumb,
-.botChatBody::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  border-radius: 4px;
-}
-
-.commentTextarea::-webkit-scrollbar-thumb:hover,
-.botChatBody::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
-}
-
-.commentText div[class*="ai-content-body"],
-.commentText div {
-  background: transparent !important;
-  color: inherit !important;
-}
-
-.commentText * {
-  color: inherit !important;
-}
-
-
-/* Style cho code inline (ví dụ `do_something()`) vẫn giữ lại */
-.commentText code {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-  background-color: rgba(66, 153, 225, 0.1) !important;
-  color: var(--accent) !important;
-  padding: 0.2rem 0.4rem;
-  border-radius: var(--radius-xs);
-}
-
-.commentText .code-block-container {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin: 1em 0;
-    overflow: hidden;
-    background-color: var(--bg-tertiary);
-}
-
-.commentText .code-block-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--bg-secondary);
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--border);
-}
-
-.commentText .lang-name {
-    color: var(--text-muted);
-    font-size: 0.85em;
-    font-family: 'Courier New', monospace;
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-.commentText .copy-btn {
-    background-color: var(--accent);
-    color: white; /* Đổi thành trắng để dễ đọc hơn */
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 0.8em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.commentText .copy-btn:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-1px);
-}
-
-.commentText .copy-btn.copied {
-    background-color: var(--success);
-}
-/* Định dạng chung cho container của khối code */
-.commentText .code-block-container {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    margin: 1.5em 0;
-    overflow: hidden;
-    background-color: var(--bg-tertiary); /* Nền mặc định */
-}
-
-/* Header của khối code (chứa tên ngôn ngữ và nút copy) */
-.commentText .code-block-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--bg-secondary);
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--border);
-}
-
-/* Tên ngôn ngữ */
-.commentText .lang-name {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    font-family: monospace;
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-/* Nút Copy */
-.commentText .copy-btn {
-    background-color: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius-xs);
-    padding: 0.4rem 0.8rem;
-    cursor: pointer;
-    font-size: 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    transition: all 0.2s ease;
-}
-
-.commentText .copy-btn:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-1px);
-}
-
-.commentText .copy-btn.copied {
-    background-color: var(--success);
-}
-
-/* FIX QUAN TRỌNG: Áp dụng style nền tối cho cả <pre> và <code> bên trong nó */
-/* Điều này đảm bảo nền tối luôn được hiển thị, bất kể thư viện syntax highlighting có ghi đè hay không */
-.commentText .code-block-container pre,
-.commentText .code-block-container pre > code {
-    margin: 0 !important;
-    padding: 1rem !important;
-    background-color: var(--bg-tertiary) !important;
-    color: var(--text-secondary) !important;
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.9em;
-    line-height: 1.6;
-    overflow-x: auto;
-    white-space: pre-wrap !important; /* Cho phép xuống dòng tự động */
-    word-wrap: break-word !important;
-    border: none !important;
-}
-
-/* Style cho code inline (ví dụ: `useEffect`) để phân biệt với code block */
-/* Rule này đảm bảo không ảnh hưởng đến code bên trong .code-block-container */
-.commentText > p > code,
-.commentText > ul > li > code,
-.commentText > ol > li > code {
-  font-family: monospace;
-  background-color: rgba(66, 153, 225, 0.15) !important;
-  color: var(--accent-hover) !important;
-  padding: 0.2rem 0.4rem;
-  border-radius: var(--radius-xs);
-  font-size: 0.9em;
+  .leftActions, .rightActions { flex-wrap: wrap; gap: 0.5rem; }
+  .actionButton { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+  .postStats { flex-direction: column; gap: 0.5rem; }
 }

@@ -1,9 +1,9 @@
-// src/components/CreatePost.jsx - Đã cập nhật để hỗ trợ chọn prompt AI
+// src/components/CreatePost.jsx - Đã cập nhật để hỗ trợ AI Code Generator và tự động phát hiện ngôn ngữ
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import styles from './CreatePost.module.css';
-import { PlusCircle, Loader } from 'lucide-react';
+import { PlusCircle, Loader, Sparkles, Wand2 } from 'lucide-react';
 
 const CreatePost = ({ onPostCreated }) => {
     const navigate = useNavigate();
@@ -11,22 +11,28 @@ const CreatePost = ({ onPostCreated }) => {
     // Form states
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [language, setLanguage] = useState('text'); // <-- Thêm state để lưu ngôn ngữ, mặc định là text
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
 
+    // ... các state khác giữ nguyên ...
     // Tag states
     const [allAvailableTags, setAllAvailableTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
     const [tagInput, setTagInput] = useState('');
     const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
     const [isCreatingTag, setIsCreatingTag] = useState(false);
+    const [initialTagName, setInitialTagName] = useState(null);
 
-    // --- THAY ĐỔI 1: Cập nhật state cho chatbot ---
-    // State để lưu các tùy chọn prompt từ API
+    // AI Review prompt states
     const [promptOptions, setPromptOptions] = useState([]); 
-    // State để lưu prompt người dùng đã chọn
     const [selectedPrompt, setSelectedPrompt] = useState(''); 
-    // Bỏ state cũ: const [autoAskBot, setAutoAskBot] = useState(false);
+
+    // --- THÊM STATE MỚI CHO AI CODE GENERATOR ---
+    const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+    const [codePrompt, setCodePrompt] = useState('');
+    const [isGeneratorLoading, setIsGeneratorLoading] = useState(false);
+    const [generatorError, setGeneratorError] = useState('');
 
     // UI states
     const [isLoading, setIsLoading] = useState(false);
@@ -35,40 +41,25 @@ const CreatePost = ({ onPostCreated }) => {
 
     const tagInputRef = useRef(null);
 
-    // --- THÊM STATE MỚI ĐỂ XỬ LÝ TAG TỰ ĐỘNG ---
-    const [initialTagName, setInitialTagName] = useState(null);
-
-    // Fetch tags khi component mount
+    // ... useEffects giữ nguyên ...
     useEffect(() => {
-        const fetchTags = async () => {
+        const fetchData = async () => {
             try {
-                const response = await apiService.getTags({ page_size: 1000 });
-                setAllAvailableTags(response.results || response || []);
-            } catch (err) {
-                console.error('Error fetching tags:', err);
-            }
-        };
-        fetchTags();
-    }, []);
-
-    // --- THAY ĐỔI 2: Fetch các tùy chọn prompt AI ---
-    useEffect(() => {
-        const fetchPromptOptions = async () => {
-            try {
-                // Giả sử apiService có phương thức getAvailablePrompts() để gọi endpoint
-                const response = await apiService.getAvailablePrompts();
-                if (response.available_prompts) {
-                    // Lọc ra các prompt không phù hợp cho việc review tự động 1 bài post
-                    const suitablePrompts = response.available_prompts.filter(
+                const tagsResponse = await apiService.getTags({ page_size: 1000 });
+                setAllAvailableTags(tagsResponse.results || tagsResponse || []);
+                
+                const promptsResponse = await apiService.getAvailablePrompts();
+                if (promptsResponse.available_prompts) {
+                    const suitablePrompts = promptsResponse.available_prompts.filter(
                         p => p.key !== 'summarize_post_list' && p.key !== 'custom_analysis'
                     );
                     setPromptOptions(suitablePrompts);
                 }
             } catch (err) {
-                console.error('Error fetching prompt options:', err);
+                console.error('Error fetching initial data:', err);
             }
         };
-        fetchPromptOptions();
+        fetchData();
     }, []);
 
     useEffect(() => {
@@ -81,12 +72,10 @@ const CreatePost = ({ onPostCreated }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-
-    // --- THÊM useEffect MỚI ĐỂ LẤY DỮ LIỆU TỪ SANDBOX ---
     useEffect(() => {
         const storedCode = sessionStorage.getItem('create_post_code');
         const storedTitle = sessionStorage.getItem('create_post_title');
-        const storedTagName = sessionStorage.getItem('create_post_tag_name'); // <--- ĐỌC TÊN TAG
+        const storedTagName = sessionStorage.getItem('create_post_tag_name');
 
         if (storedCode) {
             setContent(storedCode);
@@ -97,47 +86,66 @@ const CreatePost = ({ onPostCreated }) => {
             sessionStorage.removeItem('create_post_title');
         }
         if (storedTagName) {
-            setInitialTagName(storedTagName); // <--- LƯU TÊN TAG VÀO STATE
+            setInitialTagName(storedTagName);
             sessionStorage.removeItem('create_post_tag_name');
         }
-    }, []); // Chỉ chạy một lần
-
-    // Hook để fetch tất cả các tag có sẵn
-    useEffect(() => {
-        const fetchTags = async () => {
-            try {
-                const response = await apiService.getTags({ page_size: 1000 });
-                setAllAvailableTags(response.results || response || []);
-            } catch (err) {
-                console.error('Error fetching tags:', err);
-            }
-        };
-        fetchTags();
     }, []);
 
-    // --- HOOK MỚI: Tự động chọn tag khi đã có đủ thông tin ---
-    // Hook này sẽ chạy khi `initialTagName` được set hoặc khi `allAvailableTags` được load xong.
     useEffect(() => {
         if (initialTagName && allAvailableTags.length > 0) {
-            // Tìm tag trong danh sách các tag đã fetch
             const tagToSelect = allAvailableTags.find(
                 tag => tag.name.toLowerCase() === initialTagName.toLowerCase()
             );
-
             if (tagToSelect) {
-                // Nếu tìm thấy, thêm nó vào danh sách các tag đã chọn
                 addTagToSelected(tagToSelect);
-                // Reset state để tránh chạy lại không cần thiết
                 setInitialTagName(null);
             } else {
-                // Nếu không tìm thấy tag (ví dụ: 'python' chưa có trong DB), bạn có thể
-                // bỏ qua hoặc tự động tạo nó. Hiện tại, chúng ta chỉ bỏ qua.
                 console.warn(`Tag "${initialTagName}" not found in available tags.`);
-                setInitialTagName(null); // Reset để không tìm nữa
+                setInitialTagName(null);
             }
         }
     }, [initialTagName, allAvailableTags]);
 
+
+    // --- HÀM MỚI ĐỂ XỬ LÝ VIỆC TẠO CODE ---
+    const handleGenerateCode = async () => {
+        if (!codePrompt.trim()) {
+            setGeneratorError('Please describe the code you want to generate.');
+            return;
+        }
+        setIsGeneratorLoading(true);
+        setGeneratorError('');
+        try {
+            // --- LOGIC SUY LUẬN NGÔN NGỮ ---
+            const promptLowerCase = codePrompt.toLowerCase();
+            const knownLanguages = ['c++', 'c#', 'c', 'python', 'javascript', 'java', 'go', 'rust', 'php', 'ruby', 'html', 'css', 'sql'];
+            const detectedLang = knownLanguages.find(lang => promptLowerCase.includes(lang)) || 'javascript';            setLanguage(detectedLang.replace('c#', 'csharp').replace('c++', 'cpp')); // Cập nhật state ngôn ngữ
+            const finalLang = detectedLang.replace('c#', 'csharp').replace('c++', 'cpp');
+            setLanguage(finalLang); // Cập nhật state ngôn ngữ
+            // ---------------------------------
+
+            const response = await apiService.generateCodeSnippet(codePrompt);
+            setContent(response.code);
+            setIsGeneratingCode(false);
+            setCodePrompt('');
+        } catch (err) {
+            console.error('AI code generation error:', err);
+            const errorMessage = err.data?.error || err.message || 'Failed to generate code.';
+            setGeneratorError(errorMessage);
+        } finally {
+            setIsGeneratorLoading(false);
+        }
+    };
+    
+    // Reset ngôn ngữ nếu người dùng xóa content
+    useEffect(() => {
+        if (!content.trim()) {
+            setLanguage('text');
+        }
+    }, [content]);
+
+
+    // ... (các hàm xử lý tag, image, v.v. giữ nguyên) ...
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -187,6 +195,17 @@ const CreatePost = ({ onPostCreated }) => {
         }
     };
 
+    const handleTagInputKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredTags.length > 0) {
+                addTagToSelected(filteredTags[0]);
+            } else if (canCreateTag) {
+                handleCreateAndSelectTag();
+            }
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim()) {
@@ -220,15 +239,16 @@ const CreatePost = ({ onPostCreated }) => {
 
             const newPost = await apiService.createPost(finalData);
 
-            // --- THAY ĐỔI 3: Cập nhật logic gọi bot ---
-            // Nếu người dùng đã chọn một tùy chọn review, hãy gọi bot với prompt_type tương ứng
+            // --- THAY ĐỔI QUAN TRỌNG Ở ĐÂY ---
             if (selectedPrompt) {
                 try {
-                    // Truyền prompt_type vào body của request askBot
-                    await apiService.askBot(newPost.id, { prompt_type: selectedPrompt });
+                    // Gửi cả `prompt_type` và `language` đã được suy luận
+                    await apiService.askBot(newPost.id, { 
+                        prompt_type: selectedPrompt,
+                        language: language // Sử dụng state language
+                    });
                 } catch (err) {
                     console.error('Auto AskBot error:', err);
-                    // Không chặn luồng chính, chỉ log lỗi
                 }
             }
 
@@ -257,17 +277,6 @@ const CreatePost = ({ onPostCreated }) => {
                         !/^\s*$/.test(tagInput) &&
                         !filteredTags.some(t => t.name.toLowerCase() === tagInput.trim().toLowerCase());
 
-    const handleTagInputKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (filteredTags.length > 0) {
-                addTagToSelected(filteredTags[0]);
-            } else if (canCreateTag) {
-                handleCreateAndSelectTag();
-            }
-        }
-    };
-
     return (
         <div className={styles.createPostContainer}>
             <h2 className={styles.title}>Create a Post</h2>
@@ -279,11 +288,63 @@ const CreatePost = ({ onPostCreated }) => {
                     <label htmlFor="title">Title *</label>
                     <input type="text" id="title" className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="An interesting title" required disabled={isLoading} />
                 </div>
-
+                
+                {/* --- Giao diện không đổi, không cần thêm dropdown --- */}
                 <div className={styles.formGroup}>
-                    <label htmlFor="content">Content</label>
-                    <textarea id="content" className={styles.textarea} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Your text post (optional)" disabled={isLoading} rows="6" />
+                    <div className={styles.contentHeader}>
+                         <label htmlFor="content">Content</label>
+                         <label className={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={isGeneratingCode}
+                                onChange={(e) => setIsGeneratingCode(e.target.checked)}
+                                disabled={isLoading}
+                            />
+                            <Sparkles size={16} />
+                            AI Code Snippet Generator
+                        </label>
+                    </div>
+
+                    {isGeneratingCode ? (
+                        <div className={styles.aiGeneratorBox}>
+                            <label htmlFor="codePrompt" className={styles.label}>Describe the code you want to generate</label>
+                            <textarea
+                                id="codePrompt"
+                                className={styles.aiGeneratorInput}
+                                value={codePrompt}
+                                onChange={(e) => setCodePrompt(e.target.value)}
+                                placeholder="e.g., a python function to merge sort a list of numbers"
+                                disabled={isGeneratorLoading}
+                                rows="3"
+                            />
+                            {generatorError && <div className={styles.generatorError}>{generatorError}</div>}
+                            <button
+                                type="button"
+                                className={styles.aiGeneratorButton}
+                                onClick={handleGenerateCode}
+                                disabled={isGeneratorLoading}
+                            >
+                                {isGeneratorLoading ? (
+                                    <Loader size={18} className={styles.spinner} />
+                                ) : (
+                                    <Wand2 size={18} />
+                                )}
+                                <span>{isGeneratorLoading ? 'Generating...' : 'Generate Code'}</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <textarea
+                            id="content"
+                            className={styles.textarea}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder="Your text post (optional). Or use the AI generator above!"
+                            disabled={isLoading}
+                            rows="10"
+                        />
+                    )}
                 </div>
+
 
                 <div className={styles.formGroup}>
                     <label htmlFor="image" className={styles.label}>Upload Image (Optional)</label>
@@ -311,14 +372,13 @@ const CreatePost = ({ onPostCreated }) => {
                     )}
                 </div>
 
-                {/* --- THAY ĐỔI 4: Thay thế checkbox bằng dropdown --- */}
                 <div className={styles.formGroup}>
                     <label htmlFor="ai-review-prompt" className={styles.label}>
                         Auto-review with AI bot (Optional)
                     </label>
                     <select
                         id="ai-review-prompt"
-                        className={styles.input} // Tái sử dụng style của input
+                        className={styles.input}
                         value={selectedPrompt}
                         onChange={(e) => setSelectedPrompt(e.target.value)}
                         disabled={isLoading || promptOptions.length === 0}
@@ -332,7 +392,6 @@ const CreatePost = ({ onPostCreated }) => {
                     </select>
                 </div>
 
-
                 {selectedTags.length > 0 && (
                     <div className={styles.selectedTagsContainer}>
                         {selectedTags.map(tag => (
@@ -344,7 +403,7 @@ const CreatePost = ({ onPostCreated }) => {
                     </div>
                 )}
 
-                <button type="submit" className={styles.submitBtn} disabled={isLoading || isCreatingTag}>
+                <button type="submit" className={styles.submitBtn} disabled={isLoading || isCreatingTag || isGeneratorLoading}>
                     {isLoading ? 'Submitting...' : 'Create Post'}
                 </button>
             </form>

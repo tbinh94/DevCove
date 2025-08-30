@@ -622,6 +622,12 @@ class APIService {
     async markNotificationRead(id) {
         return this.request(`/api/notifications/${id}/mark_read/`, { method: 'POST' });
     }
+    async generateCodeSnippet(prompt) {
+      return this.request('/api/posts/generate-code-snippet/', {
+        method: 'POST',
+        body: { prompt },
+      });
+    }
   // --- Utility Accessor ---
   get utils() {
     return {

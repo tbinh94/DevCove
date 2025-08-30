@@ -375,8 +375,6 @@ class PostViewSet(viewsets.ModelViewSet):
             logger.error(f"Critical error in ask_bot for post {pk}: {e}", exc_info=True)
             return Response({'error': 'A critical server error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
     def _process_prompt_parameters(self, request, prompt_type, user_prompt_text, language):
         """
         Xử lý các tham số bổ sung cho từng loại prompt
@@ -646,6 +644,54 @@ class PostViewSet(viewsets.ModelViewSet):
 
         # Trả về HTML đã được format
         return Response({'overview': formatted_overview}, status=status.HTTP_200_OK)
+    
+    # --- THIS IS THE ACTION WE ARE DEBUGGING ---
+    @action(
+    detail=False, 
+    methods=['POST'], 
+    permission_classes=[IsAuthenticated],
+    url_path='generate-code-snippet',
+    url_name='generate_code_snippet'
+    )
+    def generate_code_snippet(self, request):
+        """
+        Receives a user prompt and returns AI-generated code.
+        """
+        user_prompt = request.data.get('prompt', '').strip()
+        if not user_prompt:
+            return Response(
+                {'error': 'Prompt is required.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # NOTE: Updated build_prompt call to be cleaner
+            final_prompt = prompts.build_prompt(
+                content="",
+                language="",
+                prompt_type='generate_code_from_prompt',
+                user_prompt_text=user_prompt
+            )
+
+            ai_response_code = get_ai_response(final_prompt)
+
+            if ai_response_code is None:
+                return Response(
+                    {'error': 'AI service failed to generate code.'}, 
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+            return Response(
+                {'code': ai_response_code.strip()}, 
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            return Response(
+                {'error': f'Error generating code: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
 
 
 
