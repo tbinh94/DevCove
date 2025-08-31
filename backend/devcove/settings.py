@@ -173,3 +173,4 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_URL = reverse_lazy('login')
 
+AI_ASSISTANT_USERNAME = 'VegaAI'

@@ -533,7 +533,20 @@ class APIService {
       body: messageData,
     });
   }
+  
+  async chatWithAI(data) {
+    return this.request('/api/chat/ai/', {
+      method: 'POST',
+      body: data,
+    });
+  }
 
+  async deleteConversation(conversationId) {
+    return this.request(`/api/conversations/${conversationId}/`, {
+      method: 'DELETE',
+    });
+  }
+  
   // Bot
   async getAiCodeFix(code, recommendation) {
     return this.request('/api/ai/refactor-code/', {

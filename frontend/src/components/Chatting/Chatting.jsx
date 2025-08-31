@@ -3,7 +3,43 @@ import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
 import styles from './Chatting.module.css';
-import { Send, Search, MessageSquare, PlusCircle, X } from 'lucide-react';
+import { Send, Search, MessageSquare, PlusCircle, X, Bot, Trash2 } from 'lucide-react'; 
+
+const AI_USERNAME = process.env.REACT_APP_AI_ASSISTANT_USERNAME;
+
+const stripHtml = (html) => {
+  if (!html) return '';
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  return tempDiv.textContent || tempDiv.innerText || '';
+};
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, styles }) => {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h3>{title}</h3>
+        </div>
+        <div className={styles.modalBody}>
+          <p>{message}</p>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelButton} onClick={onClose}>
+            Cancel
+          </button>
+          <button className={styles.confirmButton} onClick={onConfirm}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const NewChatModal = ({ users, onSelectUser, onClose, loading }) => {
     return (
@@ -16,12 +52,22 @@ const NewChatModal = ({ users, onSelectUser, onClose, loading }) => {
                 <div className={styles.userList}>
                     {loading && <p>Loading users...</p>}
                     {!loading && users.map(user => (
-                        <div key={user.id} className={styles.userListItem} onClick={() => onSelectUser(user.id)}>
-                            <img 
-                                src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=random`} 
-                                alt={user.username} 
-                                className={styles.avatar} 
-                            />
+                        <div 
+                            key={user.id} 
+                            className={`${styles.userListItem} ${user.username === AI_USERNAME ? styles.aiListItem : ''}`} 
+                            onClick={() => onSelectUser(user.id)}
+                        >
+                            {user.username === AI_USERNAME ? (
+                                <div className={`${styles.avatar} ${styles.aiAvatar}`}>
+                                    <Bot size={24} />
+                                </div>
+                            ) : (
+                                <img 
+                                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=random`} 
+                                    alt={user.username} 
+                                    className={styles.avatar} 
+                                />
+                            )}
                             <span>{user.username}</span>
                         </div>
                     ))}
@@ -51,6 +97,28 @@ const Chatting = () => {
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
+
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+    const confirmDelete = async () => {
+        if (!activeConversation) return;
+
+        const conversationToDeleteId = activeConversation.id;
+        try {
+            await apiService.deleteConversation(conversationToDeleteId);
+
+            setActiveConversation(null);
+            setMessages([]);
+            setConversations(prev => 
+                prev.filter(conv => conv.id !== conversationToDeleteId)
+            );
+        } catch (err) {
+            console.error("Failed to delete conversation:", err);
+            setError("Could not delete the conversation. Please try again.");
+        } finally {
+            setIsConfirmModalOpen(false); // Đóng modal
+        }
+    };
 
     // Helper function to format timestamp safely
     const formatTimestamp = (timestamp) => {
@@ -266,6 +334,55 @@ const Chatting = () => {
         if (!newMessage.trim()) return;
         
         const messageText = newMessage.trim();
+        const otherUser = getOtherParticipant(activeConversation.participants);
+        const isAIChat = otherUser?.username === AI_USERNAME;
+
+        // --- AI CHAT LOGIC ---
+        if (isAIChat) {
+            // Optimistically add user's message to the UI
+            const optimisticUserMessage = {
+                id: `temp_${Date.now()}`,
+                text: messageText,
+                sender_username: user.username,
+                created_at: new Date().toISOString(),
+                conversation: activeConversation.id,
+            };
+            setMessages(prev => [...prev, optimisticUserMessage]);
+            setNewMessage(''); // Clear input
+
+            // Add a "typing" indicator for the AI
+            const typingIndicator = {
+                id: 'ai-typing',
+                text: '...',
+                sender_username: 'AI_Assistant',
+                isTyping: true, // Custom flag
+                created_at: new Date().toISOString(),
+            };
+            setMessages(prev => [...prev, typingIndicator]);
+
+            try {
+                // Call the new backend endpoint for AI chat
+                const aiResponse = await apiService.chatWithAI({
+                    conversation_id: activeConversation.id,
+                    text: messageText,
+                });
+
+                // Replace typing indicator with the actual AI response
+                setMessages(prev => [
+                    ...prev.filter(msg => !msg.isTyping), // Remove typing indicator
+                    aiResponse // Add the real message from the AI
+                ]);
+
+            } catch (err) {
+                console.error("Failed to get AI response:", err);
+                setError("AI Assistant failed to respond. Please try again.");
+                // Remove the "typing" indicator on error
+                setMessages(prev => prev.filter(msg => !msg.isTyping));
+            }
+            return; // End execution here for AI chat
+        }
+
+        // --- EXISTING USER-TO-USER CHAT LOGIC (NO CHANGES NEEDED BELOW) ---
         setNewMessage(''); // Clear input immediately for better UX
         
         // Try WebSocket first
@@ -287,7 +404,6 @@ const Chatting = () => {
             
             const sentMessage = await apiService.sendChatMessage(activeConversation.id, messageData);
             
-            // Normalize the message structure
             const normalizedMessage = {
                 ...sentMessage,
                 sender_username: sentMessage.sender ? sentMessage.sender.username : user.username,
@@ -299,10 +415,15 @@ const Chatting = () => {
         } catch (err) {
             console.error("Failed to send message via fallback:", err);
             setError("Failed to send message. Please try again.");
-            // Restore the message in input if sending failed
             setNewMessage(messageText);
         }
     };
+
+    const handleDeleteConversation = () => {
+        if (!activeConversation) return;
+        setIsConfirmModalOpen(true);
+    };
+
 
     if (loading) {
         return <div className={styles.centered}>Loading chats...</div>;
@@ -310,6 +431,7 @@ const Chatting = () => {
 
     return (
         <div className={styles.chatContainer}>
+            {/* Modal để bắt đầu cuộc trò chuyện mới */}
             {isModalOpen && (
                 <NewChatModal 
                     users={chatCandidates}
@@ -319,6 +441,17 @@ const Chatting = () => {
                 />
             )}
 
+            {/* Modal xác nhận xóa cuộc trò chuyện */}
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Conversation"
+                message="Are you sure you want to permanently delete this entire conversation? This action cannot be undone."
+                styles={styles} 
+            />
+
+            {/* Banner hiển thị lỗi */}
             {error && (
                 <div className={styles.errorBanner}>
                     {error}
@@ -326,6 +459,7 @@ const Chatting = () => {
                 </div>
             )}
 
+            {/* Sidebar chứa danh sách các cuộc trò chuyện */}
             <div className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarTitle}>
@@ -363,21 +497,33 @@ const Chatting = () => {
                         filteredConversations.map(conv => {
                             const otherUser = getOtherParticipant(conv.participants);
                             if (!otherUser) return null;
+
+                            const lastMessageRaw = conv.last_message ? conv.last_message.text : 'No messages yet.';
+                            const lastMessageText = stripHtml(lastMessageRaw);
+
                             return (
                                 <li 
                                     key={conv.id} 
                                     className={`${styles.conversationItem} ${activeConversation?.id === conv.id ? styles.active : ''}`}
                                     onClick={() => setActiveConversation(conv)}
                                 >
-                                    <img 
-                                        src={otherUser.avatar_url || `https://ui-avatars.com/api/?name=${otherUser.username}&background=random`} 
-                                        alt={otherUser.username} 
-                                        className={styles.avatar} 
-                                    />
+                                    {otherUser.username === AI_USERNAME ? (
+                                        <div className={`${styles.avatar} ${styles.aiAvatar}`}>
+                                            <Bot size={24} />
+                                        </div>
+                                    ) : (
+                                        <img 
+                                            src={otherUser.avatar_url || `https://ui-avatars.com/api/?name=${otherUser.username}&background=random`} 
+                                            alt={otherUser.username} 
+                                            className={styles.avatar} 
+                                        />
+                                    )}
+                                    
                                     <div className={styles.conversationDetails}>
                                         <span className={styles.username}>{otherUser.username}</span>
+                                        
                                         <span className={styles.lastMessage}>
-                                            {conv.last_message ? conv.last_message.text.substring(0, 25) + (conv.last_message.text.length > 25 ? '...' : '') : 'No messages yet.'}
+                                            {lastMessageText.substring(0, 25) + (lastMessageText.length > 25 ? '...' : '')}
                                         </span>
                                     </div>
                                 </li>
@@ -387,6 +533,7 @@ const Chatting = () => {
                 </ul>
             </div>
 
+            {/* Khu vực hiển thị tin nhắn và nhập liệu */}
             <div className={styles.chatArea}>
                 {activeConversation ? (
                     <>
@@ -395,22 +542,39 @@ const Chatting = () => {
                                 <h3>{getOtherParticipant(activeConversation.participants)?.username}</h3>
                                 {!wsConnected && <span className={styles.connectionStatus}>Reconnecting...</span>}
                             </div>
-                            <Link to={`/profile/${getOtherParticipant(activeConversation.participants)?.username}`}>View Profile</Link>
+                            <div className={styles.chatHeaderActions}>
+                                <Link to={`/profile/${getOtherParticipant(activeConversation.participants)?.username}`}>View Profile</Link>
+                                <button 
+                                    onClick={handleDeleteConversation} 
+                                    className={styles.deleteButton}
+                                    title="Delete Conversation"
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            </div>
                         </div>
                         <div className={styles.messageList}>
                             {messages.map((msg, index) => {
                                 const senderUsername = msg.sender ? msg.sender.username : msg.sender_username;
                                 const isSentByMe = senderUsername === user.username;
+                                
                                 return (
                                     <div 
                                         key={msg.id || `msg_${index}`}
-                                        className={`${styles.messageBubble} ${isSentByMe ? styles.sent : styles.received}`}
+                                        className={`${styles.messageBubble} ${isSentByMe ? styles.sent : styles.received} ${msg.isTyping ? styles.typing : ''}`}
                                     >
                                         <div className={styles.messageContent}>
-                                            <p>{msg.text || msg.message}</p>
-                                            <span className={styles.timestamp}>
-                                                {formatTimestamp(msg.created_at)}
-                                            </span>
+                                            {senderUsername === AI_USERNAME ? (
+                                                <div dangerouslySetInnerHTML={{ __html: msg.text || msg.message }} />
+                                            ) : (
+                                                <p>{msg.text || msg.message}</p>
+                                            )}
+                                            
+                                            {!msg.isTyping && (
+                                                <span className={styles.timestamp}>
+                                                    {formatTimestamp(msg.created_at)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 );

@@ -3,7 +3,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import api_views
-from .api_views import ai_refactor_code_view, ai_generate_title_view, AIChallengeGeneratorView, WeeklyChallengeViewSet,ChallengeSubmissionViewSet, CodeQualityAuditView # Import hàm get_ai_response từ api_views
+from .api_views import ai_refactor_code_view, ai_generate_title_view, AIChallengeGeneratorView, WeeklyChallengeViewSet,ChallengeSubmissionViewSet, CodeQualityAuditView, chat_with_ai_view
+ # Import hàm get_ai_response từ api_views
 # Khởi tạo router
 router = DefaultRouter()
 router.register(r"posts", api_views.PostViewSet, basename="posts")
@@ -45,6 +46,8 @@ urlpatterns = [
     path('bugs/log/', api_views.log_bug_view, name='log_bug'),
     path('bugs/stats/', api_views.bug_stats_view, name='bug_stats'),
     path('bugs/reviews/', api_views.bug_reviews_view, name='bug_reviews'),
+
+    path('chat/ai/', chat_with_ai_view, name='chat-with-ai'),
 
     path('admin/code-quality-audit/', CodeQualityAuditView.as_view(), name='code_quality_audit'),
     # Include tất cả các URL do router tạo ra vào cuối danh sách này

@@ -5,6 +5,7 @@ import re
 import time
 from datetime import timedelta
 import io
+from django.conf import settings
 import requests 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -83,8 +84,6 @@ from reportlab.platypus import Image
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
-
-
 
 
 @api_view(['GET'])
@@ -822,10 +821,21 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             user = request.user
             # Lấy tất cả user, loại trừ user hiện tại
-            queryset = User.objects.exclude(pk=user.pk).order_by('username')
+            #queryset = User.objects.exclude(pk=user.pk).order_by('username')
+            queryset = User.objects.exclude(pk=user.pk).annotate(
+                # Tạo một trường tạm gọi là 'priority'
+                # Nếu username là của AI, gán priority = 0
+                # Với các user khác, gán priority = 1
+                priority=Case(
+                    When(username=settings.AI_ASSISTANT_USERNAME, then=0),
+                    default=1,
+                    output_field=IntegerField(),
+                )
+            ).order_by('priority', 'username')
             serializer = UserSerializer(queryset, many=True, context={'request': request})
             return Response(serializer.data)
         except Exception as e:
+            logger.error(f"Error fetching chat candidates (AI Name: {settings.AI_ASSISTANT_USERNAME}): {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Error fetching chat candidates: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1164,6 +1174,33 @@ class ConversationViewSet(viewsets.ViewSet):
         except Conversation.DoesNotExist:
             return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def destroy(self, request, pk=None):
+        """
+        Xóa toàn bộ một cuộc hội thoại.
+        """
+        try:
+            conversation = get_object_or_404(Conversation, pk=pk)
+            
+            # KIỂM TRA BẢO MẬT: Chỉ những người tham gia mới được quyền xóa
+            if request.user not in conversation.participants.all():
+                return Response(
+                    {'error': 'You do not have permission to delete this conversation.'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Xóa conversation. Các tin nhắn liên quan sẽ tự động bị xóa
+            # nếu bạn đã thiết lập `on_delete=models.CASCADE` trong model ChatMessage.
+            conversation.delete()
+            
+            # Trả về 204 No Content là chuẩn cho một yêu cầu DELETE thành công
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Conversation.DoesNotExist:
+            return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error deleting conversation {pk}: {e}", exc_info=True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1668,26 +1705,42 @@ def create_tag(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-def get_ai_response(prompt: str):
-    """Gets AI analysis from Gemini API using the final prompt string."""
+def get_ai_response(content_input: 'Union[str, list]') -> str:
+    """
+    Gets AI analysis from Gemini API using the provided content (string or list of messages).
+    """
+    from dotenv import load_dotenv # Chỉ load khi cần thiết
     load_dotenv()
+    
+    # Đảm bảo client được khởi tạo, nếu chưa có
+    global client
+    if 'client' not in globals() or client is None:
+        try:
+            client = genai.Client()
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini client: {e}")
+            return None
+
     try:
+        # Nếu content_input là chuỗi, coi nó là prompt cơ bản.
+        # Nếu là list, coi nó là lịch sử hội thoại.
+        # API Gemini's generate_content chấp nhận cả string và list cho `contents`
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt 
+            contents=content_input
         )
 
         ai_text = response.text
         if not ai_text or not ai_text.strip():
             logger.warning("AI returned an empty response.")
-            return None # Trả về None để dễ xử lý lỗi
+            return None
 
         return ai_text
 
     except Exception as e:
-        logger.error(f"AI service failed: {e}")
-        # Không trả về Response ở đây để hàm có thể tái sử dụng linh hoạt
+        logger.error(f"AI service failed with content: {content_input[:100]}... Error: {e}", exc_info=True)
         return None
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -2581,3 +2634,74 @@ Content:
         footer_elements.append(Paragraph(footer_text, footer_style))
         
         return footer_elements
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def chat_with_ai_view(request):
+    """
+    Xử lý tin nhắn trò chuyện với AI Assistant, có hỗ trợ ngữ cảnh hội thoại.
+    Sử dụng hàm get_ai_response để gọi AI.
+    """
+    conversation_id = request.data.get('conversation_id')
+    user_message_text = request.data.get('text', '').strip()
+
+    if not all([conversation_id, user_message_text]):
+        return Response(
+            {'error': 'conversation_id and text are required.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        ai_user = get_object_or_404(User, username=settings.AI_ASSISTANT_USERNAME)
+        
+        # 1. Lưu tin nhắn của người dùng vào DB
+        ChatMessage.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            text=user_message_text
+        )
+        conversation.save()
+
+        # 2. Xây dựng lịch sử hội thoại đúng chuẩn cho AI
+        history_messages = conversation.messages.order_by('created_at').select_related('sender')[:20] # Lấy 20 tin nhắn gần nhất
+        
+        contents = []
+        for msg in history_messages:
+            role = "user" if msg.sender.username != settings.AI_ASSISTANT_USERNAME else "model"
+            contents.append({
+                "role": role,
+                "parts": [{"text": msg.text}]
+            })
+        
+        # 3. Gọi hàm get_ai_response với lịch sử hội thoại
+        logger.info(f"Calling get_ai_response with conversation history of {len(contents)} messages.")
+        ai_response_raw_text = get_ai_response(contents) # <--- Gọi hàm get_ai_response với list contents
+
+        if not ai_response_raw_text:
+            raise Exception("AI service returned an empty response.")
+
+        # 4. Dùng AICommentFormatter để định dạng câu trả lời
+        formatter = AICommentFormatter()
+        formatted_html_response = formatter.format_full_response(ai_response_raw_text, post=None)
+
+        # 5. Lưu câu trả lời đã được format của AI vào DB
+        ai_message = ChatMessage.objects.create(
+            conversation=conversation,
+            sender=ai_user,
+            text=formatted_html_response
+        )
+        conversation.save()
+
+        # 6. Trả về tin nhắn của AI cho frontend
+        serializer = ChatMessageSerializer(ai_message, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    except Conversation.DoesNotExist:
+        return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Critical error in chat_with_ai_view: {e}", exc_info=True)
+        return Response(
+            {'error': 'An unexpected error occurred while communicating with the AI.'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
