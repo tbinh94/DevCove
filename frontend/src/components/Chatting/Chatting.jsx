@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
 import styles from './Chatting.module.css';
-import { Send, Search, MessageSquare, PlusCircle, X, Bot, Trash2 } from 'lucide-react'; 
+import { Send, Search, MessageSquare, PlusCircle, X, Bot, Trash2, ArrowLeft } from 'lucide-react'; 
 
 const AI_USERNAME = process.env.REACT_APP_AI_ASSISTANT_USERNAME;
 
@@ -463,8 +463,13 @@ const Chatting = () => {
             <div className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarTitle}>
-                        <h2>Chats</h2>
-                        <button onClick={handleNewChatClick} className={styles.newChatButton}>
+                        <div className={styles.titleGroup}>
+                            <Link to="/" className={styles.backButton} title="Back to Home">
+                                <ArrowLeft size={22} />
+                            </Link>
+                            <h2>Chats</h2>
+                        </div>
+                        <button onClick={handleNewChatClick} className={styles.newChatButton} title="New Chat">
                             <PlusCircle size={22} />
                         </button>
                     </div>

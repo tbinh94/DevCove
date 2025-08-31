@@ -1,3 +1,5 @@
+--- START OF FILE Chatting.module.css ---
+
 /* Reset và base styles */
 * {
   box-sizing: border-box;
@@ -48,6 +50,33 @@ html, body, #root { /* Assuming your root React element has id="root" */
   align-items: center;
   margin-bottom: 20px;
 }
+
+/* === BẮT ĐẦU CSS MỚI === */
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Khoảng cách giữa nút back và chữ "Chats" */
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent; /* Tránh layout bị dịch chuyển khi hover */
+  color: #64748b;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backButton:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #ffffff;
+}
+/* === KẾT THÚC CSS MỚI === */
 
 .sidebarHeader h2 {
   color: #ffffff;
