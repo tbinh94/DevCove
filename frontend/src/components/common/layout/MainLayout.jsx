@@ -20,8 +20,11 @@ const MainLayout = () => {
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const overviewModalRef = useRef(null);
-
-  const handleGenerateOverview = async () => {
+  
+  // STATE MỚI: Dùng để biết khi nào component con (như PostDetail) muốn khóa cuộn
+  const [isChildModalOpen, setIsChildModalOpen] = useState(false);
+  
+  async function handleGenerateOverview() {
     if (!isAuthenticated || posts.length === 0) {
       if (!isAuthenticated) alert("Bạn cần đăng nhập để dùng tính năng này.");
       return;
@@ -34,7 +37,7 @@ const MainLayout = () => {
     try {
       const postIds = posts.map(p => p.id);
       const response = await apiService.generatePostListOverview({ post_ids: postIds });
-      
+
       setOverview(response.overview);
       setIsOverviewModalOpen(true);
     } catch (err) {
@@ -44,7 +47,7 @@ const MainLayout = () => {
     } finally {
       setIsOverviewLoading(false);
     }
-  };
+  }
 
   // SỬA LỖI 1: BỌC HÀM BẰNG `useCallback`
   // Hàm này giờ sẽ không bị tạo lại sau mỗi lần re-render, trừ khi phụ thuộc thay đổi.
@@ -63,22 +66,25 @@ const MainLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cuộn tới modal khi nó mở
+  // useEffect DUY NHẤT chịu trách nhiệm khóa/mở khóa cuộn
   useEffect(() => {
-    if (isOverviewModalOpen && overviewModalRef.current) {
-        setTimeout(() => {
-            overviewModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+    if (isOverviewModalOpen || isChildModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
     }
-  }, [isOverviewModalOpen]);
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [isOverviewModalOpen, isChildModalOpen]);
 
   // SỬA LỖI 2: BỌC OBJECT CONTEXT BẰNG `useMemo`
   // Điều này đảm bảo rằng object context chỉ được tạo lại khi `handlePostsLoaded` thay đổi.
   // Vì `handlePostsLoaded` giờ đã ổn định, object này cũng sẽ ổn định.
   const outletContext = useMemo(() => ({
     onPostsLoaded: handlePostsLoaded,
+    setBodyScrollLock: setIsChildModalOpen,
   }), [handlePostsLoaded]);
-
 
   return (
     <div className={styles.appContainer}>

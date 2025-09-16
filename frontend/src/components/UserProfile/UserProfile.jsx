@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Bookmark, Edit3, Calendar, Clock, Hash, ArrowUp, ArrowDown, UserPlus, UserCheck, AlertCircle, RefreshCw, Award, ChevronUp, ChevronDown } from 'lucide-react';
@@ -329,9 +328,11 @@ const UserProfile = () => {
   if (loading) {
     return (
       <div className={styles.profileContainer}>
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <p>Loading profile...</p>
+        <div className={styles.profileContent}>
+          <div className={styles.loading}>
+            <div className={styles.spinner}></div>
+            <p>Loading profile...</p>
+          </div>
         </div>
       </div>
     );
@@ -341,36 +342,38 @@ const UserProfile = () => {
   if (error) {
     return (
       <div className={styles.profileContainer}>
-        <div className={styles.errorContainer}>
-          <div className={styles.errorIcon}>
-            <AlertCircle size={48} />
+        <div className={styles.profileContent}>
+          <div className={styles.errorContainer}>
+            <div className={styles.errorIcon}>
+              <AlertCircle size={48} />
+            </div>
+            <h2 className={styles.errorTitle}>Oops! Something went wrong</h2>
+            <p className={styles.errorMessage}>{error}</p>
+            
+            {retryCount < 3 && (
+              <div className={styles.errorActions}>
+                <button 
+                  onClick={retryFetch} 
+                  className={styles.retryButton}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} />
+                  Try Again
+                </button>
+              </div>
+            )}
+            
+            {retryCount >= 3 && (
+              <div className={styles.errorActions}>
+                <p className={styles.retryLimitMessage}>
+                  Multiple attempts failed. Please try again later or contact support.
+                </p>
+                <Link to="/" className={styles.homeButton}>
+                  Go to Home
+                </Link>
+              </div>
+            )}
           </div>
-          <h2 className={styles.errorTitle}>Oops! Something went wrong</h2>
-          <p className={styles.errorMessage}>{error}</p>
-          
-          {retryCount < 3 && (
-            <div className={styles.errorActions}>
-              <button 
-                onClick={retryFetch} 
-                className={styles.retryButton}
-                disabled={loading}
-              >
-                <RefreshCw size={16} />
-                Try Again
-              </button>
-            </div>
-          )}
-          
-          {retryCount >= 3 && (
-            <div className={styles.errorActions}>
-              <p className={styles.retryLimitMessage}>
-                Multiple attempts failed. Please try again later or contact support.
-              </p>
-              <Link to="/" className={styles.homeButton}>
-                Go to Home
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -380,17 +383,19 @@ const UserProfile = () => {
   if (!profileData || !profileData.user) {
     return (
       <div className={styles.profileContainer}>
-        <div className={styles.errorContainer}>
-          <div className={styles.errorIcon}>
-            <AlertCircle size={48} />
+        <div className={styles.profileContent}>
+          <div className={styles.errorContainer}>
+            <div className={styles.errorIcon}>
+              <AlertCircle size={48} />
+            </div>
+            <h2 className={styles.errorTitle}>Profile not found</h2>
+            <p className={styles.errorMessage}>
+              The user "{username}" could not be found.
+            </p>
+            <Link to="/" className={styles.homeButton}>
+              Go to Home
+            </Link>
           </div>
-          <h2 className={styles.errorTitle}>Profile not found</h2>
-          <p className={styles.errorMessage}>
-            The user "{username}" could not be found.
-          </p>
-          <Link to="/" className={styles.homeButton}>
-            Go to Home
-          </Link>
         </div>
       </div>
     );
@@ -400,192 +405,194 @@ const UserProfile = () => {
 
   return (
     <div className={styles.profileContainer}>
-      <div className={`${styles.profileHeader} ${styles.fadeInUp}`}>
-        <div className={styles.profileInfo}>
-          {/* Enhanced avatar display above username */}
-          <div className={styles.avatarContainer}>
-            <div className={styles.avatar}>
-              {profile?.avatar_url ? (
-                <img 
-                  src={profile.avatar_url} 
-                  alt={`${user.username}'s avatar`}
-                  onError={(e) => {
-                    console.log('Avatar image failed to load:', profile.avatar_url);
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-              ) : null}
-              <div 
-                className={styles.defaultAvatar}
-                style={profile?.avatar_url ? { display: 'none' } : {}}
-              >
-                {user.username?.charAt(0)?.toUpperCase() || '?'}
+      <div className={styles.profileContent}>
+        <div className={`${styles.profileHeader} ${styles.fadeInUp}`}>
+          <div className={styles.profileInfo}>
+            {/* Enhanced avatar display above username */}
+            <div className={styles.avatarContainer}>
+              <div className={styles.avatar}>
+                {profile?.avatar_url ? (
+                  <img 
+                    src={profile.avatar_url} 
+                    alt={`${user.username}'s avatar`}
+                    onError={(e) => {
+                      console.log('Avatar image failed to load:', profile.avatar_url);
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className={styles.defaultAvatar}
+                  style={profile?.avatar_url ? { display: 'none' } : {}}
+                >
+                  {user.username?.charAt(0)?.toUpperCase() || '?'}
+                </div>
               </div>
             </div>
-          </div>
-          
-          {/* Username centered below avatar with Helper Badge */}
-          <div className={styles.usernameContainer}>
-            <h2 className={styles.username}>{user.username}</h2>
-            {user.is_weekly_helper && (
-              <span className={styles.helperBadge} title="This user is a Weekly Helper!">
-                <Award size={16} />
-                Weekly Helper
-              </span>
+            
+            {/* Username centered below avatar with Helper Badge */}
+            <div className={styles.usernameContainer}>
+              <h2 className={styles.username}>{user.username}</h2>
+              {user.is_weekly_helper && (
+                <span className={styles.helperBadge} title="This user is a Weekly Helper!">
+                  <Award size={16} />
+                  Weekly Helper
+                </span>
+              )}
+            </div>
+            
+            {/* Bio if available */}
+            {profile?.bio && (
+              <p className={styles.bio}>{profile.bio}</p>
+            )}
+            
+            {/* Profile statistics */}
+            <div className={styles.profileStats}>
+              <div className={styles.stat}>
+                <span className={styles.statNumber}>{posts?.length || 0}</span>
+                <span className={styles.statLabel}>Posts</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statNumber}>{user.follower_count || 0}</span>
+                <span className={styles.statLabel}>Followers</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statNumber}>{user.following_count || 0}</span>
+                <span className={styles.statLabel}>Following</span>
+              </div>
+            </div>
+            
+            {/* Join date */}
+            {profile?.joined_date && (
+              <div className={styles.joinedDate}>
+                <Calendar size={16} />
+                <span>Joined {formatTime(profile.joined_date)}</span>
+              </div>
+            )}
+            
+            {/* Follow button for other users */}
+            {isAuthenticated && currentUser && user.id !== currentUser.id && (
+              <button 
+                onClick={handleFollowToggle} 
+                className={`${styles.followBtn} ${isFollowing ? styles.unfollow : ''}`}
+              >
+                {isFollowing ? (
+                  <>
+                    <UserCheck size={16} />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={16} />
+                    Follow
+                  </>
+                )}
+              </button>
             )}
           </div>
-          
-          {/* Bio if available */}
-          {profile?.bio && (
-            <p className={styles.bio}>{profile.bio}</p>
-          )}
-          
-          {/* Profile statistics */}
-          <div className={styles.profileStats}>
-            <div className={styles.stat}>
-              <span className={styles.statNumber}>{posts?.length || 0}</span>
-              <span className={styles.statLabel}>Posts</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statNumber}>{user.follower_count || 0}</span>
-              <span className={styles.statLabel}>Followers</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statNumber}>{user.following_count || 0}</span>
-              <span className={styles.statLabel}>Following</span>
-            </div>
+        </div>
+
+        {/* Posts section */}
+        <div className={styles.postsSection}>
+          <div className={styles.postsSectionHeader}>
+            <h3>Posts by {user.username}</h3>
           </div>
-          
-          {/* Join date */}
-          {profile?.joined_date && (
-            <div className={styles.joinedDate}>
-              <Calendar size={16} />
-              <span>Joined {formatTime(profile.joined_date)}</span>
-            </div>
-          )}
-          
-          {/* Follow button for other users */}
-          {isAuthenticated && currentUser && user.id !== currentUser.id && (
-            <button 
-              onClick={handleFollowToggle} 
-              className={`${styles.followBtn} ${isFollowing ? styles.unfollow : ''}`}
-            >
-              {isFollowing ? (
-                <>
-                  <UserCheck size={16} />
-                  Following
-                </>
-              ) : (
-                <>
-                  <UserPlus size={16} />
-                  Follow
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
+          <div className={styles.postsList}>
+            {posts && posts.length > 0 ? (
+              posts.map((post, index) => (
+                <div key={post.id} className={`${styles.postCard} ${styles.fadeInUp}`}>
+                  {/* Vote section - similar to PostList layout */}
+                  <div className={styles.voteSection}>
+                    <button 
+                      onClick={() => handleVote(post.id, 'up')} 
+                      className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} 
+                      disabled={!isAuthenticated}
+                    >
+                      <ChevronUp size={22} />
+                    </button>
+                    <span className={styles.voteScore}>{post.calculated_score || 0}</span>
+                    <button 
+                      onClick={() => handleVote(post.id, 'down')} 
+                      className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} 
+                      disabled={!isAuthenticated}
+                    >
+                      <ChevronDown size={22} />
+                    </button>
+                  </div>
 
-      {/* Posts section */}
-      <div className={styles.postsSection}>
-        <div className={styles.postsSectionHeader}>
-          <h3>Posts by {user.username}</h3>
-        </div>
-        <div className={styles.postsList}>
-          {posts && posts.length > 0 ? (
-            posts.map((post, index) => (
-              <div key={post.id} className={`${styles.postCard} ${styles.fadeInUp}`}>
-                {/* Vote section - similar to PostList layout */}
-                <div className={styles.voteSection}>
-                  <button 
-                    onClick={() => handleVote(post.id, 'up')} 
-                    className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} 
-                    disabled={!isAuthenticated}
-                  >
-                    <ChevronUp size={22} />
-                  </button>
-                  <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-                  <button 
-                    onClick={() => handleVote(post.id, 'down')} 
-                    className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} 
-                    disabled={!isAuthenticated}
-                  >
-                    <ChevronDown size={22} />
-                  </button>
-                </div>
-
-                {/* Post content area */}
-                <div className={styles.postContentArea}>
-                  <div className={styles.postHeader}>
-                    <div className={styles.postMeta}>
-                      {post.subreddit && (
-                        <Link to={`/r/${post.subreddit}`} className={styles.subreddit}>
-                          <Hash size={16} />
-                          {post.subreddit}
-                        </Link>
+                  {/* Post content area */}
+                  <div className={styles.postContentArea}>
+                    <div className={styles.postHeader}>
+                      <div className={styles.postMeta}>
+                        {post.subreddit && (
+                          <Link to={`/r/${post.subreddit}`} className={styles.subreddit}>
+                            <Hash size={16} />
+                            {post.subreddit}
+                          </Link>
+                        )}
+                        <span className={styles.postTime}>
+                          <Clock size={14} />
+                          {formatTime(post.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className={styles.postContent}>
+                      <Link to={`/post/${post.id}`} className={styles.postTitle}>
+                        <h4>{post.title}</h4>
+                      </Link>
+                      
+                      {post.content && (
+                        <p className={styles.postText}>
+                          {post.content.length > 200 ? `${post.content.slice(0, 200)}...` : post.content}
+                        </p>
                       )}
-                      <span className={styles.postTime}>
-                        <Clock size={14} />
-                        {formatTime(post.created_at)}
-                      </span>
+                      
+                      {post.image_url && (
+                        <div className={styles.postImage}>
+                          <img 
+                            src={post.image_url} 
+                            alt="Post content"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className={styles.postActions}>
+                      <Link to={`/post/${post.id}`} className={styles.actionBtn}>
+                        <MessageCircle size={16} />
+                        <span>{post.comment_count || 0} Comments</span>
+                      </Link>
+                      
+                      <button className={styles.actionBtn}>
+                        <Share2 size={16} />
+                        Share
+                      </button>
+                      
+                      <button className={styles.actionBtn}>
+                        <Bookmark size={16} />
+                        Save
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className={styles.postContent}>
-                    <Link to={`/post/${post.id}`} className={styles.postTitle}>
-                      <h4>{post.title}</h4>
-                    </Link>
-                    
-                    {post.content && (
-                      <p className={styles.postText}>
-                        {post.content.length > 200 ? `${post.content.slice(0, 200)}...` : post.content}
-                      </p>
-                    )}
-                    
-                    {post.image_url && (
-                      <div className={styles.postImage}>
-                        <img 
-                          src={post.image_url} 
-                          alt="Post content"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className={styles.postActions}>
-                    <Link to={`/post/${post.id}`} className={styles.actionBtn}>
-                      <MessageCircle size={16} />
-                      <span>{post.comment_count || 0} Comments</span>
-                    </Link>
-                    
-                    <button className={styles.actionBtn}>
-                      <Share2 size={16} />
-                      Share
-                    </button>
-                    
-                    <button className={styles.actionBtn}>
-                      <Bookmark size={16} />
-                      Save
-                    </button>
-                  </div>
                 </div>
+              ))
+            ) : (
+              <div className={styles.emptyState}>
+                <p>No posts yet.</p>
+                {isAuthenticated && currentUser && user.id === currentUser.id && (
+                  <Link to="/create-post" className={styles.createFirstPost}>
+                    Create your first post
+                  </Link>
+                )}
               </div>
-            ))
-          ) : (
-            <div className={styles.emptyState}>
-              <p>No posts yet.</p>
-              {isAuthenticated && currentUser && user.id === currentUser.id && (
-                <Link to="/create-post" className={styles.createFirstPost}>
-                  Create your first post
-                </Link>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -712,6 +712,8 @@
   overflow-y: auto;
   line-height: 1.7;
   color: #a0aec0;
+  flex: 1; /* <-- THÊM DÒNG NÀY */
+  min-height: 0; /* <-- Thêm để tránh lỗi tràn flexbox trong một số trình duyệt */
 }
 
 .overviewModalContent h2 {

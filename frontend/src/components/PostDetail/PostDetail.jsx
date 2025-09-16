@@ -1,7 +1,7 @@
 // --- START OF FILE: PostDetail.jsx (Corrected Version) ---
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle, EyeOff } from 'lucide-react';
 import styles from './PostDetail.module.css';
 import apiService from '../../services/api'; 
@@ -39,7 +39,7 @@ const PostDetail = () => {
     
     const [showBotComments, setShowBotComments] = useState(true);
 
-
+    const outletContext = useOutletContext(); 
     // Đảm nhận function của nút Copy và Run trong phần bình luận
     /*
     Hàm handleCommentAreaClick đảm nhận việc xử lý sự kiện click trên nút "Run".
@@ -142,23 +142,33 @@ const PostDetail = () => {
     }, [postId]);
 
     useEffect(() => {
+        const isAnyModalOpen = isImageModalOpen || isChatModalOpen;
+
+        // SỬA LỖI 2: Luôn kiểm tra context và hàm tồn tại trước khi gọi
+        if (outletContext && typeof outletContext.setBodyScrollLock === 'function') {
+            outletContext.setBodyScrollLock(isAnyModalOpen);
+        }
+
         const handleEscKey = (e) => {
             if (e.key === 'Escape') {
                 if (isImageModalOpen) setIsImageModalOpen(false);
                 if (isChatModalOpen) handleCloseChatModal();
             }
         };
-        
-        if (isImageModalOpen || isChatModalOpen) {
+
+        if (isAnyModalOpen) {
             document.addEventListener('keydown', handleEscKey);
-            document.body.style.overflow = 'hidden';
         }
-        
+
+        // Hàm dọn dẹp cũng phải kiểm tra
         return () => {
             document.removeEventListener('keydown', handleEscKey);
-            document.body.style.overflow = 'unset';
+            if (outletContext && typeof outletContext.setBodyScrollLock === 'function') {
+                outletContext.setBodyScrollLock(false);
+            }
         };
-    }, [isImageModalOpen, isChatModalOpen]);
+    // SỬA LỖI 3: Thêm outletContext vào mảng dependencies
+    }, [isImageModalOpen, isChatModalOpen, outletContext]);
     
     const sanitizeBotComment = (commentText) => {
         return DOMPurify.sanitize(commentText, { 

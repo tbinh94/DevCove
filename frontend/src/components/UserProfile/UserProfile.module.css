@@ -1,4 +1,4 @@
-/* UserProfile.module.css - Enhanced Dark Theme with Vote Styling */
+/* UserProfile.module.css - Enhanced Dark Theme with Vote Styling - Fixed Layout */
 
 :root {
   --bg-primary: #1a1a2e;
@@ -19,13 +19,23 @@
   --gradient-green: linear-gradient(135deg, #46d160, #2db84d);
 }
 
+/* Full width background fix */
 .profileContainer {
-  max-width: 1000px;
-  margin: 0 auto;
+  width: 100%;
+  min-width: 100vw;
+  margin: 0;
   padding: 20px;
   background: var(--bg-primary);
   min-height: 100vh;
   color: var(--text-secondary);
+  box-sizing: border-box;
+}
+
+/* Inner content wrapper */
+.profileContent {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* Profile Header */
@@ -37,6 +47,8 @@
   margin-bottom: 24px;
   box-shadow: 0 8px 32px var(--shadow-light);
   backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .profileInfo {
@@ -209,6 +221,8 @@
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 32px var(--shadow-light);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .postsSectionHeader {
@@ -234,6 +248,8 @@
   position: relative;
   overflow: hidden;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .postCard::before {
@@ -505,6 +521,8 @@
   background: var(--bg-secondary);
   border-radius: 16px;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .spinner {
@@ -591,8 +609,17 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .profileContainer { padding: 16px; }
-  .profileHeader { padding: 24px; }
+  .profileContainer { 
+    padding: 16px;
+    min-width: 100vw;
+  }
+  .profileHeader { 
+    padding: 24px;
+    margin: 0 0 24px 0;
+  }
+  .postsSection {
+    margin: 0;
+  }
   .avatar { width: 100px; height: 100px; }
   .defaultAvatar { font-size: 40px; }
   .username { font-size: 28px; }
@@ -604,6 +631,17 @@
 }
 
 @media (max-width: 480px) {
+  .profileContainer {
+    padding: 12px;
+    min-width: 100vw;
+  }
+  .profileHeader {
+    padding: 20px;
+    border-radius: 12px;
+  }
+  .postsSection {
+    border-radius: 12px;
+  }
   .avatar { width: 80px; height: 80px; }
   .defaultAvatar { font-size: 32px; }
   .username { font-size: 24px; }
@@ -622,6 +660,7 @@
   .postCard { 
     flex-direction: column; 
     gap: 12px;
+    padding: 12px;
   }
   .voteSection {
     flex-direction: row;
@@ -630,4 +669,12 @@
     width: fit-content;
   }
   .voteButton { width: 36px; height: 36px; }
+}
+
+/* Full viewport fix for very small screens */
+@media (max-width: 320px) {
+  .profileContainer {
+    padding: 8px;
+    min-width: 100vw;
+  }
 }
