@@ -214,6 +214,7 @@
   margin-bottom: 8px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp:2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -334,3 +335,88 @@
 .searchResult:nth-child(3) { animation-delay: 0.15s; }
 .searchResult:nth-child(4) { animation-delay: 0.2s; }
 .searchResult:nth-child(5) { animation-delay: 0.25s; }
+
+@media (max-width: 768px) {
+  /*
+    Trong layout mobile mới, component này sẽ chiếm gần hết chiều rộng,
+    nên ta cần set flex-grow và min-width để nó co giãn đúng cách trong overlay.
+  */
+  .unifiedSearch {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0;
+  }
+  
+  /* Làm cho thanh search nổi bật hơn trên nền overlay và giữ layout ngang */
+  .searchInputContainer {
+    flex-direction: row; /* Keep it horizontal */
+    gap: 0; /* Reset gap */
+    padding: 4px;
+    background: #1e293b; /* Màu nền rõ ràng hơn */
+    border-color: #334155;
+  }
+
+  /* Tinh chỉnh selector cho gọn gàng hơn */
+  .searchTypeSelector {
+    padding: 6px 10px;
+    font-size: 13px;
+    margin-right: 6px;
+    width: auto; /* Reset width */
+  }
+  
+  /* Input chiếm hết không gian còn lại, có padding để icon không đè chữ */
+  .searchInput {
+    font-size: 15px;
+    padding: 10px 44px 10px 12px;
+    width: 100%; /* Reset width */
+  }
+
+  /* Đặt nút submit vào bên trong input field */
+  .searchSubmit {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    width: 40px;
+    height: 40px;
+    margin-left: 0; /* Reset margin */
+    padding: 0; /* Reset padding */
+    border-radius: 8px; /* Softer radius */
+  }
+  
+  .searchSubmit:hover {
+     background: rgba(102, 126, 234, 0.2);
+     transform: translateY(-50%) scale(1.0); /* Reset scale transform */
+  }
+
+  /*
+    Dropdown kết quả giờ sẽ căn theo màn hình,
+    tạo cảm giác rộng rãi, dễ đọc hơn trên overlay.
+  */
+  .searchDropdown {
+    position: absolute; /* Thay vì fixed, để nó đi theo thanh search */
+    top: calc(100% + 8px); /* Vị trí ngay dưới thanh search */
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: calc(100vh - 150px); /* Giới hạn chiều cao để không che hết màn hình */
+    border-radius: 12px;
+    border: 1px solid #334155;
+    margin-top: 0;
+  }
+
+  /* Tinh chỉnh padding và font-size cho dễ đọc trên mobile */
+  .searchResults { padding: 8px; }
+  .searchResult { padding: 12px; }
+  .resultTitle { font-size: 15px; margin-bottom: 6px; }
+  .resultSnippet { font-size: 13px; }
+  .resultMeta { flex-direction: column; align-items: flex-start; gap: 4px; }
+  
+  /* Ẩn các dấu chấm ngăn cách trên mobile */
+  .resultAuthor::after,
+  .resultDate::after,
+  .resultKarma::after {
+    display: none;
+  }
+}

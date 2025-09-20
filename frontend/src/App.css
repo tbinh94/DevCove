@@ -1,6 +1,7 @@
 .App {
   background: #1a1a2e;
-  min-height: 100vh;
+  min-height: 100vh; /* Đây là fallback cho các trình duyệt cũ */
+  min-height: 100dvh; /* Đây là giải pháp chính, hiện đại */
   width: 100%;
 }
 

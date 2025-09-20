@@ -222,25 +222,59 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .container {
-    padding: 1.5rem;
+    padding: 1.5rem; /* Giảm padding tổng thể */
   }
   
+  .header {
+    margin-bottom: 1.5rem; /* Giảm khoảng cách dưới header */
+  }
+
   .title {
-    font-size: 1.5rem;
-  }
-  
-  .formRow {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    font-size: 1.625rem; /* Giảm kích thước tiêu đề một chút */
+    margin-bottom: 0.5rem;
   }
   
   .description {
-    font-size: 0.875rem;
+    font-size: 0.9rem; /* Giảm kích thước mô tả */
+    line-height: 1.5;
+  }
+  
+  .form {
+    gap: 1.5rem; /* QUAN TRỌNG: Đồng bộ khoảng cách giữa các group trong form */
+  }
+
+  .formRow {
+    grid-template-columns: 1fr; /* Chuyển thành 1 cột */
+    gap: 1.5rem; /* Đảm bảo khoảng cách giữa 2 date picker nhất quán với form chính */
+  }
+
+  .submitButton {
+    padding-top: 0.875rem;    /* Làm nút bớt cao hơn, gọn gàng hơn */
+    padding-bottom: 0.875rem;
+    margin-top: 1rem; /* Giảm khoảng cách với form field cuối */
   }
 }
 
-/* Note: React-Select styles are handled in the component file directly */
+/* Tinh chỉnh thêm cho điện thoại màn hình nhỏ (chiều rộng dưới 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 1rem; /* Giảm padding hơn nữa để tận dụng không gian */
+    border-radius: 12px;
+  }
 
+  .title {
+    font-size: 1.375rem; /* Tiêu đề nhỏ gọn hơn */
+  }
+
+  .description {
+    font-size: 0.875rem;
+  }
+
+  /* Đảm bảo font chữ trong input và button dễ đọc */
+  .dateInput, .submitButton {
+    font-size: 0.875rem; 
+  }
+}
 /* Animation for form elements */
 .formGroup {
   animation: slideInUp 0.6s ease-out;

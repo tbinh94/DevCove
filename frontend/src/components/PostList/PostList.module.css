@@ -765,120 +765,157 @@
   background: none;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .mainContainer {
-    padding: var(--space-lg);
+@media (max-width: 768px) {
+  .postListContainer {
+    max-width: 100%;
+    padding: 0;
   }
-}
 
-@media (max-width: 900px) {
-  .mainContainer {
+  .postCard {
     flex-direction: column;
     padding: var(--space-md);
-    gap: var(--space-lg);
+    margin-bottom: var(--space-md);
+    gap: var(--space-md);
   }
 
-  .sidebar {
-    width: 100%;
-    position: static;
-    order: 2;
+  .postCard:hover {
+    transform: none;
+  }
+  
+  .postCard::before {
+    display: none;
   }
 
-  .mainContent {
+  .postContentArea {
     order: 1;
   }
 
-  .controlsContainer {
-    justify-content: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .postCard {
-    padding: var(--space-lg);
-  }
-
+  /*
+    == SỬA LỖI & CẢI TIẾN KHU VỰC VOTE ==
+    1. Di chuyển cả block vote ra giữa card.
+    2. Biến nó thành một hàng ngang, độc lập.
+  */
   .voteSection {
-    margin-right: var(--space-md);
-    min-width: 60px;
-    padding: var(--space-md);
+    order: 3; /* Đặt nó xuống dưới cùng, sau cả footer */
+    flex-direction: row;
+    align-items: center;
+    justify-content: center; /* Căn giữa các nút bên trong */
+    align-self: center;   /* Căn giữa chính block này trong card */
+    margin: var(--space-md) 0 0 0; /* Thêm khoảng cách với content */
+    padding: var(--space-sm) var(--space-lg);
+    gap: var(--space-md);
+    background: var(--bg-secondary); /* Trả lại nền để tạo thành 1 block riêng */
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-full); /* Bo tròn như viên thuốc */
+    width: auto; /* Để block co lại vừa với nội dung */
+    min-width: 150px; /* Chiều rộng tối thiểu */
+  }
+
+  /* 
+    == SỬA LỖI NÚT NHẢY VỊ TRÍ ==
+    Gán thứ tự tĩnh và không bao giờ thay đổi cho các phần tử.
+  */
+  .voteButton {
+    order: 1; /* Nút upvote luôn ở vị trí 1 */
+    width: 44px;
+    height: 44px;
+  }
+
+  .voteScore {
+    order: 2; /* Điểm số luôn ở vị trí 2 */
+    font-size: 16px;
+    margin: 0;
+  }
+  
+  /* Dùng selector > :last-of-type để nhắm chính xác vào nút downvote */
+  .voteSection > .voteButton:last-of-type {
+    order: 3; /* Nút downvote luôn ở vị trí 3 */
   }
 
   .postTitle {
     font-size: 20px;
+    line-height: 1.3;
   }
 
-  .overviewModal {
-    width: 95%;
-    max-height: 90vh;
-  }
-}
-
-@media (max-width: 480px) {
-  .postCard {
-    flex-direction: column;
-    padding: var(--space-md);
+  .postMeta {
+    font-size: 13px;
   }
 
-  .voteSection {
-    flex-direction: row;
-    justify-content: center;
-    width: 100%;
-    margin: 0 0 var(--space-md) 0;
-    min-width: unset;
+  .postContentPreview {
+    font-size: 15px;
+    line-height: 1.6;
   }
 
-  .postTitle {
-    font-size: 18px;
+  .imageContainer {
+    margin: var(--space-md) 0;
+    border-radius: var(--radius-md);
   }
 
-  .tagsList {
-    gap: var(--space-sm);
+  .postImage {
+    border-radius: var(--radius-md);
   }
 
+  /* Footer giờ sẽ là một hàng riêng biệt */
   .postFooter {
-    flex-wrap: wrap;
-    gap: var(--space-md);
+    order: 2; /* Đặt nó ngay dưới content và trên khu vực vote */
+    justify-content: flex-start; /* Nút comment ở bên trái */
+    padding-top: var(--space-md);
+    margin-top: var(--space-md);
+    margin-left: 0; /* Reset margin */
   }
 
-  .sortControls {
-    flex-wrap: wrap;
+  .actionButton {
+    min-height: 44px;
   }
-}
 
-/* Focus states for accessibility */
-.voteButton:focus,
-.actionButton:focus,
-.tagBadge:focus,
-.tagItem:focus,
-.pageBtn:focus,
-.overviewButton:focus,
-.closeButton:focus,
-.sortButton:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --border-light: rgba(255, 255, 255, 0.3);
-    --text-secondary: #cbd5e0;
-    --bg-hover: #2d3748;
+  .tagItem {
+    padding: 6px 10px;
   }
-}
 
-/* Reduced motion for accessibility */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Vẫn giữ căn giữa */
+    gap: 6px; /* Giảm khoảng cách giữa các nút để tiết kiệm không gian */
+    padding: var(--space-md) var(--space-sm);
+    margin-top: var(--space-lg);
+    border-top: 1px solid var(--border-light);
+    /* QUAN TRỌNG: Không cho phép các nút xuống dòng */
+    flex-wrap: nowrap;
+    /* Cho phép cuộn ngang nhẹ nếu màn hình CỰC KỲ hẹp, thay vì làm vỡ layout */
+    overflow-x: auto;
   }
   
-  .overviewModalOverlay,
-  .overviewModal {
-    animation: none !important;
+  /* Ẩn thanh cuộn ngang (nếu có) để giao diện sạch sẽ */
+  .pagination::-webkit-scrollbar {
+    display: none;
+  }
+  .pagination {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .pageBtn {
+    flex-shrink: 0; /* Ngăn các nút bị co lại quá mức */
+    min-width: 44px;
+    height: 44px;
+    padding: 0 10px; /* Giảm padding ngang một chút */
+    font-size: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+  }
+  
+  .pageBtn:hover:not(:disabled) {
+     background: var(--bg-hover);
+  }
+  
+  .pageBtn.activePage {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+  }
+  
+  .pageInfo {
+    display: none;
   }
 }

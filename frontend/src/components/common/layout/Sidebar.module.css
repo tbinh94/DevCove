@@ -19,10 +19,11 @@
 .sidebar {
   width: 280px;
   position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 20px);
+  top: 84px; /* 64px header + 20px padding */
+  height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 /* Unified Card System */
@@ -81,23 +82,10 @@
   letter-spacing: -0.01em;
 }
 
-.controlsSection h3::before {
-  content: '🧠';
-  font-size: 14px;
-}
-
-.tagsSection h3::before {
-  content: '🏷️';
-  font-size: 14px;
-}
-
-.filterStatus h4::before {
-  content: '🔍';
-  font-size: 14px;
-}
-
+.controlsSection h3::before,
+.tagsSection h3::before,
+.filterStatus h4::before,
 .userSection h3::before {
-  content: '👤';
   font-size: 14px;
 }
 
@@ -564,118 +552,61 @@
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: var(--border-active);
 }
-
-/* Responsive Design */
-@media (max-width: 900px) {
+.sidebarOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.7); /* Giáº£m Ä‘á»™ Ä‘áº­m cá»§a ná»n Ä‘en */
+  backdrop-filter: blur(4px); /* ThÃªm hiá»‡u á»©ng má» phÃ­a sau */
+  z-index: 1001; /* Pháº£i tháº¥p hÆ¡n z-index cá»§a sidebar */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+.sidebarOverlayActive {
+  opacity: 1;
+  visibility: visible;
+}
+/* --- Responsive Styles for Mobile Sidebar --- */
+@media (max-width: 991px) {
+  /* Trên màn hình nhỏ, sidebar sẽ chuyển thành một modal ở giữa màn hình */
   .sidebar {
-    width: 100%;
-    position: static;
-    max-height: none;
-    order: 2;
-    margin-top: 24px;
-  }
-  
-  .controlsSection {
-    order: -1; /* Put controls at the top on mobile */
-  }
-  
-  .sortButtons {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-  
-  .sortButton {
-    flex-shrink: 0;
-    min-width: 80px;
-    justify-content: center;
-  }
-}
+    position: fixed;
+    
+    /* 1. Đặt góc trên bên trái của element vào giữa màn hình */
+    top: 50%;
+    left: 50%;
+    
+    /* 2. Dùng transform để kéo element về lại đúng tâm dựa trên kích thước của chính nó */
+    /*    Trạng thái ẩn: Vẫn giữ vị trí dọc, nhưng đẩy hẳn sang trái */
+    transform: translate(-150%, -50%);
 
-@media (max-width: 768px) {
-  .controlsSection, .tagsSection, .filterStatus, .userSection {
-    padding: 20px;
-    border-radius: 16px;
-  }
-  
-  .overviewButton {
-    padding: 14px 18px;
-    font-size: 13px;
-  }
-  
-  .sortButton {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  
-  .tagBadge {
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-  
-  .userActions {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  
-  .actionBtn {
-    flex: 1;
-    min-width: 120px;
-  }
-}
+    /* Bỏ các thuộc tính co giãn toàn màn hình */
+    bottom: unset; 
+    height: auto;
 
-@media (max-width: 480px) {
-  .controlsSection, .tagsSection, .filterStatus, .userSection {
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  
-  .sortButtons {
-    grid-template-columns: 1fr;
-  }
-  
-  .sortButton {
-    width: 100%;
-    justify-content: flex-start;
-  }
-  
-  .overviewButton {
-    padding: 12px 16px;
-  }
-}
+    /* Thêm giới hạn chiều cao và bo tròn góc cho đẹp hơn */
+    max-height: 90vh; /* Không cao quá 90% chiều cao màn hình */
+    border-radius: 20px; /* Bo tròn các góc */
+    border-right: none; /* Bỏ border bên phải vì giờ nó đã là một box riêng */
+    
+    /* Các thuộc tính cũ vẫn giữ nguyên */
+    z-index: 1002;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    background: var(--surface);
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    width: 90vw; /* Chiếm 90% chiều rộng màn hình cho rộng rãi hơn */
+    max-width: 320px; /* Có thể tăng max-width một chút */
 
-/* Focus States */
-.overviewButton:focus, .sortButton:focus, .tagBadge:focus, .viewAllButton:focus, .actionBtn:focus, .clearAllBtn:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
+    /* Thêm thuộc tính để ẩn ban đầu, giúp hiệu ứng mượt hơn */
+    opacity: 0;
+    pointer-events: none; /* Không thể tương tác khi đang ẩn */
+  }
 
-/* Accessibility - High Contrast Mode */
-@media (prefers-contrast: high) {
-  .controlsSection, .tagsSection, .filterStatus, .userSection {
-    border-width: 2px;
-  }
-  
-  .overviewButton, .sortButton, .tagBadge {
-    border-width: 2px;
-  }
-}
-
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-  
-  .overviewButton.loading {
-    animation: none;
-  }
-  
-  .spinner {
-    animation: none;
-    border-top-color: var(--primary);
+  /* Khi có class .sidebarOpen, sidebar sẽ hiện ra ở giữa */
+  .sidebar.sidebarOpen {
+    /* Dịch chuyển về đúng tâm màn hình */
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    pointer-events: auto; /* Cho phép tương tác khi hiện ra */
   }
 }

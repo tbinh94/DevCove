@@ -326,3 +326,40 @@
   color: #f8fafc; /* Chữ sáng hơn khi hover */
   border-color: rgba(255, 255, 255, 0.2);
 }
+@media (max-width: 992px) {
+    .content {
+        grid-template-columns: 1fr; /* Stack the heatmap and top bugs list */
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+        margin: 16px auto;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tabButton {
+        text-align: center;
+    }
+
+    .footerActions {
+        justify-content: center;
+    }
+
+    .modalContent {
+        width: 95%;
+        padding: 16px;
+    }
+}

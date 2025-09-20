@@ -1,5 +1,5 @@
 {
-  "name": "reddit-clone-frontend",
+  "name": "devcove-frontend",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -22,6 +22,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "dev": "concurrently \"cd ../backend && py manage.py runserver\" \"npm start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -44,5 +45,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "http://localhost:8000",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }

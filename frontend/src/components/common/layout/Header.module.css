@@ -33,7 +33,7 @@
 }
 
 .mobileMenuButton {
-  display: none;
+  display: flex; 
   padding: 0.5rem;
   color: #94a3b8;
   background: none;
@@ -543,75 +543,125 @@
   padding: 0;
 }
 
-/* Responsive Design */
-@media (max-width: 992px) {
+/* --- Responsive Design --- */
+
+.mobileSearchButton {
+  display: none;
+  padding: 0.625rem;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.mobileSearchButton:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.mobileSearchContainer {
+  display: none;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.mobileSearchCloseButton {
+  flex-shrink: 0;
+  padding: 0.625rem;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.mobileSearchCloseButton:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.defaultHeaderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+
+/* Responsive Design - Tablet & Small Desktop */
+@media (max-width: 1024px) {
+  .header {
+    padding: 0 1rem;
+  }
+  .searchBar {
+    margin: 0 1.5rem;
+  }
   .createPostButtonText,
   .toolsMenuButtonText {
     display: none;
   }
-  
   .createPostButton,
   .toolsMenuButton {
     padding: 0.625rem;
   }
-  
   .rightSide {
     gap: 0.5rem;
   }
 }
 
-@media (max-width: 768px) {
-  .mobileMenuButton { 
-    display: flex; 
-  }
-  
-  .searchBar { 
-    margin: 0 1rem; 
-    max-width: 300px; 
-  }
-  
-  .userMenuButtonText { 
-    display: none; 
-  }
-  
-  .dropdownArrow { 
-    display: none; 
-  }
+/* Lớp phủ tìm kiếm */
+.searchOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 800;
+  animation: fadeInOverlay 0.3s ease-out;
 }
 
-@media (max-width: 640px) {
-  .header { 
-    padding: 0 0.75rem; 
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.searchOverlayContent {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  padding-top: calc(64px + 0.75rem);
+}
+
+
+/* Responsive Design - Mobile */
+@media (max-width: 768px) {
+  .searchOverlay {
+    display: block;
   }
-  
-  .logoText { 
-    display: none; 
-  }
-  
-  .logoIcon { 
-    height: 28px; 
-    width: 28px; 
+  .mobileSearchButton {
+    display: flex;
   }
   
   .searchBar { 
-    margin: 0 0.5rem; 
-    min-width: 150px; 
+    display: none; 
   }
-  
-  .modalContent { 
-    width: 95%; 
-  }
-  
-  /* Tools dropdown becomes full width on mobile */
-  .toolsDropdownMenu {
-    right: -1rem;
-    left: -1rem;
-    width: auto;
+
+  .logoText,
+  .userMenuButtonText,
+  .dropdownArrow {
+    display: none; 
   }
 }
-.toolsDropdownSeparator {
-  margin: 8px 0;
-  border: none;
-  border-top: 1px solid #374151; /* Hoặc màu phù hợp với theme */
-  background: transparent;
+@media (min-width: 992px) {
+  .mobileMenuButton {
+    display: none;
+  }
 }

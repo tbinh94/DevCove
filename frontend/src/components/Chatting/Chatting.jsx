@@ -138,6 +138,19 @@ const Chatting = () => {
         return participants.find(p => p.id !== user.id);
     };
 
+    // Fix blank space issue on mobile browsers
+    useEffect(() => {
+        const setAppHeight = () => {
+            const vh = window.innerHeight;
+            document.documentElement.style.setProperty('--app-height', `${vh}px`);
+        };
+
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+
+        return () => window.removeEventListener('resize', setAppHeight);
+    }, []);
+
     // Filter conversations based on search query
     useEffect(() => {
         if (!searchQuery.trim()) {
@@ -430,7 +443,7 @@ const Chatting = () => {
     }
 
     return (
-        <div className={styles.chatContainer}>
+        <div className={`${styles.chatContainer} ${activeConversation ? styles.chatActive : ''}`}>
             {/* Modal để bắt đầu cuộc trò chuyện mới */}
             {isModalOpen && (
                 <NewChatModal 
@@ -542,10 +555,20 @@ const Chatting = () => {
             <div className={styles.chatArea}>
                 {activeConversation ? (
                     <>
+
                         <div className={styles.chatHeader}>
-                            <div>
-                                <h3>{getOtherParticipant(activeConversation.participants)?.username}</h3>
-                                {!wsConnected && <span className={styles.connectionStatus}>Reconnecting...</span>}
+                            <div className={styles.chatHeaderInfo}>
+                                <button 
+                                    className={styles.backToConversationsButton} 
+                                    onClick={() => setActiveConversation(null)}
+                                    aria-label="Back to conversations"
+                                >
+                                    <ArrowLeft size={22} />
+                                </button>
+                                <div>
+                                    <h3>{getOtherParticipant(activeConversation.participants)?.username}</h3>
+                                    {/* ... (Connection status giữ nguyên) ... */}
+                                </div>
                             </div>
                             <div className={styles.chatHeaderActions}>
                                 <Link to={`/profile/${getOtherParticipant(activeConversation.participants)?.username}`}>View Profile</Link>

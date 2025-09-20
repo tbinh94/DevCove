@@ -1,14 +1,95 @@
+/* Reset margin/padding cho tất cả elements */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Đảm bảo html và body chiếm full height */
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   zoom: 0.9;
+  overflow-x: hidden; /* Tránh scroll ngang */
+}
+
+/* Đảm bảo root container chiếm full height */
+#root {
+  height: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix cho iOS Safari viewport */
+@supports (-webkit-touch-callout: none) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: -webkit-fill-available;
+  }
+  
+  #root {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Dark theme container - đảm bảo chiếm full height */
+.dark-theme {
+  min-height: 100vh;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Base layout cho các component */
+.app-container {
+  min-height: 100vh;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Specific fixes cho các component có vấn đề */
+.login-container,
+.signup-container,
+.bug-tracker-container,
+.code-quality-container {
+  min-height: 100vh;
+  height: 100%;
+  flex: 1;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Responsive fixes */
+@media screen and (max-width: 768px) {
+  body {
+    zoom: 1; /* Reset zoom trên mobile */
+  }
+}
+
+/* Debug utility - uncomment để debug layout */
+/*
+* {
+  border: 1px solid red !important;
+}
+*/

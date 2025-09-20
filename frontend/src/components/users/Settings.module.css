@@ -2,10 +2,11 @@
 .settingsContainer {
   min-height: 100vh;
   background: #1e1e2e;
-  padding: 2rem;
+  padding: 4rem 2rem; /* Tăng padding trên dưới để tạo khoảng cách */
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: center; 
+  box-sizing: border-box;
 }
 
 .authForm {
@@ -178,15 +179,29 @@
 /* Responsive */
 @media (max-width: 768px) {
   .settingsContainer { 
-    padding: 1rem; 
+    min-height: 100vh;
+    min-height: 100dvh; /* Fix mobile viewport issue */
+    padding: 2rem 1rem;
+    margin: 0;
   }
   .authForm { 
     padding: 2rem; 
-    margin: 0 0.5rem; 
+    margin: 0;
+    width: 100%;
   }
 }
 
 @media (max-width: 480px) {
+  .settingsContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2rem 1rem;
+    margin: 0;
+    overflow-y: auto;
+  }
   .authForm { 
     padding: 1.5rem; 
   }

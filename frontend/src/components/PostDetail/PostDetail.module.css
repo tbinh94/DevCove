@@ -722,13 +722,143 @@
   .leftActions, .rightActions { width: 100%; justify-content: center; }
 }
 
+/* === RESPONSIVE CHO MOBILE (TẬP TRUNG SỬA Ở ĐÂY) === */
 @media (max-width: 480px) {
   .container { padding: 0.5rem 0; }
-  .postHeader, .postContent, .commentsSection, .commentForm, .commentItem { padding: 1rem; }
-  .postTitle { font-size: 1.4rem; }
-  .authorInfo { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-  .voteSection { flex-direction: column; padding: 0.5rem; }
-  .leftActions, .rightActions { flex-wrap: wrap; gap: 0.5rem; }
-  .actionButton { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
-  .postStats { flex-direction: column; gap: 0.5rem; }
+  .postCard, .commentsSection {
+    border-radius: var(--radius-sm);
+  }
+  .postHeader, .postContent, .commentsSection, .commentForm, .commentItem { 
+    padding: 1rem; 
+  }
+
+  /* --- Sửa Header --- */
+  .postTitle {
+    font-size: 1.5rem; /* Tăng nhẹ font-size cho tiêu đề nổi bật */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Căn badge với dòng đầu của tiêu đề */
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem; /* Thêm khoảng cách rõ ràng với phần tác giả */
+    line-height: 1.4;
+  }
+
+  .botReviewedBadgeDetail {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    margin-left: 0;
+    flex-shrink: 0; /* Tránh bị co lại khi tiêu đề dài */
+  }
+  
+  /* Sắp xếp lại thông tin tác giả theo chiều ngang */
+  .authorInfo {
+    display: flex;
+    flex-direction: row; /* Quan trọng: Đưa về chiều ngang */
+    align-items: center; /* Căn giữa avatar và khối thông tin */
+    gap: 0.75rem;
+  }
+  
+  .authorAvatar {
+    width: 40px; /* Giảm kích thước avatar */
+    height: 40px;
+    font-size: 1rem;
+  }
+  
+  .authorDetails {
+    /* Xóa các margin không cần thiết */
+    margin-top: 0; 
+  }
+
+  .authorName {
+    font-size: 1rem;
+  }
+
+  /* Sắp xếp lại các chỉ số (lượt xem, thời gian) theo chiều ngang */
+  .postStats {
+    display: flex;
+    flex-direction: row; /* Quan trọng: Đưa về chiều ngang */
+    flex-wrap: wrap;     /* Cho phép xuống dòng nếu màn hình quá hẹp */
+    gap: 1rem;           /* Khoảng cách giữa các chỉ số */
+    margin-top: 0.25rem; /* Khoảng cách nhỏ với tên tác giả */
+  }
+
+  .statItem {
+    font-size: 0.8rem; /* Giảm nhẹ font-size của chỉ số */
+  }
+  .authorDetails {
+    margin-top: 0.5rem;
+  }
+
+  .postContent {
+    padding: 1.5rem 1rem;
+  }
+  .tagsContainer {
+    padding: 0 1rem 1.5rem 1rem;
+    border-top: none;
+  }
+  .contentText {
+    font-size: 1rem;
+  }
+
+  .postActions {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem; 
+    padding: 1rem 1.5rem;
+  }
+
+  .leftActions, .rightActions {
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap; 
+    gap: 1rem;
+  }
+
+  /* Hàng actions dưới (xóa, bookmark...) */
+  .rightActions {
+    justify-content: space-around;
+  }
+  
+  /* Nút chỉ có icon ở hàng dưới */
+  .rightActions .actionButton {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    color: var(--text-muted);
+  }
+  .rightActions .actionButton:hover {
+    color: var(--accent);
+    background: rgba(96, 165, 250, 0.1);
+  }
+
+  /* Khối Vote */
+  .voteSection {
+    flex-direction: row;     
+    align-items: center;      
+    padding: 0.25rem;        
+    border-radius: 50px;     
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    gap: 0.25rem;            
+  }
+
+  .voteButton {
+    padding: 0.5rem;         
+  }
+
+  .voteScore {
+    padding: 0 0.75rem;    
+    font-size: 1rem;        
+    min-width: 30px;         
+  }
+
+  .actionButton { 
+    padding: 0.5rem 0.75rem; 
+    font-size: 0.8rem;
+  }
+  .deleteConfirmButton{
+    border-radius: 35px;
+  }
 }

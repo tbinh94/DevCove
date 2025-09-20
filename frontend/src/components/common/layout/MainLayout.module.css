@@ -117,17 +117,13 @@
   max-width: var(--breakpoint-2xl);
   margin: 0 auto;
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-3);
+  padding: var(--space-4);
+  gap: var(--space-6);
   align-items: start;
-  min-height: calc(100vh - 140px);
-  transition: var(--transition-smooth);
+  transition: grid-template-columns 0.3s ease-in-out;
   
-  /* Mobile: Stack vertically */
   grid-template-columns: 1fr;
-  grid-template-areas: 
-    "sidebar"
-    "content";
+  grid-template-areas: "content";
 }
 
 /* Content Area - Responsive Design */
@@ -147,6 +143,12 @@
 .contentArea:hover {
   border-color: var(--devcove-border-hover);
   box-shadow: var(--devcove-shadow-lg);
+}
+
+.sidebarArea {
+  grid-area: sidebar;
+  /* Thêm transition để ẩn/hiện mượt mà trên desktop */
+  transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
 }
 
 .contentExpanded {
@@ -382,118 +384,59 @@
 }
 
 /* Mobile Breakpoints - Progressive Enhancement */
-
-/* Small Mobile (up to 576px) */
-@media (max-width: 575px) {
+@media (max-width: 991px) {
   .layoutContainer {
-    padding: var(--space-2);
-    gap: var(--space-3);
-  }
-  
-  .contentArea {
-    border-radius: var(--radius-md);
-    min-height: 400px;
-  }
-  
-  .loadingContainer,
-  .errorContainer {
-    padding: var(--space-6);
-    min-height: 350px;
-  }
-  
-  .errorIcon {
-    font-size: 32px;
-  }
-  
-  .retryButton {
-    padding: var(--space-3) var(--space-6);
-    min-width: 100px;
-  }
-}
-
-/* Medium Mobile (576px to 767px) */
-@media (min-width: 576px) and (max-width: 767px) {
-  .layoutContainer {
-    padding: var(--space-3);
-    gap: var(--space-4);
-  }
-  
-  .contentArea {
-    border-radius: var(--radius-lg);
-  }
-}
-
-/* Tablet Portrait (768px to 991px) */
-@media (min-width: 768px) and (max-width: 991px) {
-  .layoutContainer {
+    /* Chuyển layout từ 2 cột sang 1 cột duy nhất */
     grid-template-columns: 1fr;
-    max-width: 700px;
+    /* Sắp xếp lại: nội dung chính ở trên, sidebar ở dưới */
+    grid-template-areas:
+      "content"
+      "sidebar";
+    
+    /* Giảm padding và khoảng cách cho màn hình nhỏ hơn */
     padding: var(--space-4);
-    gap: var(--space-5);
-  }
-  
-  .contentArea {
-    border-radius: var(--radius-lg);
-  }
-}
-
-/* Tablet Landscape & Small Desktop (992px to 1199px) */
-@media (min-width: 992px) and (max-width: 1199px) {
-  .layoutContainer {
-    grid-template-columns: 260px 1fr;
-    grid-template-areas: "sidebar content";
-    max-width: 1000px;
-    padding: var(--space-5);
     gap: var(--space-6);
   }
-  
-  .contentArea {
-    border-radius: var(--radius-xl);
-    min-height: 600px;
-  }
-}
 
-/* Desktop (1200px to 1439px) */
-@media (min-width: 1200px) and (max-width: 1439px) {
-  .layoutContainer {
-    grid-template-columns: 280px 1fr;
-    grid-template-areas: "sidebar content";
-    max-width: 1200px;
+  .contentArea {
+    /* Trên mobile, content không cần min-height cố định */
+    min-height: auto;
+  }
+
+  /* --- Điều chỉnh Modal Tổng quan AI cho mobile --- */
+
+  .overviewModal {
+    /* Cho phép modal co dãn theo chiều rộng màn hình */
+    width: 95vw;
+    max-width: calc(100% - 24px); /* Luôn có khoảng cách với cạnh màn hình */
+    max-height: 90vh; /* Tăng chiều cao tối đa một chút */
+    border-radius: var(--radius-xl);
+  }
+
+  .overviewModalHeader {
+    /* Giảm padding của header modal */
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .overviewModalHeader h3 {
+    /* Giảm cỡ chữ của tiêu đề modal */
+    font-size: var(--text-xl);
+  }
+
+  .closeButton {
+    /* Đảm bảo nút đóng đủ lớn để bấm */
+    width: 44px;
+    height: 44px;
+  }
+
+  .overviewModalContent {
+    /* Giảm padding và cỡ chữ của nội dung modal */
     padding: var(--space-6);
-    gap: var(--space-8);
+    font-size: var(--text-sm);
   }
-  
-  .contentArea {
-    border-radius: var(--radius-xl);
-    min-height: 600px;
-  }
-}
 
-/* Large Desktop (1440px and up) */
-@media (min-width: 1440px) {
-  .layoutContainer {
-    grid-template-columns: 300px 1fr;
-    grid-template-areas: "sidebar content";
-    max-width: var(--breakpoint-2xl);
-    padding: var(--space-8);
-    gap: var(--space-10);
-  }
-  
-  .contentArea {
-    border-radius: var(--radius-2xl);
-    min-height: 700px;
-  }
-}
-
-/* Ultra Wide (2560px and up) */
-@media (min-width: 2560px) {
-  .layoutContainer {
-    max-width: 2000px;
-    grid-template-columns: 320px 1fr;
-  }
-  
-  .contentExpanded {
-    max-width: 1200px;
+  .overviewModalContent h2 {
+    font-size: var(--text-lg);
   }
 }
 
@@ -761,4 +704,43 @@
   background: none;
   color: inherit;
   padding: 0;
+}
+.sidebarCollapsed {
+  @media (min-width: 992px) {
+    grid-template-columns: 0 1fr;
+    gap: 0;
+  }
+}
+
+/* Ẩn sidebarArea khi bị collapse trên desktop để tránh lỗi tràn nội dung */
+.sidebarCollapsed .sidebarArea {
+  @media (min-width: 992px) {
+    width: 0;
+    overflow: hidden;
+    padding-left: 0;
+    padding-right: 0;
+    opacity: 0;
+  }
+}
+@media (max-width: 991px) {
+  .layoutContainer {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "content"
+      "sidebar"; /* Sidebar vẫn là một phần của grid trên mobile, nhưng nó sẽ bị ẩn/hiện */
+    
+    padding: var(--space-4);
+    gap: var(--space-6);
+  }
+
+  .contentArea {
+    min-height: auto;
+  }
+}
+@media (min-width: 992px) {
+  .layoutContainer {
+    grid-template-columns: 280px 1fr;
+    grid-template-areas: "sidebar content";
+    padding: var(--space-6) var(--space-8);
+  }
 }

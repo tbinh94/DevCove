@@ -1,5 +1,5 @@
-// MainLayout.jsx - PHIÊN BẢN SỬA LỖI VÒNG LẶP
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'; // <-- Thêm useCallback, useMemo
+// MainLayout.jsx - PHIÊN BẢN CẬP NHẬT ĐIỀU KHIỂN SIDEBAR
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header, Footer, Sidebar } from './index';
 import styles from './MainLayout.module.css';
@@ -18,12 +18,27 @@ const MainLayout = () => {
   const [overview, setOverview] = useState(null);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
   
+  // State này dùng cho việc collapse sidebar trên desktop/tablet
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const overviewModalRef = useRef(null);
   
-  // STATE MỚI: Dùng để biết khi nào component con (như PostDetail) muốn khóa cuộn
+  // --- BƯỚC 1: THÊM STATE ĐỂ QUẢN LÝ SIDEBAR TRÊN MOBILE ---
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const overviewModalRef = useRef(null);
   const [isChildModalOpen, setIsChildModalOpen] = useState(false);
   
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // --- BƯỚC 2: TẠO CÁC HÀM ĐIỀU KHIỂN SIDEBAR MOBILE ---
+  const handleToggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
+  const handleCloseMobileSidebar = () => {
+    setIsMobileSidebarOpen(false);
+  };
+  const handleOpenMobileSearch = () => setIsMobileSearchOpen(true);
+  const handleCloseMobileSearch = () => setIsMobileSearchOpen(false);
   async function handleGenerateOverview() {
     if (!isAuthenticated || posts.length === 0) {
       if (!isAuthenticated) alert("Bạn cần đăng nhập để dùng tính năng này.");
@@ -49,14 +64,11 @@ const MainLayout = () => {
     }
   }
 
-  // SỬA LỖI 1: BỌC HÀM BẰNG `useCallback`
-  // Hàm này giờ sẽ không bị tạo lại sau mỗi lần re-render, trừ khi phụ thuộc thay đổi.
-  // Ở đây, mảng phụ thuộc là rỗng `[]` vì `setPosts` được React đảm bảo là ổn định.
   const handlePostsLoaded = useCallback((loadedPosts) => {
     setPosts(loadedPosts);
-  }, []); // <-- Mảng phụ thuộc rỗng
+  }, []);
 
-  // Logic responsive cho sidebar
+  // Logic responsive cho sidebar (collapse trên desktop)
   useEffect(() => {
     const handleResize = () => {
       setSidebarCollapsed(window.innerWidth < 1024);
@@ -66,21 +78,22 @@ const MainLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // useEffect DUY NHẤT chịu trách nhiệm khóa/mở khóa cuộn
+  // --- BƯỚC 3: CẬP NHẬT useEffect DUY NHẤT ĐỂ KHÓA CUỘN ---
+  // Giờ nó sẽ khóa cuộn khi sidebar mobile MỞ hoặc overview modal MỞ hoặc modal con MỞ
   useEffect(() => {
-    if (isOverviewModalOpen || isChildModalOpen) {
+    // Nếu có bất kỳ overlay nào đang mở, hãy khóa cuộn
+    if (isMobileSidebarOpen || isOverviewModalOpen || isChildModalOpen || isMobileSearchOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
     }
+    // Cleanup function luôn trả về 'auto' để đảm bảo an toàn khi component unmount
     return () => {
       document.body.style.overflow = 'auto';
     };
-  }, [isOverviewModalOpen, isChildModalOpen]);
+    // Thêm state mới vào dependencies
+  }, [isMobileSidebarOpen, isOverviewModalOpen, isChildModalOpen, isMobileSearchOpen]); 
 
-  // SỬA LỖI 2: BỌC OBJECT CONTEXT BẰNG `useMemo`
-  // Điều này đảm bảo rằng object context chỉ được tạo lại khi `handlePostsLoaded` thay đổi.
-  // Vì `handlePostsLoaded` giờ đã ổn định, object này cũng sẽ ổn định.
   const outletContext = useMemo(() => ({
     onPostsLoaded: handlePostsLoaded,
     setBodyScrollLock: setIsChildModalOpen,
@@ -88,10 +101,21 @@ const MainLayout = () => {
 
   return (
     <div className={styles.appContainer}>
-      <Header />
+      {/* --- BƯỚC 4.1: TRUYỀN PROPS XUỐNG CHO HEADER --- */}
+      <Header 
+        onToggleSidebar={handleToggleMobileSidebar}
+        isSidebarOpen={isMobileSidebarOpen}
+        // Props mới cho việc điều khiển tìm kiếm
+        onOpenMobileSearch={handleOpenMobileSearch}
+        onCloseMobileSearch={handleCloseMobileSearch}
+        isMobileSearchOpen={isMobileSearchOpen}
+      />
+
       <main className={styles.mainContent}>
         <div className={styles.layoutContainer}>
+          {/* --- BƯỚC 4.2: TRUYỀN PROPS XUỐNG CHO SIDEBAR --- */}
           <Sidebar 
+            className={styles.sidebarArea}
             user={user}
             posts={posts}
             onGenerateOverview={handleGenerateOverview}
@@ -99,9 +123,11 @@ const MainLayout = () => {
             overviewError={overviewError}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            // Props mới cho sidebar mobile
+            isOpen={isMobileSidebarOpen}
+            onClose={handleCloseMobileSidebar}
           />
           <div className={`${styles.contentArea} ${sidebarCollapsed ? styles.contentExpanded : ''}`}>
-            {/* Truyền object context đã được ổn định xuống */}
             <Outlet context={outletContext} />
           </div>
         </div>

@@ -607,11 +607,14 @@
   }
 }
 
-/* Responsive */
+/* UserProfile.module.css - Phần Responsive được tinh chỉnh */
+
+/* Responsive cho Tablet */
 @media (max-width: 768px) {
   .profileContainer { 
+    /* Giảm padding và loại bỏ min-width để tránh lỗi tràn màn hình */
     padding: 16px;
-    min-width: 100vw;
+    min-width: 100%; 
   }
   .profileHeader { 
     padding: 24px;
@@ -623,17 +626,18 @@
   .avatar { width: 100px; height: 100px; }
   .defaultAvatar { font-size: 40px; }
   .username { font-size: 28px; }
-  .profileStats { gap: 24px; flex-wrap: wrap; }
+  .profileStats { gap: 24px; flex-wrap: wrap; justify-content: center; }
   .postCard { padding: 16px; gap: 12px; }
   .postActions { flex-wrap: wrap; }
   .voteSection { min-width: 50px; }
   .voteButton { width: 40px; height: 40px; padding: 6px; }
 }
 
+/* Responsive cho Mobile - Đây là phần quan trọng nhất để sửa lỗi */
 @media (max-width: 480px) {
   .profileContainer {
     padding: 12px;
-    min-width: 100vw;
+    min-width: 100%;
   }
   .profileHeader {
     padding: 20px;
@@ -646,35 +650,51 @@
   .defaultAvatar { font-size: 32px; }
   .username { font-size: 24px; }
   .profileStats { 
-    flex-direction: column; 
-    gap: 16px; 
+    gap: 24px; 
     padding: 16px;
+    justify-content: space-around; 
+    width: 100%; 
   }
+  
   .stat { 
-    flex-direction: row; 
-    gap: 12px; 
+    flex-direction: column; 
+    gap: 4px;
     justify-content: center;
   }
   .usernameContainer { flex-direction: column; gap: 8px; }
   .helperBadge { font-size: 11px; padding: 6px 12px; }
   .postCard { 
-    flex-direction: column; 
-    gap: 12px;
+    flex-direction: row; 
+    gap: 12px;           
     padding: 12px;
   }
+
   .voteSection {
-    flex-direction: row;
-    align-self: flex-start;
-    min-width: auto;
-    width: fit-content;
+    flex-direction: column; 
+    min-width: 45px;      
+    order: unset;
+    align-self: unset;
+    margin-top: 0;
+    width: auto;
   }
-  .voteButton { width: 36px; height: 36px; }
+  
+  .voteButton { 
+    width: 36px;
+    height: 36px; 
+  }
+
+  .voteScore {
+    font-size: 14px; 
+  }
+  
+  .postMeta {
+    flex-wrap: wrap;
+  }
 }
 
-/* Full viewport fix for very small screens */
 @media (max-width: 320px) {
   .profileContainer {
     padding: 8px;
-    min-width: 100vw;
+    min-width: 100%;
   }
 }

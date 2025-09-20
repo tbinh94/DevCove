@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+import io
 import os
 import sys
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 if __name__ == '__main__':
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'devcove.settings')
