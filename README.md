@@ -64,6 +64,7 @@ Backup database:
 Chạy script backup_db.py hoặc dùng lệnh pg_dump/pg_restore (xem trong file backend/backup_db.py)
 
 ## 📂 Cấu trúc thư mục
+```bash
 DevCove/
 ├── backend/
 │   ├── manage.py
@@ -79,6 +80,7 @@ DevCove/
 │   │   └── ...
 │   └── ...
 └── [README.md](http://_vscodecontentref_/0)
+```
 
 ##📜 Giấy phép
 Dự án mang tính học thuật, phi thương mại.
