@@ -12,12 +12,10 @@ DevCove là nền tảng cộng đồng dành cho lập trình viên, nơi bạn
 - **Quản lý tài khoản, xác thực đăng nhập** (session-based)
 - **Giao diện hiện đại** với ReactJS
 
-## 🖼️ Demo & ERD
+## 🖼️ Demo
+Homepage:
+<img width="1315" height="628" alt="image" src="https://github.com/user-attachments/assets/343c0054-5f61-4271-9938-4161d80511ca" />
 
-<img width="1309" height="630" alt="image" src="https://github.com/user-attachments/assets/ada3e663-0dc1-4bc2-a960-7276dfa4bab8" />
-<img width="1088" height="599" alt="image" src="https://github.com/user-attachments/assets/d36bfa7d-e50c-4f16-b3a4-feff9d10af28" />
-<img width="1085" height="627" alt="image" src="https://github.com/user-attachments/assets/898d4c83-6d94-4f59-ae11-4d59fa1794aa" />
-<img width="2519" height="2049" alt="DevCove_ERD" src="https://github.com/user-attachments/assets/ee4047de-f9a5-492d-9ce8-e28c59b42d72" />
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -51,6 +49,12 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+Hoặc có thể chạy nhanh:
+``` bash
+cd frontend
+npm run dev
+```
+
 3. Redis & WebSocket
 Đảm bảo Redis đang chạy (mặc định trên localhost:6379)
 WebSocket sẽ tự động hoạt động khi backend và Redis đã sẵn sàng
@@ -82,5 +86,5 @@ DevCove/
 └── [README.md](http://_vscodecontentref_/0)
 ```
 
-##📜 Giấy phép
+## 📜 Giấy phép
 Dự án mang tính học thuật, phi thương mại.
