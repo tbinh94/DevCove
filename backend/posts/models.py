@@ -293,19 +293,15 @@ class Notification(models.Model):
         Tạo URL động.
         """
         if self.notification_type in ['comment', 'vote', 'bot_analysis'] and self.post:
-            # Dùng `self.post.id` thay vì `self.post.pk` để rõ ràng hơn
             return f"/post/{self.post.id}"
         
         elif self.notification_type == 'follow' and self.sender:
             return f"/profile/{self.sender.username}"
 
         elif self.notification_type == 'challenge_submission' and self.submission:
-            # ✅ ĐÂY LÀ URL DÀNH CHO ADMIN
-            # Giả sử trang review submission của bạn có URL như sau
             return f"/admin/review/{self.submission.id}"
         
         elif self.notification_type == 'challenge_review' and self.submission:
-            # Dẫn người dùng về trang challenge để họ xem lại
             return f"/challenges/{self.submission.challenge.id}"
         
         # Fallback URL

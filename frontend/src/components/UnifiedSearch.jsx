@@ -16,13 +16,11 @@ const UnifiedSearch = () => {
   const navigate = useNavigate();
   const searchTimeout = useRef(null);
 
-  // Perform search
   const performSearch = async (searchQuery) => {
     if (isLoading) return;
     
     setIsLoading(true);
     try {
-      // ✅ 2. Thay thế `fetch` bằng `apiService.search`
       const data = await apiService.search(searchQuery, searchType);
       setResults(data);
       setIsDropdownOpen(true);
@@ -58,7 +56,6 @@ const UnifiedSearch = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (query.trim()) {
-      // ✅ Điều hướng đến trang search results, component đó cũng sẽ dùng apiService
       navigate(`/search?q=${encodeURIComponent(query)}&type=${searchType}`);
       setIsDropdownOpen(false);
     }

@@ -1,4 +1,3 @@
-// src/components/CreatePost.jsx - Đã cập nhật để hỗ trợ AI Code Generator và tự động phát hiện ngôn ngữ
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
@@ -7,16 +6,11 @@ import { PlusCircle, Loader, Sparkles, Wand2 } from 'lucide-react';
 
 const CreatePost = ({ onPostCreated }) => {
     const navigate = useNavigate();
-
-    // Form states
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [language, setLanguage] = useState('text'); // <-- Thêm state để lưu ngôn ngữ, mặc định là text
+    const [language, setLanguage] = useState('text'); 
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
-
-    // ... các state khác giữ nguyên ...
-    // Tag states
     const [allAvailableTags, setAllAvailableTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
     const [tagInput, setTagInput] = useState('');
@@ -24,11 +18,9 @@ const CreatePost = ({ onPostCreated }) => {
     const [isCreatingTag, setIsCreatingTag] = useState(false);
     const [initialTagName, setInitialTagName] = useState(null);
 
-    // AI Review prompt states
     const [promptOptions, setPromptOptions] = useState([]); 
     const [selectedPrompt, setSelectedPrompt] = useState(''); 
 
-    // --- THÊM STATE MỚI CHO AI CODE GENERATOR ---
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
     const [codePrompt, setCodePrompt] = useState('');
     const [isGeneratorLoading, setIsGeneratorLoading] = useState(false);
@@ -41,7 +33,6 @@ const CreatePost = ({ onPostCreated }) => {
 
     const tagInputRef = useRef(null);
 
-    // ... useEffects giữ nguyên ...
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -107,7 +98,7 @@ const CreatePost = ({ onPostCreated }) => {
     }, [initialTagName, allAvailableTags]);
 
 
-    // --- HÀM MỚI ĐỂ XỬ LÝ VIỆC TẠO CODE ---
+    // --- HÀM ĐỂ XỬ LÝ VIỆC TẠO CODE ---
     const handleGenerateCode = async () => {
         if (!codePrompt.trim()) {
             setGeneratorError('Please describe the code you want to generate.');
@@ -122,7 +113,6 @@ const CreatePost = ({ onPostCreated }) => {
             const detectedLang = knownLanguages.find(lang => promptLowerCase.includes(lang)) || 'javascript';            setLanguage(detectedLang.replace('c#', 'csharp').replace('c++', 'cpp')); // Cập nhật state ngôn ngữ
             const finalLang = detectedLang.replace('c#', 'csharp').replace('c++', 'cpp');
             setLanguage(finalLang); // Cập nhật state ngôn ngữ
-            // ---------------------------------
 
             const response = await apiService.generateCodeSnippet(codePrompt);
             setContent(response.code);
@@ -145,7 +135,6 @@ const CreatePost = ({ onPostCreated }) => {
     }, [content]);
 
 
-    // ... (các hàm xử lý tag, image, v.v. giữ nguyên) ...
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -289,7 +278,6 @@ const CreatePost = ({ onPostCreated }) => {
                     <input type="text" id="title" className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="An interesting title" required disabled={isLoading} />
                 </div>
                 
-                {/* --- Giao diện không đổi, không cần thêm dropdown --- */}
                 <div className={styles.formGroup}>
                     <div className={styles.contentHeader}>
                          <label htmlFor="content">Content</label>

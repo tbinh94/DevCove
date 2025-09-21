@@ -1,11 +1,9 @@
 // Ở phía Admin, chúng ta sẽ tạo một trang để review các bài nộp của người dùng
 // Trang này sẽ hiển thị thông tin bài nộp, challenge liên quan và cho phép admin phê duyệt hoặc từ chối bài nộp
-// src/components/admin/SubmissionReview.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-// ✅ 1. IMPORT THÊM ICON MỚI
+
 import { CheckCircle, XCircle, User, Clock, BrainCircuit } from 'lucide-react';
 import apiService from '../../services/api';
 import styles from './SubmissionReview.module.css';
@@ -18,7 +16,6 @@ const SubmissionReview = () => {
     const [feedback, setFeedback] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
     
-    // ✅ 2. THÊM STATE MỚI ĐỂ QUẢN LÝ VIỆC HIỂN THỊ SOLUTION CỦA AI
     const [showAiSolution, setShowAiSolution] = useState(false);
 
     useEffect(() => {
@@ -94,7 +91,7 @@ const SubmissionReview = () => {
                     )}
                 </div>
 
-                {/* ✅ CỘT PHẢI: THÊM LẠI TOÀN BỘ NỘI DUNG ĐÃ MẤT */}
+                {/* CỘT PHẢI: THÊM LẠI TOÀN BỘ NỘI DUNG ĐÃ MẤT */}
                 <div className={styles.submissionPanel}>
                     <h2>User's Solution ({submission.language})</h2>
                     <pre className={styles.codeBlock}>{submission.submitted_code}</pre>

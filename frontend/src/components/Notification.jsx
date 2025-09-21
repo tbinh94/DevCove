@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom'; // ✅ Đảm bảo đã import
-import apiService from '../services/api'; // ✅ Sử dụng apiService
+import { useNavigate } from 'react-router-dom'; 
+import apiService from '../services/api';
 import styles from './Notification.module.css';
 
 const NotificationManager = () => {
@@ -9,11 +9,10 @@ const NotificationManager = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate(); // ✅ Khởi tạo hook
+  const navigate = useNavigate(); 
 
   const updateInterval = 30000;
 
-  // ✅ Sử dụng apiService để fetch dữ liệu
   const fetchNotificationsData = async (shouldShowLoading = false) => {
     if (shouldShowLoading) setIsLoading(true);
     try {
@@ -28,7 +27,6 @@ const NotificationManager = () => {
     }
   };
   
-  // ✅ Sử dụng apiService để đánh dấu tất cả đã đọc
   const markAllAsRead = async () => {
     try {
       const data = await apiService.markAllNotificationsRead();
@@ -46,26 +44,19 @@ const NotificationManager = () => {
     const newIsOpen = !isDropdownOpen;
     setIsDropdownOpen(newIsOpen);
     if (newIsOpen) {
-      // Khi mở dropdown, fetch dữ liệu và hiển thị loading spinner
       fetchNotificationsData(true);
     }
   };
   
-  // ✅ Sử dụng useNavigate để điều hướng, tránh reload trang
   const handleNotificationClick = (notification) => {
-    // 1. Đánh dấu đã đọc ở client-side ngay lập tức để UI phản hồi nhanh
     if (!notification.is_read) {
         setNotifications(prev => prev.map(n => n.id === notification.id ? {...n, is_read: true} : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
-        // 2. Gửi request đánh dấu đã đọc lên server (fire and forget)
         apiService.markNotificationRead(notification.id).catch(err => console.error("Failed to mark notification as read on server:", err));
     }
-    // 3. Đóng dropdown và điều hướng
     setIsDropdownOpen(false);
     navigate(notification.action_url || '/');
   };
-
-  // --- CÁC HÀM HELPER ---
 
   const getNotificationIcon = (type) => {
     const icons = { 
@@ -102,14 +93,10 @@ const NotificationManager = () => {
     return date.toLocaleDateString();
   };
   
-  // ✅ Xóa bỏ hàm getNotificationUrl vì chúng ta sẽ dùng action_url từ backend
 
   useEffect(() => {
-    // Chỉ fetch count khi component mount lần đầu
     apiService.getNotificationCountAndRecent().then(data => setUnreadCount(data.count)).catch(err => console.error(err));
-    
-    // Vẫn giữ interval để cập nhật count trong nền
-    const interval = setInterval(() => {
+        const interval = setInterval(() => {
         apiService.getNotificationCountAndRecent().then(data => setUnreadCount(data.count)).catch(err => console.error(err));
     }, updateInterval);
 
@@ -162,7 +149,6 @@ const NotificationManager = () => {
               </li>
             ) : (
               notifications.map((notification) => (
-                // ✅ SỬ DỤNG onClick VÀ THẺ li THAY VÌ <a> VÀ href
                 <li key={notification.id} onClick={() => handleNotificationClick(notification)}>
                   <div 
                     className={`${styles.dropdownItem} ${styles.notificationItem} ${

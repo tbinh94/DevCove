@@ -1,15 +1,14 @@
-// src/components/admin/ChallengeGenerator.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import apiService from '../../../services/api';
-import styles from './ChallengeGenerator.module.css'; // Tạo file CSS này
+import styles from './ChallengeGenerator.module.css';
 import ReactMarkdown from 'react-markdown';
 const ChallengeGenerator = () => {
-    const navigate = useNavigate(); // Khởi tạo hook
+    const navigate = useNavigate(); 
     const [topic, setTopic] = useState('');
     const [generatedChallenge, setGeneratedChallenge] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false); // State mới
+    const [isPublishing, setIsPublishing] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState(''); 
     
@@ -50,7 +49,6 @@ const ChallengeGenerator = () => {
         setSuccessMessage('');
 
         try {
-            // ✅ SỬA Ở ĐÂY: Gộp `topic` vào dữ liệu gửi đi
             const dataToPublish = {
                 ...generatedChallenge, // Dữ liệu từ AI
                 topic: topic,          // Thêm topic gốc do admin nhập
@@ -117,9 +115,7 @@ const ChallengeGenerator = () => {
                     
                     <h4>Test Cases</h4>
                     <pre className={styles.codeBlock}>
-                        {/* ✅ SỬA ĐỔI HIỂN THỊ TEST CASE */}
                         {JSON.stringify(generatedChallenge.test_cases, (key, value) => {
-                            // Chuyển đổi chuỗi "true"/"false" thành boolean để hiển thị đẹp hơn
                             if (value === "true") return true;
                             if (value === "false") return false;
                             return value;

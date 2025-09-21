@@ -1,8 +1,6 @@
-// RegisterPage.jsx
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../../services/api'; // This 'api' should directly expose register and login
+import api from '../../services/api';
 import { User, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 import style from './RegisterPage.module.css';
 
@@ -28,22 +26,16 @@ const RegisterPage = ({ onLogin }) => {
         setError('');
 
         try {
-            // Bước 1: Gọi API đăng ký
-            // Change api.auth.register to api.register
             await api.register({
                 username: formData.username,
                 password: formData.password,
                 password_confirm: formData.password_confirm
             });
-
-            // Bước 2: Tự động đăng nhập để lấy thông tin user và session
-            // Change api.auth.login to api.login
             const loginResponse = await api.login({
                 username: formData.username,
                 password: formData.password
             });
 
-            // Cập nhật trạng thái global
             if (onLogin) {
                 onLogin(loginResponse.user);
             }

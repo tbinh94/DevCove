@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
-// ✅ SỬ DỤNG API SERVICE THẬT
 import apiService from '../../../services/api';
-// Import CSS module
 import styles from './BugTracker.module.css';
 import AiDiffViewer from '../../pages/AiDiffViewer';
 
@@ -54,7 +52,6 @@ const BugReview = ({ example }) => {
     );
 };
 
-// Component Modal mới
 const BugDetailModal = ({ bug, onClose }) => {
     const [examples, setExamples] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -177,7 +174,7 @@ const BugTracker = () => {
     const [period, setPeriod] = useState('weekly');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedBug, setSelectedBug] = useState(null); // ✅ STATE MỚI ĐỂ MỞ MODAL
+    const [selectedBug, setSelectedBug] = useState(null); 
     const navigate = useNavigate();
 
     const handleBugClick = (bug) => {
@@ -239,7 +236,6 @@ const BugTracker = () => {
             <div className={styles.content}>
                 <div className={styles.heatmapContainer}>
                     <h3 className={styles.heatmapTitle}>Common Errors Heatmap</h3>
-                    {/* ✅ Truyền period vào đây */}
                     <Heatmap data={stats.heatmap} period={period} />
                 </div>
                 <div className={styles.topBugsContainer}>
@@ -294,7 +290,7 @@ const BugTracker = () => {
                 <div className={styles.footerActions}>
                     <button 
                         className={styles.backButton}
-                        onClick={() => navigate('/')} // Điều hướng về trang chủ
+                        onClick={() => navigate('/')} 
                     >
                         <Home size={18} />
                         <span>Back to Home</span>

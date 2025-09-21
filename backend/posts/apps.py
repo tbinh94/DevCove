@@ -13,9 +13,7 @@ class PostsConfig(AppConfig):
         print(f"🔍 DEBUG: sys.argv = {sys.argv}")
         print(f"🔍 DEBUG: RUN_MAIN = {os.environ.get('RUN_MAIN')}")
         
-        # Chỉ chạy trong main process, không phải reloader process
         if os.environ.get('RUN_MAIN') == 'true':
-            #print("🔍 DEBUG: In main process, running command...")
             try:
                 call_command('update_helpers')
                 print("✅ Weekly helpers updated on server start!")

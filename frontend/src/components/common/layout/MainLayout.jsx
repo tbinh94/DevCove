@@ -1,4 +1,3 @@
-// MainLayout.jsx - PHIÊN BẢN CẬP NHẬT ĐIỀU KHIỂN SIDEBAR
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header, Footer, Sidebar } from './index';
@@ -18,10 +17,8 @@ const MainLayout = () => {
   const [overview, setOverview] = useState(null);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
   
-  // State này dùng cho việc collapse sidebar trên desktop/tablet
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  // --- BƯỚC 1: THÊM STATE ĐỂ QUẢN LÝ SIDEBAR TRÊN MOBILE ---
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const overviewModalRef = useRef(null);
@@ -29,7 +26,6 @@ const MainLayout = () => {
   
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
-  // --- BƯỚC 2: TẠO CÁC HÀM ĐIỀU KHIỂN SIDEBAR MOBILE ---
   const handleToggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
@@ -68,7 +64,6 @@ const MainLayout = () => {
     setPosts(loadedPosts);
   }, []);
 
-  // Logic responsive cho sidebar (collapse trên desktop)
   useEffect(() => {
     const handleResize = () => {
       setSidebarCollapsed(window.innerWidth < 1024);
@@ -78,16 +73,12 @@ const MainLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- BƯỚC 3: CẬP NHẬT useEffect DUY NHẤT ĐỂ KHÓA CUỘN ---
-  // Giờ nó sẽ khóa cuộn khi sidebar mobile MỞ hoặc overview modal MỞ hoặc modal con MỞ
   useEffect(() => {
-    // Nếu có bất kỳ overlay nào đang mở, hãy khóa cuộn
     if (isMobileSidebarOpen || isOverviewModalOpen || isChildModalOpen || isMobileSearchOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
     }
-    // Cleanup function luôn trả về 'auto' để đảm bảo an toàn khi component unmount
     return () => {
       document.body.style.overflow = 'auto';
     };
@@ -101,11 +92,9 @@ const MainLayout = () => {
 
   return (
     <div className={styles.appContainer}>
-      {/* --- BƯỚC 4.1: TRUYỀN PROPS XUỐNG CHO HEADER --- */}
       <Header 
         onToggleSidebar={handleToggleMobileSidebar}
         isSidebarOpen={isMobileSidebarOpen}
-        // Props mới cho việc điều khiển tìm kiếm
         onOpenMobileSearch={handleOpenMobileSearch}
         onCloseMobileSearch={handleCloseMobileSearch}
         isMobileSearchOpen={isMobileSearchOpen}
@@ -113,7 +102,6 @@ const MainLayout = () => {
 
       <main className={styles.mainContent}>
         <div className={styles.layoutContainer}>
-          {/* --- BƯỚC 4.2: TRUYỀN PROPS XUỐNG CHO SIDEBAR --- */}
           <Sidebar 
             className={styles.sidebarArea}
             user={user}
@@ -123,7 +111,6 @@ const MainLayout = () => {
             overviewError={overviewError}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-            // Props mới cho sidebar mobile
             isOpen={isMobileSidebarOpen}
             onClose={handleCloseMobileSidebar}
           />

@@ -1,11 +1,10 @@
-// BotChatInterface.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Send, Bot, User, MessageSquare, Code, Languages, Zap, FileText,
   AlertCircle, CheckCircle2, Minimize2, Maximize2, GitBranch, Shield, BookOpen, Search,
   Feather, Clipboard, PlayCircle, Layers, Terminal, Package, RefreshCw, Box, HelpCircle, Menu, Eye, EyeOff
 } from 'lucide-react';
-import styles from './BotChatInterface.module.css'; // Import CSS module
+import styles from './BotChatInterface.module.css'; 
 
 const BotChatInterface = ({
   isOpen,
@@ -23,7 +22,6 @@ const BotChatInterface = ({
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Cập nhật quickOptions để khớp với prompt_type mới và phân loại rõ ràng
   const quickOptions = [
     {
       group: 'Giải thích Code',
@@ -114,17 +112,13 @@ const BotChatInterface = ({
         return; // Người dùng hủy nhập
       }
       
-      // Gửi userInput làm prompt_text và optionId làm prompt_type
       onSendMessage(userInput, optionId);
       
-      // Hiển thị tin nhắn của người dùng
       setMessages((prevMessages) => [
         ...prevMessages,
         { text: `${optionTitle}: ${userInput}`, type: 'user', timestamp: new Date(), isQuickOption: true },
       ]);
     } else {
-      // Đối với các prompt không cần thêm input
-      // Gửi empty string làm prompt_text và optionId làm prompt_type
       onSendMessage('', optionId);
       
       // Hiển thị tin nhắn của người dùng
@@ -138,9 +132,6 @@ const BotChatInterface = ({
   };
 
   // Hàm để thêm phản hồi từ bot (cần được gọi từ component cha hoặc nơi gửi yêu cầu API)
-  // Đảm bảo rằng hàm này được cung cấp qua props và được sử dụng khi nhận được phản hồi từ bot
-  // Ví dụ: addBotResponse(responseText);
-  // Cập nhật hàm addBotResponse để thêm showComment: true mặc định
   useEffect(() => {
     if (addBotResponse) {
       const originalAddBotResponse = addBotResponse;
@@ -318,8 +309,6 @@ const BotChatInterface = ({
                       handleSendCustomMessage(e);
                     }
                   }}
-
-                
                 />
                 <div className={styles.inputFormActions}>
                   {!showQuickOptions && (

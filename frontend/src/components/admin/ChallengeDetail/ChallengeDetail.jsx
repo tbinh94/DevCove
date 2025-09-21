@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Trophy, Code, Terminal, Upload } from 'lucide-react';
 import apiService from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
-import SubmissionStatus from '../SubmissionStatus'; // Đảm bảo bạn đã tạo file này
+import SubmissionStatus from '../SubmissionStatus';
 import styles from './ChallengeDetail.module.css';
 
 const ChallengeDetail = () => {

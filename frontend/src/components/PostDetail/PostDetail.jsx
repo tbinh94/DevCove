@@ -1,5 +1,3 @@
-// --- START OF FILE: PostDetail.jsx (Corrected Version) ---
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle, EyeOff } from 'lucide-react';
@@ -40,13 +38,7 @@ const PostDetail = () => {
     const [showBotComments, setShowBotComments] = useState(true);
 
     const outletContext = useOutletContext(); 
-    // Đảm nhận function của nút Copy và Run trong phần bình luận
-    /*
-    Hàm handleCommentAreaClick đảm nhận việc xử lý sự kiện click trên nút "Run".
-    Khi người dùng nhấn nút "Run", hàm này sẽ lấy nội dung của khối code (codeTag.innerText) và ngôn ngữ lập trình.
-    Sau đó, nó lưu nội dung code và ngôn ngữ vào sessionStorage với các khóa sandbox_code và sandbox_language.
-    Cuối cùng, hàm mở một cửa sổ mới với URL /sandbox để thực thi đoạn code.
-    */
+
     useEffect(() => {
         const handleCommentAreaClick = (event) => {
             const button = event.target.closest('button[data-action]');
@@ -61,7 +53,7 @@ const PostDetail = () => {
                 return;
             }
 
-            // --- START: LOGIC CHO NÚT COPY ĐÃ SỬA ---
+            // LOGIC CHO NÚT COPY 
             if (action === 'copy') {
                 navigator.clipboard.writeText(codeTag.innerText).then(() => {
                     // SỬA LỖI: Sử dụng selector đúng (.btn-icon, .btn-text)
@@ -85,9 +77,6 @@ const PostDetail = () => {
                     console.error('Failed to copy text: ', err);
                 });
             }
-            // --- END: LOGIC CHO NÚT COPY ĐÃ SỬA ---
-
-
             // Logic cho nút Run (đã hoạt động đúng)
             if (action === 'run') {
                 const codeText = codeTag.innerText;

@@ -1,4 +1,3 @@
-// LoginPage.jsx - Enhanced with detailed error messages
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -63,8 +62,6 @@ const LoginPage = () => {
                     setError('Your account has been disabled. Please contact support.');
                     setErrorType('general');
                 } else {
-                    // **FIXED: Improved fallback error message**
-                    // Thay vì hiển thị lỗi chung, ta đưa ra thông báo gợi ý hơn
                     setError('Username or password incorrect. Please check your credentials and try again.');
                     setErrorType('general');
                 }

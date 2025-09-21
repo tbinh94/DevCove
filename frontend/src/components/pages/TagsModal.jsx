@@ -1,4 +1,3 @@
-// src/components/TagsModal/TagsModal.jsx - ĐÃ SỬA ĐỔI
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -6,7 +5,6 @@ import styles from './TagsModal.module.css';
 import apiService from '../../services/api';
 import { X, Search, Loader } from 'lucide-react';
 
-// CHANGED: TagItem giờ là một button và gọi hàm onSelect được truyền vào
 const TagItem = ({ tag, onSelect, isSelected }) => (
     <button 
         onClick={() => onSelect(tag)} 
@@ -18,7 +16,6 @@ const TagItem = ({ tag, onSelect, isSelected }) => (
     </button>
 );
 
-// CHANGED: Modal nhận thêm prop onTagSelect và selectedTags
 const TagsModal = ({ onClose, onTagSelect, selectedTags = [] }) => {
     const [allTags, setAllTags] = useState([]);
     const [isLoading, setIsLoading] = useState(true);

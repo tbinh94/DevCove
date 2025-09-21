@@ -1,6 +1,5 @@
 // Ở phía user, chúng ta sẽ tạo một component để hiển thị trạng thái bài nộp của họ
 // Component này sẽ hiển thị trạng thái (đã phê duyệt, cần cải thiện, đang chờ review)
-import React from 'react';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import styles from './SubmissionStatus.module.css';
 

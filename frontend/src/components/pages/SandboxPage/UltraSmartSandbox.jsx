@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Sử dụng API service thật
 import apiService from '../../../services/api';
 import styles from './UltraSmartSandbox.module.css';
 
 import AiDiffViewer from '../AiDiffViewer'; // Giả sử bạn đặt nó trong src/components/common
 
-// Memoized PreviewControls để tránh re-render không cần thiết
 const PreviewControls = React.memo(({ onZoomChange, onFullscreen, currentZoom = 100 }) => {
     const zoomLevels = useMemo(() => [25, 50, 75, 100, 125, 150, 200], []);
     

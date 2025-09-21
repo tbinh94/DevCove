@@ -560,7 +560,6 @@ class APIService {
   }
 
   async getAiGeneratedTitle(fullPrompt) {
-    // Chúng ta sẽ gọi đến một endpoint mới, rõ ràng hơn
     return this.request('/api/ai/generate-title/', {
       method: 'POST',
       body: {

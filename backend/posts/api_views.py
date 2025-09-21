@@ -5,6 +5,7 @@ import re
 import time
 from datetime import timedelta
 import io
+from typing import Union
 from django.conf import settings
 import requests 
 from django.contrib.auth import authenticate, login, logout
@@ -26,16 +27,11 @@ from django.http import HttpResponse
 from django.db.models.functions import TruncDay, TruncWeek
 import demjson3
 import matplotlib.pyplot as plt
-# Import thư viện Gemini
 from google import genai
 client = genai.Client()
-
-# =====>>>>> CHỈNH SỬA QUAN TRỌNG <<<<<=====
 import prompts
-from ai_formatter import AICommentFormatter # Đảm bảo import formatter
+from ai_formatter import AICommentFormatter 
 from prompts import build_prompt, TASK_PROMPTS
-# ==========================================
-
 from django.db.models import Max, Q
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -114,36 +110,28 @@ class PostViewSet(viewsets.ModelViewSet):
     filterset_fields = ['community', 'author']
     search_fields = ['title', 'content', 'tags__name']
     
-    # <<< THAY ĐỔI 1: THÊM CÁC TRƯỜNG SẮP XẾP MỚI >>>
     ordering_fields = ['created_at', 'calculated_score', 'title']
-    ordering = ['-created_at'] # Vẫn giữ mặc định là mới nhất
+    ordering = ['-created_at'] 
 
-    # <<< THAY ĐỔI 2: CẬP NHẬT get_queryset ĐỂ TÍNH calculated_score >>>
     def get_queryset(self):
-        # Bắt đầu với queryset cơ bản
         queryset = Post.objects.select_related('author', 'community') \
                                .prefetch_related('tags', 'votes') \
-                               .annotate(
-                                   # Tính toán điểm số trực tiếp trong DB query
+                               .annotate(                       
                                    calculated_score=Coalesce(Sum(Case(
                                        When(votes__is_upvote=True, then=1),
                                        When(votes__is_upvote=False, then=-1),
                                        default=0,
                                        output_field=IntegerField()
                                    )), 0)
-                               ).all() # Bỏ order_by mặc định ở đây để OrderingFilter xử lý
+                               ).all() 
 
-        # Lấy tham số 'tags' từ URL (ví dụ: ?tags=cv,coding)
         tags_param = self.request.query_params.get('tags', None)
 
         if tags_param:
-            # Tách chuỗi thành một danh sách các slug (ví dụ: ['cv', 'coding'])
             tag_slugs = [slug.strip() for slug in tags_param.split(',')]
             
-            # Lọc các bài viết có tag với slug nằm trong danh sách trên
             queryset = queryset.filter(tags__slug__in=tag_slugs).distinct()
 
-        # Thêm filter cho bot reviewed
         bot_reviewed = self.request.query_params.get('bot_reviewed', None)
         if bot_reviewed is not None:
             if bot_reviewed.lower() in ['true', '1', 'yes']:
@@ -161,8 +149,6 @@ class PostViewSet(viewsets.ModelViewSet):
         return PostSerializer
 
     def perform_create(self, serializer):
-        # Hàm này sẽ được gọi sau khi serializer.is_valid()
-        # Logic gán author và tags đã được chuyển vào serializer
         serializer.save(author=self.request.user)
 
     def create(self, request, *args, **kwargs):
@@ -171,14 +157,9 @@ class PostViewSet(viewsets.ModelViewSet):
         từ FormData (khi upload ảnh).
         """
         data = request.data.copy()
-
-        # Nếu request là multipart/form-data, tag_ids có thể là một chuỗi JSON
-        # Cần phải parse nó thành list.
         if 'tag_ids' in data and isinstance(data['tag_ids'], str):
             try:
-                # Chuyển chuỗi JSON thành list Python
                 tag_ids_list = json.loads(data['tag_ids'])
-                # Cập nhật lại data để serializer có thể xử lý
                 data.setlist('tag_ids', [str(tid) for tid in tag_ids_list])
             except json.JSONDecodeError:
                 return Response({'error': 'Invalid format for tag_ids.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -263,10 +244,7 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response({'user_vote': None})
 
         post = self.get_object()
-        # Lấy đối tượng Vote từ Post model
         vote_object = post.get_user_vote(request.user)
-
-        # Chuyển đổi đối tượng Vote thành 'up', 'down' hoặc None
         user_vote_status = None
         if vote_object:
             user_vote_status = 'up' if vote_object.is_upvote else 'down'
@@ -296,7 +274,7 @@ class PostViewSet(viewsets.ModelViewSet):
         comments = post.comments.all().order_by('-created') # Assuming 'comments' is the related_name for Comment model's ForeignKey to Post, and 'created' is the field for creation timestamp
 
         # Paginate comments if needed, similar to other list views
-        paginator = StandardResultsSetPagination() # Use your existing pagination class
+        paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(comments, request)
 
         serializer = CommentSerializer(page, many=True, context={'request': request})
@@ -318,27 +296,18 @@ class PostViewSet(viewsets.ModelViewSet):
             if prompt_type not in TASK_PROMPTS and prompt_type != 'custom_analysis':
                 return Response({'error': f'Invalid prompt_type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # >>>>> START: THAY ĐỔI CỐT LÕI ĐỂ SỬA LỖI <<<<<
             
-            # 1. Ưu tiên ngôn ngữ từ request (frontend gửi lên)
             language = request.data.get('language', 'text').lower()
 
-            # 2. Nếu ngôn ngữ là 'text' hoặc không xác định, hãy thử suy luận từ prompt_type
-            # Các prompt này gần như chắc chắn sẽ trả về code.
             code_generating_prompts = [
                 'explain_code_flow', 'generate_snippet', 'debug_code', 
                 'optimize_performance', 'refactor_code'
             ]
             if language == 'text' and prompt_type in code_generating_prompts:
-                # Mặc định là 'javascript' vì đây là ngôn ngữ chính cho sandbox
                 language = 'javascript'
                 
-            # Fallback cuối cùng nếu post có trường language
             if language == 'text' and hasattr(post, 'language') and post.language:
                 language = post.language.lower()
-
-            # <<<<< END: THAY ĐỔI CỐT LÕI ĐỂ SỬA LỖI >>>>>
-
             additional_params = self._process_prompt_parameters(request, prompt_type, user_prompt_text, language)
             
             final_prompt = prompts.build_prompt(
@@ -353,16 +322,13 @@ class PostViewSet(viewsets.ModelViewSet):
             if not ai_response_text:
                 return Response({'error': 'AI service failed to respond.'}, status=status.HTTP_502_BAD_GATEWAY)
             
-            # Logic "vá" markdown giờ sẽ hoạt động chính xác vì `language` là 'javascript'
             runnable_languages = ['javascript', 'js', 'html']
             if language in runnable_languages:
                 ai_response_text = re.sub(r'```(\s*)\n', f'```{language}\n', ai_response_text, count=1)
 
-            # Formatter sẽ nhận được markdown đã được sửa và tạo nút "Run"
             formatter = AICommentFormatter()
             formatted_html = formatter.format_full_response(ai_response_text, post)
 
-            # ... (Phần còn lại của hàm không đổi)
             bot_comment = self._create_bot_comment(post, request.user, formatted_html)
             self._create_notification(post, request.user)
             self._log_bot_session(post, request, ai_response_text, {})
@@ -545,7 +511,6 @@ class PostViewSet(viewsets.ModelViewSet):
             'average_reviews_per_post': round(total_bot_comments / reviewed_posts, 2) if reviewed_posts > 0 else 0
         })
 
-    # === NEW ACTION: GET AVAILABLE PROMPT TYPES ===
     @action(detail=False, methods=['get'], permission_classes=[])
     def available_prompt_types(self, request):
         """
@@ -561,7 +526,6 @@ class PostViewSet(viewsets.ModelViewSet):
                 'required_params': self._get_required_params_for_prompt(prompt_key)
             })
         
-        # Thêm custom analysis option
         prompt_options.append({
             'key': 'custom_analysis',
             'title': '❓ Yêu cầu tùy chỉnh',
@@ -578,9 +542,8 @@ class PostViewSet(viewsets.ModelViewSet):
         """
         Trích xuất mô tả ngắn gọn từ instruction
         """
-        # Lấy dòng đầu tiên sau title làm description
         lines = instruction.strip().split('\n')
-        for line in lines[1:]:  # Skip title line
+        for line in lines[1:]: 
             if line.strip() and not line.startswith('## ') and not line.startswith('- '):
                 return line.strip()[:100] + ('...' if len(line.strip()) > 100 else '')
         return "No description available"
@@ -599,7 +562,6 @@ class PostViewSet(viewsets.ModelViewSet):
         }
         return required_params_map.get(prompt_key, [])
 
-    # === NEW ACTION: GENERATE OVERVIEW FOR A LIST OF POSTS ===
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def generate_overview(self, request):
         """
@@ -634,17 +596,11 @@ class PostViewSet(viewsets.ModelViewSet):
         if isinstance(ai_response_text, Response):
             return ai_response_text
             
-        # =====>>>>> SỬA Ở ĐÂY <<<<<=====
-        # Sử dụng formatter cho kết quả overview
         formatter = AICommentFormatter()
-        # Ở đây `post` có thể là `None` vì ta đang xử lý nhiều post
         formatted_overview = formatter.format_full_response(ai_response_text, post=None) 
-        # ==============================
 
-        # Trả về HTML đã được format
         return Response({'overview': formatted_overview}, status=status.HTTP_200_OK)
     
-    # --- THIS IS THE ACTION WE ARE DEBUGGING ---
     @action(
     detail=False, 
     methods=['POST'], 
@@ -664,7 +620,6 @@ class PostViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # NOTE: Updated build_prompt call to be cleaner
             final_prompt = prompts.build_prompt(
                 content="",
                 language="",
@@ -691,10 +646,6 @@ class PostViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-
-
-
-
 class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing comments
@@ -820,12 +771,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         """
         try:
             user = request.user
-            # Lấy tất cả user, loại trừ user hiện tại
-            #queryset = User.objects.exclude(pk=user.pk).order_by('username')
             queryset = User.objects.exclude(pk=user.pk).annotate(
-                # Tạo một trường tạm gọi là 'priority'
-                # Nếu username là của AI, gán priority = 0
-                # Với các user khác, gán priority = 1
                 priority=Case(
                     When(username=settings.AI_ASSISTANT_USERNAME, then=0),
                     default=1,
@@ -850,36 +796,30 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         """      
         one_week_ago = timezone.now() - timedelta(days=7)
 
-        # 1. Đặt lại tất cả helper về False để bắt đầu
         Profile.objects.update(is_weekly_helper=False)
 
-        # 2. Debug: Kiểm tra số lượng comments trong 7 ngày qua
         total_comments = Comment.objects.filter(created__gte=one_week_ago).count()
         print(f"DEBUG: Total comments in last 7 days: {total_comments}")
 
-        # 3. Tìm các ứng cử viên helper dựa trên số lượng bài viết đã bình luận
         helper_candidates = Comment.objects.filter(
             created__gte=one_week_ago,
-            is_bot=False  # Loại trừ bot comments
+            is_bot=False  
         ).exclude(
-            post__author=F('author')  # Loại trừ việc bình luận trên bài của chính mình
+            post__author=F('author')  
         ).values(
-            'author'  # Nhóm theo người bình luận
+            'author' 
         ).annotate(
-            commented_posts_count=Count('post', distinct=True)  # Đếm số post riêng biệt
+            commented_posts_count=Count('post', distinct=True)  
         ).filter(
             commented_posts_count__gte=5  # Điều kiện là >= 5 bài viết
         )
 
-        # 4. Debug: In ra thông tin các candidates
         candidates_list = list(helper_candidates)
         print(f"DEBUG: Helper candidates: {candidates_list}")
 
-        # 5. Lấy ID của những người dùng đủ điều kiện
         helper_user_ids = [item['author'] for item in candidates_list]
         print(f"DEBUG: Helper user IDs: {helper_user_ids}")
 
-        # 6. Đảm bảo Profile tồn tại cho tất cả users trước khi cập nhật
         from django.contrib.auth.models import User
         for user_id in helper_user_ids:
             try:
@@ -891,18 +831,15 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 print(f"DEBUG: User with ID {user_id} does not exist")
                 continue
 
-        # 7. Cập nhật hàng loạt các profile của những người dùng đủ điều kiện
         updated_count = 0
         if helper_user_ids:
             updated_count = Profile.objects.filter(user_id__in=helper_user_ids).update(is_weekly_helper=True)
             print(f"DEBUG: Updated {updated_count} profiles")
             
-            # Debug: Verify the update
             helper_profiles = Profile.objects.filter(user_id__in=helper_user_ids, is_weekly_helper=True)
             verified_count = helper_profiles.count()
             print(f"DEBUG: Verified {verified_count} profiles are now helpers")
             
-            # Debug: List the helper usernames
             helper_usernames = [p.user.username for p in helper_profiles]
             print(f"DEBUG: Helper usernames: {helper_usernames}")
 
@@ -924,15 +861,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         This is now the single source of truth for fetching a user's posts.
         """
         try:
-            # Dùng get_object_or_404 để xử lý user không tồn tại
             user = self.get_object() 
             posts = Post.objects.filter(author=user).order_by('-created_at')
             
-            # SỬ DỤNG PAGINATION CHUẨN (tùy chọn nhưng nên có)
             paginator = StandardResultsSetPagination()
             page = paginator.paginate_queryset(posts, request)
             
-            # Sử dụng serializer chuẩn để đảm bảo dữ liệu nhất quán
             serializer = PostSerializer(page, many=True, context={'request': request})
             return paginator.get_paginated_response(serializer.data)
 
@@ -975,28 +909,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             user_to_follow = get_object_or_404(User, username=username)
 
-            # Can't follow yourself
             if user_to_follow == request.user:
                 return Response(
                     {'error': 'Cannot follow yourself'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check if already following
             follow_obj, created = Follow.objects.get_or_create(
                 follower=request.user,
                 following=user_to_follow
             )
 
             if not created:
-                # Already following, so unfollow
                 follow_obj.delete()
                 following = False
             else:
-                # Just followed
                 following = True
 
-            # Get updated follower count
             follower_count = Follow.objects.filter(following=user_to_follow).count()
 
             return Response({
@@ -1024,14 +953,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         """
         try:
             user = get_object_or_404(User, username=username)
-
-            # Get user's profile, create if it doesn't exist
             profile, created = Profile.objects.get_or_create(user=user)
-
-            # Get user's posts
             posts = Post.objects.filter(author=user).order_by('-created_at')
-
-            # Check if current user is following this user
             is_following = False
             if request.user.is_authenticated:
                 is_following = Follow.objects.filter(
@@ -1039,12 +962,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                     following=user
                 ).exists()
             
-            # Use serializers to construct the response
             user_serializer = UserSerializer(user, context={'request': request})
             profile_serializer = ProfileSerializer(profile, context={'request': request})
             posts_serializer = PostSerializer(posts, many=True, context={'request': request})
             
-            # Combine data into the expected structure for the frontend
             response_data = {
                 'user': user_serializer.data,
                 'profile': profile_serializer.data,
@@ -1052,7 +973,6 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 'is_following': is_following
             }
 
-            # For backward compatibility, ensure follower counts are also on user object if frontend expects it there.
             response_data['user']['follower_count'] = profile_serializer.data.get('followers_count', 0)
             response_data['user']['following_count'] = profile_serializer.data.get('following_count', 0)
 
@@ -1069,9 +989,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'An internal server error occurred.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-# === NEW CONVERSATION VIEWSET START ===
-
+        
 class ConversationViewSet(viewsets.ViewSet):
     """
     ViewSet for handling chat conversations and messages.
@@ -1097,11 +1015,9 @@ class ConversationViewSet(viewsets.ViewSet):
             other_user = get_object_or_404(User, id=other_user_id)
             user = request.user
 
-            # Prevent creating conversation with yourself
             if other_user == user:
                 return Response({'error': 'Cannot create conversation with yourself.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Find existing conversation between the two users
             conversation = Conversation.objects.annotate(
                 num_participants=Count('participants')
             ).filter(
@@ -1134,7 +1050,6 @@ class ConversationViewSet(viewsets.ViewSet):
                 return Response({'error': 'You are not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
             
             messages = conversation.messages.all().order_by('created_at')
-            # Implement pagination for messages if needed
             serializer = ChatMessageSerializer(messages, many=True, context={'request': request})
             return Response(serializer.data)
             
@@ -1148,8 +1063,6 @@ class ConversationViewSet(viewsets.ViewSet):
         """Send a message to a conversation via HTTP (fallback for WebSocket)."""
         try:
             conversation = get_object_or_404(Conversation, pk=pk)
-            
-            # Ensure the user is a participant
             if request.user not in conversation.participants.all():
                 return Response({'error': 'You are not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
             
@@ -1157,17 +1070,14 @@ class ConversationViewSet(viewsets.ViewSet):
             if not text:
                 return Response({'error': 'Message text is required.'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Create the message
             message = ChatMessage.objects.create(
                 conversation=conversation,
                 sender=request.user,
                 text=text
             )
             
-            # Update conversation timestamp
             conversation.save()
             
-            # Serialize and return the message
             serializer = ChatMessageSerializer(message, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
@@ -1183,18 +1093,13 @@ class ConversationViewSet(viewsets.ViewSet):
         try:
             conversation = get_object_or_404(Conversation, pk=pk)
             
-            # KIỂM TRA BẢO MẬT: Chỉ những người tham gia mới được quyền xóa
             if request.user not in conversation.participants.all():
                 return Response(
                     {'error': 'You do not have permission to delete this conversation.'}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Xóa conversation. Các tin nhắn liên quan sẽ tự động bị xóa
-            # nếu bạn đã thiết lập `on_delete=models.CASCADE` trong model ChatMessage.
             conversation.delete()
-            
-            # Trả về 204 No Content là chuẩn cho một yêu cầu DELETE thành công
             return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Conversation.DoesNotExist:
@@ -1213,8 +1118,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
     """
     queryset = Profile.objects.select_related('user').all()
     permission_classes = [IsAuthenticatedOrReadOnly]
-    lookup_field = 'user__username'  # Sửa: Dùng username của user để tra cứu
-    lookup_url_kwarg = 'user__username' # Chỉ định tên kwarg trong URL
+    lookup_field = 'user__username'  
+    lookup_url_kwarg = 'user__username' 
 
     def get_serializer_class(self):
         """
@@ -1250,16 +1155,12 @@ class ProfileViewSet(viewsets.ModelViewSet):
         """
         instance = self.get_object()
         
-        # Kiểm tra quyền
         if instance.user != request.user:
             raise permissions.PermissionDenied("You do not have permission to edit this profile.")
             
         serializer = ProfileUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save() # Lưu các thay đổi vào DB
-
-        # Sau khi lưu, tạo một response mới sử dụng UserSerializer
-        # để trả về dữ liệu user hoàn chỉnh, bao gồm cả profile đã cập nhật.
         updated_user_data = UserSerializer(instance.user, context={'request': request}).data
         return Response(updated_user_data)
     
@@ -1300,7 +1201,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             'notifications': serializer.data
         })
 
-    @action(detail=True, methods=['post']) # Changed from PATCH to POST to match frontend
+    @action(detail=True, methods=['post']) 
     def mark_read(self, request, pk=None):
         """Mark a notification as read"""
         notification = self.get_object()
@@ -1311,7 +1212,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         notification.save()
         return Response({'message': 'Notification marked as read'})
 
-    @action(detail=False, methods=['post'], url_path='mark-all-read') # Changed from PATCH to POST and added url_path
+    @action(detail=False, methods=['post'], url_path='mark-all-read') 
     def mark_all_as_read(self, request):
         """Mark all notifications as read"""
         updated_count = self.get_queryset().filter(is_read=False).update(is_read=True, read_at=timezone.now())
@@ -1320,7 +1221,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             'message': f'Marked {updated_count} notifications as read'
         })
 
-    @action(detail=False, methods=['post']) # Changed from DELETE to POST for CSRF simplicity
+    @action(detail=False, methods=['post']) 
     def clear_all(self, request):
         """Clear all notifications"""
         count, _ = self.get_queryset().delete()
@@ -1414,12 +1315,11 @@ def register_view(request):
 
 
 @api_view(['POST'])
-@permission_classes([])  # Changed from IsAuthenticated to allow unauthenticated access
+@permission_classes([])  
 @ensure_csrf_cookie
 def logout_view(request):
     """Logout API endpoint"""
     try:
-        # Check if user is authenticated before logging out
         if request.user.is_authenticated:
             logout(request)
             return Response({
@@ -1656,21 +1556,15 @@ def create_tag(request):
     if len(original_name) > 50:
         return Response({'error': 'Tag name cannot exceed 50 characters.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Tạo slug tùy chỉnh hỗ trợ ký tự đặc biệt
     def create_custom_slug(name):
         """
         Tạo slug tùy chỉnh cho tag, giữ lại các ký tự đặc biệt quan trọng
         """
-        # Chuyển về lowercase
         slug = name.lower()
-        
-        # Thay thế khoảng trắng bằng dấu gạch ngang
         slug = re.sub(r'\s+', '-', slug)
         
-        # Giữ lại các ký tự: chữ cái, số, +, #, -, _, .
         slug = re.sub(r'[^\w\+\#\-\.]', '', slug)
         
-        # Loại bỏ dấu gạch ngang ở đầu và cuối
         slug = slug.strip('-')
         
         return slug
@@ -1680,7 +1574,6 @@ def create_tag(request):
     if not custom_slug:
         return Response({'error': 'Invalid tag name after processing.'}, status=status.HTTP_400_BAD_REQUEST)
         
-    # Kiểm tra xem tag đã tồn tại chưa (theo slug hoặc name)
     existing_tag = Tag.objects.filter(
         Q(slug=custom_slug) | Q(name__iexact=original_name)
     ).first()
@@ -1689,7 +1582,6 @@ def create_tag(request):
         serializer = TagSerializer(existing_tag)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    # Tạo tag mới
     try:
         tag = Tag.objects.create(
             name=original_name,
@@ -1712,7 +1604,6 @@ def get_ai_response(content_input: 'Union[str, list]') -> str:
     from dotenv import load_dotenv # Chỉ load khi cần thiết
     load_dotenv()
     
-    # Đảm bảo client được khởi tạo, nếu chưa có
     global client
     if 'client' not in globals() or client is None:
         try:
@@ -1722,9 +1613,6 @@ def get_ai_response(content_input: 'Union[str, list]') -> str:
             return None
 
     try:
-        # Nếu content_input là chuỗi, coi nó là prompt cơ bản.
-        # Nếu là list, coi nó là lịch sử hội thoại.
-        # API Gemini's generate_content chấp nhận cả string và list cho `contents`
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=content_input
@@ -1758,10 +1646,8 @@ def ai_refactor_code_view(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Prompt vẫn yêu cầu AI trả về JSON có cấu trúc
     final_prompt = build_prompt(
         content=user_code,
-        # Ngôn ngữ có thể được suy luận hoặc gửi từ frontend nếu cần
         language=request.data.get('language', 'javascript'), 
         prompt_type='refactor_code',
         recommendation_text=recommendation
@@ -1775,36 +1661,24 @@ def ai_refactor_code_view(request):
             status=status.HTTP_502_BAD_GATEWAY
         )
 
-    # --- LOGIC XỬ LÝ PHẢN HỒI NÂNG CAO Ở BACKEND ---
     try:
-        # Kịch bản 1: AI trả về JSON hoàn hảo
-        # Thử tìm và parse khối JSON từ markdown
         match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
         if match:
             parsed_json = json.loads(match.group(1))
         else:
-            # Nếu không, thử parse toàn bộ chuỗi
             parsed_json = json.loads(ai_response_raw)
         
-        # Kiểm tra xem có key 'steps' không
         if 'steps' in parsed_json and isinstance(parsed_json['steps'], list):
-            # Nếu có, trả về trực tiếp
             return Response(parsed_json, status=status.HTTP_200_OK)
 
     except json.JSONDecodeError:
-        # Kịch bản 2: AI không trả về JSON, mà trả về code thô (phổ biến)
-        # Chúng ta sẽ tự tạo cấu trúc JSON cho nó
         print("AI did not return JSON, wrapping raw code into a single step.")
-        
-        # Trích xuất code từ trong khối markdown, nếu có
         code_match = re.search(r'```(?:python|javascript|js|html|css)?\s*\n([\s\S]*?)\n?```', ai_response_raw, re.DOTALL)
         if code_match:
             fixed_code = code_match.group(1).strip()
         else:
-            # Nếu không có markdown, lấy toàn bộ chuỗi làm code
             fixed_code = ai_response_raw.strip()
         
-        # Tạo một response JSON chuẩn với một bước duy nhất
         response_data = {
             "steps": [
                 {
@@ -1816,7 +1690,6 @@ def ai_refactor_code_view(request):
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
-    # Trường hợp dự phòng nếu JSON có cấu trúc lạ
     return Response(
         {'error': 'AI returned an unexpected data structure.'},
         status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1829,17 +1702,14 @@ def log_bug_view(request):
     """
     Receives bug data from the frontend and logs it to the database.
     """
-    # Lấy language_id từ frontend (frontend gửi 'python', 'javascript',...)
     language_name = request.data.get('language')
     language_obj = None
     if language_name:
-        # Lấy hoặc tạo đối tượng Language, không phân biệt chữ hoa/thường
         language_obj, _ = Language.objects.get_or_create(
             name__iexact=language_name,
             defaults={'name': language_name.capitalize(), 'slug': slugify(language_name)}
         )
 
-    # Regex để cố gắng trích xuất category từ error message
     error_message = request.data.get('error_message', '')
     match = re.match(r'^(\w+Error):', error_message)
     error_category = match.group(1) if match else "UnknownError"
@@ -1854,7 +1724,6 @@ def log_bug_view(request):
 
     serializer = LoggedBugSerializer(data=data_to_log)
     if serializer.is_valid():
-        # Gán user và language trước khi lưu
         serializer.save(user=request.user, language=language_obj)
         return Response({"status": "success", "message": "Bug logged successfully."}, status=status.HTTP_201_CREATED)
     
@@ -1914,14 +1783,11 @@ def bug_stats_view(request):
     else:
         return Response({'error': 'Invalid period. Use "weekly" or "monthly".'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Serialize the data for the response
     top_bugs_serializer = BugStatsSerializer([
         {'category': b.get('error_category', 'Error'), 'message': b.get('error_message', ''), 'count': b.get('count', 0), 'language': b.get('language__name', 'N/A')}
         for b in top_bugs
     ], many=True)
     
-    # Sử dụng serializer mới cho heatmap
-    # Key 'day' sẽ chứa ngày hoặc tuần tùy thuộc vào period
     heatmap_serializer = HeatmapDataSerializer([
         {'day': item.get('day') or item.get('week'), 'errors': item.get('errors', 0)}
         for item in heatmap_data
@@ -1942,8 +1808,6 @@ def bug_reviews_view(request):
     if not error_message:
         return Response({'error': 'error_message parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Tìm các ví dụ tiêu biểu nhất (ví dụ: 3 bản ghi gần nhất)
-    # Chúng ta lọc theo error_message để đảm bảo lấy đúng loại lỗi
     bug_examples = LoggedBug.objects.filter(
         error_message=error_message
     ).select_related('language').order_by('-logged_at')[:3]
@@ -1951,7 +1815,6 @@ def bug_reviews_view(request):
     if not bug_examples.exists():
         return Response({'error': 'No examples found for this bug.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Sử dụng serializer đã có để trả về dữ liệu
     serializer = LoggedBugSerializer(bug_examples, many=True)
     return Response(serializer.data)
 
@@ -1962,7 +1825,6 @@ def ai_generate_title_view(request):
     Generates a post title by sending the raw prompt from the frontend directly to the AI.
     It bypasses the backend build_prompt function.
     """
-    # 1. Lấy prompt đã được xây dựng hoàn chỉnh từ frontend
     prompt_from_frontend = request.data.get('prompt')
 
     if not prompt_from_frontend:
@@ -1972,15 +1834,11 @@ def ai_generate_title_view(request):
         )
 
     try:
-        # 2. GỌI THẲNG get_ai_response VỚI PROMPT TỪ FRONTEND
-        #    Đây là chìa khóa. Chúng ta không dùng build_prompt ở backend nữa.
         generated_title = get_ai_response(prompt_from_frontend)
 
         if generated_title is None:
-            # get_ai_response có thể trả về None nếu có lỗi
             raise Exception("AI service returned an empty or failed response.")
         
-        # 3. Làm sạch kết quả và trả về
         cleaned_title = generated_title.strip().strip('"')
         
         return Response(cleaned_title, status=status.HTTP_200_OK, content_type='text/plain')
@@ -2009,24 +1867,17 @@ class AIChallengeGeneratorView(APIView):
         if ai_response_raw is None:
             return Response({'error': 'AI service failed to respond.'}, status=status.HTTP_502_BAD_GATEWAY)
 
-        # ✅ --- LOGIC PARSE JSON ĐƯỢC NÂNG CẤP --- ✅
         try:
-            # 1. Trích xuất nội dung từ khối markdown nếu có
             json_string = ai_response_raw
             match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_response_raw, re.DOTALL)
             if match:
                 json_string = match.group(1)
-            
-            # 2. Sử dụng demjson3 để parse. Nó có thể xử lý lỗi cú pháp nhỏ.
-            # `decode` của demjson3 sẽ cố gắng hết sức để đọc chuỗi.
             generated_content = demjson3.decode(json_string)
 
-            # 3. Kiểm tra các key cần thiết sau khi parse thành công
             required_keys = ["title", "description", "language", "solution_code", "test_cases"]
             if not all(key in generated_content for key in required_keys):
                  raise ValueError("AI response is missing required keys after parsing.")
             
-            # 4. Đảm bảo test_cases là một list
             if not isinstance(generated_content.get('test_cases'), list):
                  raise ValueError("'test_cases' must be a list.")
 
@@ -2177,10 +2028,8 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Lưu submission và gán user
         submission = serializer.save(user=self.request.user)
         
-        # ✅ GỬI NOTIFICATION CHO TẤT CẢ ADMIN
         self.notify_admins(submission)
     
     def get_permissions(self):
@@ -2191,25 +2040,18 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
         """
         if self.action in ['list', 'update', 'partial_update', 'destroy']:
             self.permission_classes = [permissions.IsAdminUser]
-        # ✅ SỬA Ở ĐÂY: Cho phép chủ sở hữu xem bài nộp của họ
         elif self.action == 'retrieve':
-            # Hoặc là Admin, hoặc là chủ sở hữu
             self.permission_classes = [IsAdminUserOrOwner] 
-        else: # 'create'
+        else: 
             self.permission_classes = [permissions.IsAuthenticated]
         return super().get_permissions()
 
-    # ✅ GHI ĐÈ PHƯƠNG THỨC UPDATE
     def update(self, request, *args, **kwargs):
-        # Lấy submission object
         submission = self.get_object()
         
-        # Gọi hàm update mặc định của DRF
         response = super().update(request, *args, **kwargs)
         
-        # Nếu update thành công, gửi notification cho người dùng
         if response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]:
-            # Lấy trạng thái mới từ request data
             new_status = request.data.get('status')
             if new_status in ['approved', 'rejected']:
                 self.notify_user_of_review(submission, new_status, request.user)
@@ -2220,14 +2062,11 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
         """
         Tìm tất cả admin và tạo notification cho họ.
         """
-        # Tìm tất cả user có role là ADMIN trong Profile
         admin_users = User.objects.filter(profile__role='ADMIN')
         
-        # Người nộp bài
         sender = submission.user
         
         for admin in admin_users:
-            # Không gửi notification nếu admin tự nộp bài
             if admin == sender:
                 continue
                 
@@ -2235,19 +2074,16 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
                 recipient=admin,
                 sender=sender,
                 notification_type='challenge_submission',
-                # ✅ Gán submission object vào notification
                 submission=submission,
                 message=f"{sender.username} has submitted a solution for the challenge '{submission.challenge.title[:30]}...'"
             )
 
-    # ✅ TẠO HÀM MỚI ĐỂ GỬI NOTIFICATION CHO USER
     def notify_user_of_review(self, submission, new_status, admin_user):
         """
         Gửi thông báo cho người dùng về kết quả review.
         """
         recipient = submission.user
         
-        # Xây dựng message dựa trên trạng thái
         if new_status == 'approved':
             message = f"Congratulations! Your solution for '{submission.challenge.title[:30]}...' has been approved."
         else: # rejected
@@ -2255,8 +2091,8 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
             
         Notification.objects.create(
             recipient=recipient,
-            sender=admin_user, # Sender là admin đã review
-            notification_type='challenge_review', # ✅ Tạo một loại notification mới
+            sender=admin_user, 
+            notification_type='challenge_review', 
             submission=submission,
             message=message
         )
@@ -2431,18 +2267,15 @@ Content:
             self._create_header_table(user, date_range, total_posts),
             Spacer(1, 0.3*inch),
             
-            # Developer Profile Section
             Paragraph("🧑‍💻 Developer Profile", subtitle_style),
             Paragraph(summary.get('developer_profile', 'N/A'), body_style),
             Spacer(1, 0.25*inch),
             
-            # Quality Overview with Language Distribution Table
             Paragraph("📊 Quality Overview & Analytics", subtitle_style),
             self._create_quality_overview_table(summary, language_counts),
             Spacer(1, 0.25*inch),
         ]
 
-        # Add content sections with better formatting
         sections = [
             ("✅ Key Strengths & Best Practices", summary.get('main_strengths', [])),
             ("⚠️ Areas for Improvement", summary.get('common_weaknesses', [])),
@@ -2588,13 +2421,11 @@ Content:
                 point = item.get('point', str(item))
                 evidence = item.get('evidence', '')
                 
-                # Main point with proper numbering
                 point_style = ParagraphStyle('Point', parent=body_style, 
                                            leftIndent=0, spaceBefore=8, spaceAfter=4,
                                            fontName='Helvetica-Bold')
                 elements.append(Paragraph(f"{i}. {point}", point_style))
                 
-                # Evidence with indentation and styling
                 if evidence:
                     evidence_style = ParagraphStyle('Evidence', parent=body_style,
                                                   fontSize=10, leftIndent=25, rightIndent=10,
@@ -2603,7 +2434,6 @@ Content:
                                                   fontName='Helvetica-Oblique')
                     elements.append(Paragraph(f"💡 <i>Evidence:</i> {evidence}", evidence_style))
             else:
-                # Simple string items
                 item_style = ParagraphStyle('Item', parent=body_style,
                                           leftIndent=0, spaceBefore=6, spaceAfter=4)
                 elements.append(Paragraph(f"{i}. {str(item)}", item_style))
@@ -2614,7 +2444,6 @@ Content:
         """Create professional footer with separator line"""
         footer_elements = []
         
-        # Add separator line
         line_table = Table([['']], colWidths=[6.5*inch])
         line_table.setStyle(TableStyle([
             ('LINEABOVE', (0, 0), (-1, 0), 1, HexColor("#e2e8f0")),
@@ -2622,7 +2451,6 @@ Content:
         ]))
         footer_elements.append(line_table)
         
-        # Add footer text
         footer_style = ParagraphStyle('Footer', 
                                     fontSize=8, 
                                     textColor=HexColor("#718096"), 
@@ -2655,7 +2483,6 @@ def chat_with_ai_view(request):
         conversation = get_object_or_404(Conversation, id=conversation_id)
         ai_user = get_object_or_404(User, username=settings.AI_ASSISTANT_USERNAME)
         
-        # 1. Lưu tin nhắn của người dùng vào DB
         ChatMessage.objects.create(
             conversation=conversation,
             sender=request.user,
@@ -2663,7 +2490,6 @@ def chat_with_ai_view(request):
         )
         conversation.save()
 
-        # 2. Xây dựng lịch sử hội thoại đúng chuẩn cho AI
         history_messages = conversation.messages.order_by('created_at').select_related('sender')[:20] # Lấy 20 tin nhắn gần nhất
         
         contents = []
@@ -2674,18 +2500,15 @@ def chat_with_ai_view(request):
                 "parts": [{"text": msg.text}]
             })
         
-        # 3. Gọi hàm get_ai_response với lịch sử hội thoại
         logger.info(f"Calling get_ai_response with conversation history of {len(contents)} messages.")
         ai_response_raw_text = get_ai_response(contents) # <--- Gọi hàm get_ai_response với list contents
 
         if not ai_response_raw_text:
             raise Exception("AI service returned an empty response.")
 
-        # 4. Dùng AICommentFormatter để định dạng câu trả lời
         formatter = AICommentFormatter()
         formatted_html_response = formatter.format_full_response(ai_response_raw_text, post=None)
 
-        # 5. Lưu câu trả lời đã được format của AI vào DB
         ai_message = ChatMessage.objects.create(
             conversation=conversation,
             sender=ai_user,
@@ -2693,7 +2516,6 @@ def chat_with_ai_view(request):
         )
         conversation.save()
 
-        # 6. Trả về tin nhắn của AI cho frontend
         serializer = ChatMessageSerializer(ai_message, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

@@ -19,23 +19,17 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
 const PostList = ({ showAllTags = false }) => {
   const { isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Lấy callback từ MainLayout qua Outlet Context
   const { onPostsLoaded } = useOutletContext();
-  
-  // State nội bộ của PostList để quản lý việc hiển thị
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalPosts, setTotalPosts] = useState(0);
   
-  // currentPage được quản lý bởi URL, nhưng ta cần state để trigger useEffect
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [postsPerPage] = useState(10);
 
   const [latestChallenge, setLatestChallenge] = useState(null);
 
-  // urlParams được tính toán lại mỗi khi URL thay đổi
   const urlParams = useMemo(() => {
     return {
       tags: searchParams.get('tags'),
@@ -98,7 +92,7 @@ const PostList = ({ showAllTags = false }) => {
   }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering, onPostsLoaded]);
 
 
-  // ✨ HỆ THỐNG VOTE VỚI OPTIMISTIC UPDATE
+  // HỆ THỐNG VOTE 
   const handleVote = async (postId, voteType) => {
     if (!isAuthenticated) return;
 
@@ -220,7 +214,6 @@ const PostList = ({ showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      {/* ✅ 5. RENDER CHALLENGE CARD Ở TRÊN CÙNG */}
       {currentPage === 1 && !urlParams.tags && !urlParams.search && (
           <ChallengeCard challenge={latestChallenge} />
       )}
@@ -275,7 +268,6 @@ const PostList = ({ showAllTags = false }) => {
       
       {totalPosts > postsPerPage && renderPagination()}
 
-      {/* Modal AI đã được chuyển lên MainLayout */}
     </div>
   );
 };

@@ -1,15 +1,13 @@
-// src/components/ChallengeCard.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Pin } from 'lucide-react';
-import ReactMarkdown from 'react-markdown'; // Đảm bảo đã import
+import ReactMarkdown from 'react-markdown'; 
 import styles from './ChallengeCard.module.css';
 
 const ChallengeCard = ({ challenge }) => {
     if (!challenge) return null;
 
     // Trích xuất một đoạn mô tả ngắn cho preview
-    // Tìm dòng đầu tiên sau "## Problem" hoặc dòng đầu tiên của mô tả
     const getShortDescription = (desc) => {
         if (!desc) return '';
         const lines = desc.split('\n');
@@ -41,7 +39,6 @@ const ChallengeCard = ({ challenge }) => {
                     </div>
                 </div>
                 
-                {/* ✅ THAY ĐỔI TỪ <p> SANG <div> */}
                 <div className={styles.description}>
                     {getShortDescription(challenge.description)}
                 </div>

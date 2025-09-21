@@ -7,13 +7,7 @@ from .serializers import ChatMessageSerializer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # === BẮT ĐẦU LOG GỠ LỖI ===
-        print("\n--- Yêu cầu kết nối WebSocket mới ---")
         user = self.scope["user"]
-        print(f"User từ scope: {user}")
-        print(f"Trạng thái xác thực: {user.is_authenticated}")
-        # === KẾT THÚC LOG GỠ LỖI ===
-
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.room_group_name = f'chat_{self.conversation_id}'
         

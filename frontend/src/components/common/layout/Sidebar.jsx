@@ -25,7 +25,6 @@ const Sidebar = ({
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Get current filters from URL
   const getCurrentFilters = () => {
     const urlTags = searchParams.get('tags');
     const ordering = searchParams.get('ordering') || '-created_at';
@@ -175,15 +174,12 @@ const Sidebar = ({
 
   return (
     <>
-      {/* --- NEW: Overlay for mobile view --- */}
       <div 
         className={`${styles.sidebarOverlay} ${isOpen ? styles.sidebarOverlayActive : ''}`} 
         onClick={onClose}
         aria-hidden={!isOpen}
       />
-      {/* --- END: Overlay --- */}
 
-      {/* --- MODIFIED: Added classes for mobile open/close state --- */}
       <div className={`${styles.sidebar} ${className || ''} ${isOpen ? styles.sidebarOpen : ''}`}>
         {/* AI Overview & Sort Controls Section */}
         <div className={styles.controlsSection}>
