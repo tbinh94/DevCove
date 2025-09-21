@@ -1601,9 +1601,7 @@ def get_ai_response(content_input: 'Union[str, list]') -> str:
     """
     Gets AI analysis from Gemini API using the provided content (string or list of messages).
     """
-    from dotenv import load_dotenv # Chỉ load khi cần thiết
-    load_dotenv()
-    
+    load_dotenv()  
     global client
     if 'client' not in globals() or client is None:
         try:

@@ -53,10 +53,10 @@ const PostDetail = () => {
                 return;
             }
 
-            // LOGIC CHO NÚT COPY 
+            // LOGIC FOR THE COPY BUTTON
             if (action === 'copy') {
                 navigator.clipboard.writeText(codeTag.innerText).then(() => {
-                    // SỬA LỖI: Sử dụng selector đúng (.btn-icon, .btn-text)
+                    // FIX: Use correct selectors (.btn-icon, .btn-text)
                     const iconSpan = button.querySelector('.btn-icon');
                     const textSpan = button.querySelector('.btn-text');
                     if (!textSpan || !iconSpan) return;
@@ -77,7 +77,7 @@ const PostDetail = () => {
                     console.error('Failed to copy text: ', err);
                 });
             }
-            // Logic cho nút Run (đã hoạt động đúng)
+            // Logic for the Run button (already works correctly)
             if (action === 'run') {
                 const codeText = codeTag.innerText;
                 
@@ -87,8 +87,8 @@ const PostDetail = () => {
                 
                 try {
                     sessionStorage.setItem('sandbox_code', codeText);
-                    sessionStorage.setItem('sandbox_language', language); // Có thể gửi ngôn ngữ để sandbox biết cách chạy
-                    window.open('/sandbox', '_blank'); // mở sandbox runner trong tab mới
+                    sessionStorage.setItem('sandbox_language', language); // Can send the language so the sandbox knows how to run it
+                    window.open('/sandbox', '_blank'); // open sandbox runner in a new tab
 
                 } catch (err) {
                     console.error('Failed to prepare sandbox run:', err);
@@ -133,7 +133,6 @@ const PostDetail = () => {
     useEffect(() => {
         const isAnyModalOpen = isImageModalOpen || isChatModalOpen;
 
-        // SỬA LỖI 2: Luôn kiểm tra context và hàm tồn tại trước khi gọi
         if (outletContext && typeof outletContext.setBodyScrollLock === 'function') {
             outletContext.setBodyScrollLock(isAnyModalOpen);
         }
@@ -149,26 +148,26 @@ const PostDetail = () => {
             document.addEventListener('keydown', handleEscKey);
         }
 
-        // Hàm dọn dẹp cũng phải kiểm tra
+        // The cleanup function must also check
         return () => {
             document.removeEventListener('keydown', handleEscKey);
             if (outletContext && typeof outletContext.setBodyScrollLock === 'function') {
                 outletContext.setBodyScrollLock(false);
             }
         };
-    // SỬA LỖI 3: Thêm outletContext vào mảng dependencies
+    // FIX 3: Add outletContext to the dependencies array
     }, [isImageModalOpen, isChatModalOpen, outletContext]);
     
     const sanitizeBotComment = (commentText) => {
         return DOMPurify.sanitize(commentText, { 
             ADD_TAGS: ['style', 'button'],
-            // Thêm data-action và data-target-id vào danh sách cho phép
+            // Add data-action and data-target-id to the allowed list
             ADD_ATTR: ['class', 'id', 'title', 'style', 'data-action', 'data-target-id'],
         });
     };
     
     const handleVote = async (voteType) => {
-        if (!isAuthenticated) return alert("Bạn cần đăng nhập để bỏ phiếu.");
+        if (!isAuthenticated) return alert("You need to log in to vote.");
         
         const originalVote = post.user_vote;
         const originalScore = post.calculated_score;
@@ -197,14 +196,14 @@ const PostDetail = () => {
         } catch (err) {
             setPost(p => ({ ...p, user_vote: originalVote, calculated_score: originalScore }));
             console.error('Vote error:', err);
-            alert(err.message || "Đã xảy ra lỗi khi bỏ phiếu.");
+            alert(err.message || "An error occurred while voting.");
         }
     };
     
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim()) return;
-        if (!isAuthenticated) return alert("Bạn cần đăng nhập để bình luận.");
+        if (!isAuthenticated) return alert("You need to log in to comment.");
         
         setIsSubmitting(true);
         try {
@@ -213,7 +212,7 @@ const PostDetail = () => {
             setNewComment('');
         } catch (err) {
             console.error('Comment error:', err);
-            alert(err.message || "Gửi bình luận thất bại.");
+            alert(err.message || "Failed to post comment.");
         } finally {
             setIsSubmitting(false);
         }
@@ -221,7 +220,7 @@ const PostDetail = () => {
 
     const handleBookmark = () => {
         setIsBookmarked(!isBookmarked);
-        alert("Tính năng đánh dấu đang được phát triển!");
+        alert("Bookmark feature is under development!");
     };
 
     const handleDeletePost = () => setShowDeleteConfirm(true);
@@ -238,7 +237,7 @@ const PostDetail = () => {
         } catch (err)
         {
             console.error('Failed to delete post:', err);
-            alert(err.message || 'Đã xảy ra lỗi khi xóa bài đăng.');
+            alert(err.message || 'An error occurred while deleting the post.');
         }
     };
 
@@ -251,13 +250,13 @@ const PostDetail = () => {
         const past = new Date(dateString);
         const diffInSeconds = Math.floor((now - past) / 1000);
         
-        if (diffInSeconds < 60) return "vừa xong";
+        if (diffInSeconds < 60) return "just now";
         const diffInMinutes = Math.floor(diffInSeconds / 60);
-        if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+        if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
         const diffInHours = Math.floor(diffInMinutes / 60);
-        if (diffInHours < 24) return `${diffInHours} giờ trước`;
+        if (diffInHours < 24) return `${diffInHours} hours ago`;
         const days = Math.floor(diffInHours / 24);
-        return `${days} ngày trước`;
+        return `${days} days ago`;
     };
 
     const handleSendBotMessage = async (promptText, promptType) => {
@@ -291,14 +290,14 @@ const PostDetail = () => {
                     setLatestBotResponse(null);
                 }, 500);
             } else {
-                throw new Error('Phản hồi không hợp lệ từ dịch vụ bot');
+                throw new Error('Invalid response from bot service');
             }
         } catch (err) {
             console.error('Bot message error:', err);
             const errorMessage = err.response?.data?.error ||
-                                err.response?.data?.message ||
-                                err.message ||
-                                "Đã xảy ra lỗi khi hỏi bot.";
+                                 err.response?.data?.message ||
+                                 err.message ||
+                                 "An error occurred while asking the bot.";
             setBotError(errorMessage);
             setLatestBotResponse(null);
         } finally {
@@ -323,7 +322,7 @@ const PostDetail = () => {
     }, [isChatModalOpen, latestBotCommentId]);
 
     const handleOpenChatModal = () => {
-        if (!isAuthenticated) return alert("Bạn cần đăng nhập để sử dụng bot chat.");
+        if (!isAuthenticated) return alert("You need to log in to use the chat bot.");
         setBotError(null);
         setLatestBotResponse(null);
         setIsChatModalOpen(true);
@@ -339,7 +338,7 @@ const PostDetail = () => {
         return (
             <div className={styles.loadingContainer}>
                 <div className={styles.loadingSpinner}></div>
-                <p className={styles.loadingText}>Đang tải bài đăng...</p>
+                <p className={styles.loadingText}>Loading post...</p>
             </div>
         );
     }
@@ -348,7 +347,7 @@ const PostDetail = () => {
         return (
             <div className={styles.errorContainer}>
                 <div className={styles.errorIcon}>⚠️</div>
-                <h3 className={styles.errorTitle}>Đã xảy ra lỗi</h3>
+                <h3 className={styles.errorTitle}>An error occurred</h3>
                 <p className={styles.errorMessage}>{error}</p>
             </div>
         );
@@ -358,8 +357,8 @@ const PostDetail = () => {
         return (
             <div className={styles.errorContainer}>
                 <div className={styles.errorIcon}>🔍</div>
-                <h3 className={styles.errorTitle}>Không tìm thấy bài đăng</h3>
-                <p className={styles.errorMessage}>Bài đăng bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+                <h3 className={styles.errorTitle}>Post not found</h3>
+                <p className={styles.errorMessage}>The post you are looking for does not exist or has been deleted.</p>
             </div>
         );
     }
@@ -382,9 +381,9 @@ const PostDetail = () => {
                                 {post.is_bot_reviewed && (
                                     <span 
                                         className={styles.botReviewedBadgeDetail} 
-                                        title={`Bài đăng này đã được bot xem xét ${post.bot_reviews_count} lần. Lần xem xét gần nhất: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
+                                        title={`This post has been reviewed by the bot ${post.bot_reviews_count} times. Latest review: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
                                     >
-                                        🤖 Đã xem xét ({post.bot_reviews_count})
+                                        🤖 Reviewed ({post.bot_reviews_count})
                                     </span>
                                 )}
                             </h1>
@@ -395,7 +394,7 @@ const PostDetail = () => {
                                     </div>
                                     <div className={styles.authorDetails}>
                                         <span className={styles.authorName}>
-                                            {post.author?.username || 'Ẩn danh'}
+                                            {post.author?.username || 'Anonymous'}
                                         </span>
                                         <div className={styles.postStats}>
                                             <span className={styles.statItem}>
@@ -404,7 +403,7 @@ const PostDetail = () => {
                                             </span>
                                             <span className={styles.statItem}>
                                                 <Eye size={12} />
-                                                {post.views || 0} lượt xem
+                                                {post.views || 0} views
                                             </span>
                                         </div>
                                     </div>
@@ -484,14 +483,14 @@ const PostDetail = () => {
                                 onClick={handleOpenChatModal}
                                 disabled={botLoading || !isAuthenticated}
                                 className={`${styles.actionButton} ${botLoading ? styles.loading : ''}`}
-                                title={!isAuthenticated ? "Bạn cần đăng nhập để sử dụng bot" : "Yêu cầu AI phân tích bài đăng này"}
+                                title={!isAuthenticated ? "You need to log in to use the bot" : "Ask the AI to analyze this post"}
                             >
                                 {botLoading ? (
                                     <span className={styles.loadingSpinnerSmall}></span>
                                 ) : (
                                     <Bot size={18} />
                                 )} 
-                                Hỏi Bot
+                                Ask Bot
                             </button>
                             
                             {botError && !isChatModalOpen && (
@@ -506,7 +505,7 @@ const PostDetail = () => {
                                 <button
                                     onClick={handleDeletePost}
                                     className={`${styles.actionButton} ${styles.deleteButton}`}
-                                    title="Xóa bài đăng"
+                                    title="Delete post"
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -515,7 +514,7 @@ const PostDetail = () => {
                                 <button
                                     onClick={() => setShowBotComments(prev => !prev)}
                                     className={styles.actionButton}
-                                    title={showBotComments ? "Ẩn bình luận của Bot" : "Hiện bình luận của Bot"}
+                                    title={showBotComments ? "Hide Bot comments" : "Show Bot comments"}
                                 >
                                     {showBotComments ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
@@ -523,11 +522,11 @@ const PostDetail = () => {
                             <button 
                                 onClick={handleBookmark}
                                 className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
-                                title="Đánh dấu bài đăng này"
+                                title="Bookmark this post"
                             >
                                 <Bookmark size={16} />
                             </button>
-                            <button className={styles.actionButton} title="Chia sẻ bài đăng này">
+                            <button className={styles.actionButton} title="Share this post">
                                 <Share2 size={16} />
                             </button>
                         </div>
@@ -538,7 +537,7 @@ const PostDetail = () => {
                 <div className={styles.commentsSection}>
                     <div className={styles.commentsHeader}>
                         <h2 className={styles.commentsTitle}>
-                            Bình luận ({filteredComments.length})
+                            Comments ({filteredComments.length})
                         </h2>
                     </div>
                     
@@ -549,7 +548,7 @@ const PostDetail = () => {
                                     <textarea 
                                         value={newComment} 
                                         onChange={(e) => setNewComment(e.target.value)} 
-                                        placeholder="Chia sẻ suy nghĩ của bạn..." 
+                                        placeholder="Share your thoughts..." 
                                         className={styles.commentTextarea} 
                                         required 
                                     />
@@ -562,7 +561,7 @@ const PostDetail = () => {
                                             {isSubmitting ? (
                                                 <div className={styles.buttonSpinner}></div>
                                             ) : (
-                                                'Đăng bình luận'
+                                                'Post comment'
                                             )}
                                         </button>
                                     </div>
@@ -572,7 +571,7 @@ const PostDetail = () => {
                     ) : (
                         <div className={styles.loginPrompt}>
                             <p>
-                                <Link to="/login" className={styles.loginLink}>Đăng nhập</Link> để tham gia bình luận
+                                <Link to="/login" className={styles.loginLink}>Please login</Link> to comment
                             </p>
                         </div>
                     )}
@@ -592,7 +591,7 @@ const PostDetail = () => {
                                     </div>
                                     <div className={styles.commentAuthorInfo}>
                                         <span className={styles.commentAuthorName}>
-                                            {comment.is_bot ? 'DevAlly Bot' : (comment.author?.username || 'Ẩn danh')}
+                                            {comment.is_bot ? 'DevAlly Bot' : (comment.author?.username || 'Anonymous')}
                                         </span>
                                         <span className={styles.commentTime}>
                                             {formatTimeAgo(comment.created_at || comment.created)}
@@ -615,11 +614,11 @@ const PostDetail = () => {
                                     <div className={styles.commentActions}>
                                         <button className={styles.commentActionButton}>
                                             <Heart size={12} />
-                                            <span>Thích</span>
+                                            <span>Like</span>
                                         </button>
                                         <button className={styles.commentActionButton}>
                                             <MessageCircle size={12} />
-                                            <span>Trả lời</span>
+                                            <span>Reply</span>
                                         </button>
                                     </div>
                                 )}
@@ -629,8 +628,8 @@ const PostDetail = () => {
                 ) : (
                     <div className={styles.noComments}>
                         <div className={styles.noCommentsIcon}>💬</div>
-                        <h3 className={styles.noCommentsTitle}>Chưa có bình luận nào</h3>
-                        <p className={styles.noCommentsText}>Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!</p>
+                        <h3 className={styles.noCommentsTitle}>No comments yet</h3>
+                        <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
                     </div>
                 )}
             </div>
@@ -641,22 +640,22 @@ const PostDetail = () => {
             {showDeleteConfirm && (
                 <div className={styles.deleteConfirmModalOverlay}>
                     <div className={styles.deleteConfirmModal}>
-                        <h3 className={styles.deleteConfirmTitle}>Xác nhận xóa</h3>
+                        <h3 className={styles.deleteConfirmTitle}>Confirm Deletion</h3>
                         <p className={styles.deleteConfirmMessage}>
-                            Bạn có chắc chắn muốn xóa bài đăng này? Hành động này không thể hoàn tác.
+                            Are you sure you want to delete this post? This action cannot be undone.
                         </p>
                         <div className={styles.deleteConfirmActions}>
                             <button 
                                 onClick={() => setShowDeleteConfirm(false)} 
                                 className={styles.deleteConfirmCancel}
                             >
-                                Hủy bỏ
+                                Cancel
                             </button>
                             <button 
                                 onClick={handleDeletePostConfirm} 
                                 className={styles.deleteConfirmButton}
                             >
-                                Xóa
+                                Delete
                             </button>
                         </div>
                     </div>
@@ -668,8 +667,8 @@ const PostDetail = () => {
                 <div className={styles.successModalOverlay}>
                     <div className={styles.successModal}>
                         <CheckCircle size={48} className={styles.successIcon} />
-                        <h3 className={styles.successTitle}>Thành công!</h3>
-                        <p className={styles.successMessage}>Bài đăng của bạn đã được xóa thành công.</p>
+                        <h3 className={styles.successTitle}>Success!</h3>
+                        <p className={styles.successMessage}>Your post has been successfully deleted.</p>
                     </div>
                 </div>
             )}
