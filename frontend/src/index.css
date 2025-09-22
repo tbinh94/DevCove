@@ -1,11 +1,9 @@
-/* Reset margin/padding cho tất cả elements */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Đảm bảo html và body chiếm full height */
 html {
   height: 100%;
 }
@@ -20,11 +18,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* zoom: 0.9; <-- XÓA DÒNG NÀY */
   overflow-x: hidden; /* Tránh scroll ngang */
 }
 
-/* Đảm bảo root container chiếm full height */
 #root {
   height: 100%;
   min-height: 100vh;
@@ -32,7 +28,6 @@ body {
   flex-direction: column;
 }
 
-/* Fix cho iOS Safari viewport */
 @supports (-webkit-touch-callout: none) {
   html {
     height: -webkit-fill-available;
@@ -47,7 +42,6 @@ body {
   }
 }
 
-/* Dark theme container - đảm bảo chiếm full height */
 .dark-theme {
   min-height: 100vh;
   height: 100%;
@@ -56,7 +50,6 @@ body {
   flex-direction: column;
 }
 
-/* Base layout cho các component */
 .app-container {
   min-height: 100vh;
   height: 100%;
@@ -65,7 +58,6 @@ body {
   flex-direction: column;
 }
 
-/* Specific fixes cho các component có vấn đề */
 .login-container,
 .signup-container,
 .bug-tracker-container,
