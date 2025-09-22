@@ -17,7 +17,7 @@ DevCove is a community platform for developers where you can post articles, disc
 ## 🖼️ Demo
 
 Homepage:
-\<img width="1315" height="628" alt="image" src="[https://github.com/user-attachments/assets/343c0054-5f61-4271-9938-4161d80511ca](https://github.com/user-attachments/assets/343c0054-5f61-4271-9938-4161d80511ca)" /\>
+<img width="1315" height="628" alt="image" src="[https://github.com/user-attachments/assets/343c0054-5f61-4271-9938-4161d80511ca](https://github.com/user-attachments/assets/343c0054-5f61-4271-9938-4161d80511ca)" /\>
 
 -----
 
