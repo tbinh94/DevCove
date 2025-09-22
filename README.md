@@ -36,7 +36,7 @@ Homepage:
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev/npm start
 ```
 
 ### 2\. Run the Backend
