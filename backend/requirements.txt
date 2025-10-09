@@ -33,3 +33,7 @@ numpy==2.2.6
   
 # Async support  
 asgiref==3.9.1
+
+demjson3
+markdown2
+reportlab

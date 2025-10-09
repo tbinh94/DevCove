@@ -426,7 +426,7 @@ class PostViewSet(viewsets.ModelViewSet):
             BotSession.objects.create(
                 post=post,
                 request_payload={
-                    "model": "gemini-2.5-flash",
+                    "model": "gemini-flash-latest",
                     "prompt_type": summary.get('prompt_type'),
                     "metadata": {
                         "language": summary.get('language'),
@@ -1612,7 +1612,7 @@ def get_ai_response(content_input: 'Union[str, list]') -> str:
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-flash-latest",
             contents=content_input
         )
 
