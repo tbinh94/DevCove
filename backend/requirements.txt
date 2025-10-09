@@ -1,39 +1,21 @@
-# Core Django Framework  
-Django==5.2.3  
-djangorestframework==3.16.0  
-django-cors-headers==4.7.0  
-django-filter==25.1  
-djangorestframework_simplejwt==5.5.0  
-  
-# Database  
-psycopg2-binary==2.9.10  
-  
-# Real-time WebSocket support  
-channels==4.2.2  
-channels_redis==4.3.0  
-daphne==4.2.1  
-redis==6.2.0  
-  
-# AI Integration  
-google-genai==1.26.0  
-google-auth==2.40.3  
-  
-# Environment & Configuration  
-python-dotenv==1.1.0  
-  
-# Image processing  
-Pillow==11.3.0  
-  
-# HTTP requests  
-requests==2.32.3  
-  
-# Data processing  
-pandas==2.2.3  
-numpy==2.2.6  
-  
-# Async support  
-asgiref==3.9.1
+# Django Framework
+Django>=4.2,<5.0
+djangorestframework>=3.14,<3.16
+django-filter>=24.2
 
-demjson3
-markdown2
-reportlab
+# Database
+psycopg2-binary>=2.9,<3.0  # Cần thiết cho PostgreSQL (django.contrib.postgres)
+
+# AI & Machine Learning
+google-generativeai>=0.5.0
+
+# HTTP Requests
+requests>=2.31,<3.0
+
+# PDF & Reporting
+reportlab>=4.0,<5.0
+matplotlib>=3.8,<4.0  # Mặc dù không sử dụng trực tiếp để tạo view, nó được import
+
+# Utilities
+demjson3>=3.0,<4.0
+python-dotenv>=1.0,<2.0

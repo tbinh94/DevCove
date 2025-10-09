@@ -1,7 +1,7 @@
 /* src/pages/SandboxPage/SandboxPage.module.css */
 .container {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: full;
   margin: 0 auto;
   background: #1e1e2e;
 }
