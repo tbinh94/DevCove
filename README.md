@@ -42,19 +42,28 @@ Make sure the following are installed before running the project:
 ### 2️⃣ Backend Setup
 
 #### Step 1 — Create and Restore the Database
-A PostgreSQL dump file is already included in the `backend/` folder.
+A PostgreSQL dump file named **`devcove_dump.sql`** is already included inside the `backend/` folder.  
+You can use this file to quickly restore both the database structure and example data.
 
-Run the following commands:
+Follow these steps:
 
 ```bash
-# Create an empty database
-createdb DevCove
+# 1️⃣ Create a new PostgreSQL database
+createdb devcove
 
-# Restore from the provided dump file
-pg_restore -h localhost -p 5432 -U postgres -d DevCove -v --clean "full_path_to_file.dump"
+# 2️⃣ Restore the database from the included dump file
+psql -U postgres -d devcove -f backend/devcove_dump.sql
 ````
 
-If successful, the database schema and sample data will be restored automatically.
+💡 Tip:
+Make sure PostgreSQL is installed and running before executing the commands.
+If your PostgreSQL user requires a password, you may be prompted to enter it.
+You can also open pgAdmin → Query Tool → and run the contents of devcove_dump.sql manually.
+Once completed successfully, the database will contain all the required tables and sample records for testing.
+
+If you encounter connection issues:
+Ensure your PostgreSQL service is running on localhost:5432
+Verify that the database name, username, and password match the configuration in backend/settings.py or .env
 
 
 ---
@@ -78,7 +87,7 @@ If you don’t have one, get a free key at:
 cd backend
 pip install -r requirements.txt
 
-# Run migrations and create a superuser if needed
+# Run migrations and create a superuser (if needed)
 python manage.py migrate
 python manage.py createsuperuser
 
@@ -148,14 +157,13 @@ DevCove/
 
 ### Database Backup
 
-You can back up or restore the database using PostgreSQL commands:
 
 ```bash
 # Backup
-pg_dump -U postgres -d DevCove -f backup.sql
+pg_dump -U postgres -d DevCove -f backup.sql OR run backend\backup_db.py
 
 # Restore
-psql -U postgres -d DevCove -f backend/devcove_dump.sql
+pg_restore -h localhost -p 5432 -U postgres -d DevCove -v --clean "full_path_to_file.dump"
 ```
 
 ---
@@ -167,6 +175,7 @@ psql -U postgres -d DevCove -f backend/devcove_dump.sql
 | Admin | admin    | 1        |
 | User  | tb       | 1        |
 
+You can change password and rule of an user in [Django Admin](http://127.0.0.1:8000/admin)
 ---
 
 ## 📜 License
