@@ -1,7 +1,7 @@
 # serializers.py - CLEANED VERSION
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug, WeeklyChallenge,ChallengeSubmission
+from .models import Community, Tag, Post, Vote, Comment, Profile, Follow, Notification, BotSession, Language,Conversation, ChatMessage, LoggedBug, WeeklyChallenge,ChallengeSubmission, Bookmark
 from django.utils.text import slugify
 
 class BotSessionSerializer(serializers.ModelSerializer):
@@ -163,6 +163,9 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created']
 
 
+
+
+
 class PostSerializer(serializers.ModelSerializer):
     """Serializer cho Post model"""
     author = UserBasicSerializer(read_only=True)
@@ -179,6 +182,7 @@ class PostSerializer(serializers.ModelSerializer):
     bot_reviews_count = serializers.IntegerField(read_only=True)
     latest_bot_review_date = serializers.SerializerMethodField()
     bot_review_summary = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -189,7 +193,8 @@ class PostSerializer(serializers.ModelSerializer):
             'calculated_score',
             'comment_count', 'user_vote',
             'is_bot_reviewed', 'bot_reviews_count', 
-            'latest_bot_review_date', 'bot_review_summary'
+            'latest_bot_review_date', 'bot_review_summary',
+            'is_bookmarked'
         ]
         read_only_fields = ['id', 'created_at']
     
@@ -223,6 +228,23 @@ class PostSerializer(serializers.ModelSerializer):
         if latest_review:
             return latest_review.text[:100] + "..." if len(latest_review.text) > 100 else latest_review.text
         return None
+    
+    def get_is_bookmarked(self, post):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return post.bookmarked_by.filter(user=request.user).exists()
+        return False
+
+
+
+class BookmarkSerializer(serializers.ModelSerializer):
+    """Serializer cho Bookmark model"""
+    post = PostSerializer(read_only=True)
+    
+    class Meta:
+        model = Bookmark
+        fields = ['id', 'user', 'post', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
 
 
 class PostDetailSerializer(PostSerializer):

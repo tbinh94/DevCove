@@ -46,7 +46,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language, WeeklyChallenge, ChallengeSubmission
+from .models import Comment, Community, Follow, Notification, Post, Profile, Tag, Vote, BotSession, Conversation, ChatMessage, LoggedBug, Language, WeeklyChallenge, ChallengeSubmission, Bookmark
 from .serializers import (
     CommunityBasicSerializer,
     CommunitySerializer,
@@ -64,7 +64,8 @@ from .serializers import (
     VoteSerializer,
     ConversationSerializer, ChatMessageSerializer,
     LoggedBugSerializer, BugStatsSerializer, HeatmapDataSerializer,
-    WeeklyChallengeSerializer, ChallengeSubmissionSerializer
+    WeeklyChallengeSerializer, ChallengeSubmissionSerializer,
+    BookmarkSerializer
 )
 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -250,6 +251,33 @@ class PostViewSet(viewsets.ModelViewSet):
             user_vote_status = 'up' if vote_object.is_upvote else 'down'
 
         return Response({'user_vote': user_vote_status})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def bookmark(self, request, pk=None):
+        """Bookmark or unbookmark a post"""
+        post = self.get_object()
+        bookmark = Bookmark.objects.filter(user=request.user, post=post).first()
+        
+        if bookmark:
+            bookmark.delete()
+            return Response({'status': 'unbookmarked', 'is_bookmarked': False})
+        else:
+            Bookmark.objects.create(user=request.user, post=post)
+            return Response({'status': 'bookmarked', 'is_bookmarked': True})
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_bookmarks(self, request):
+        """Get current user's bookmarks"""
+        bookmarks = Bookmark.objects.filter(user=request.user).select_related('post', 'post__author', 'post__community').prefetch_related('post__tags')
+        
+        page = self.paginate_queryset(bookmarks)
+        if page is not None:
+            serializer = BookmarkSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = BookmarkSerializer(bookmarks, many=True, context={'request': request})
+        return Response(serializer.data)
+
 
     @action(detail=True, methods=['get'])
     def related_posts(self, request, pk=None):

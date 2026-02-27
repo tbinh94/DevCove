@@ -6,34 +6,34 @@
   --bg-secondary: #1a1a2e;
   --bg-glass: rgba(26, 26, 46, 0.9);
   --bg-hover: #253155;
-  
+
   --text-primary: #e2e8f0;
   --text-secondary: #a0aec0;
   --text-muted: #718096;
-  
+
   --accent-primary: #2196f3;
   --accent-secondary: #1976d2;
   --accent-success: #00e676;
   --accent-error: #f44336;
-  
+
   --border-light: rgba(255, 255, 255, 0.1);
   --border-accent: rgba(33, 150, 243, 0.3);
-  
+
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6);
   --shadow-accent: 0 8px 24px rgba(33, 150, 243, 0.25);
-  
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-full: 9999px;
-  
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  
+
+  --space-sm: 6px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -45,8 +45,8 @@
   display: flex;
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--space-xl);
-  gap: var(--space-xl);
+  padding: var(--space-lg);
+  gap: var(--space-lg);
   min-height: 100vh;
 }
 
@@ -64,7 +64,10 @@
 }
 
 /* Glass morphism cards */
-.card, .tagsSection, .createPostCard, .postCard {
+.card,
+.tagsSection,
+.createPostCard,
+.postCard {
   background: var(--bg-glass);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-light);
@@ -74,7 +77,8 @@
   position: relative;
 }
 
-.card:hover, .postCard:hover {
+.card:hover,
+.postCard:hover {
   border-color: var(--border-accent);
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
@@ -88,7 +92,7 @@
 
 .tagsSection h3 {
   margin: 0 0 var(--space-lg) 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   display: flex;
@@ -151,8 +155,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .tagCount {
@@ -211,12 +222,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: var(--space-lg);
-  min-width: 80px;
+  margin-right: var(--space-md);
+  min-width: 60px;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-light);
-  padding: var(--space-lg);
+  padding: var(--space-md);
 }
 
 .voteButton {
@@ -227,8 +238,8 @@
   border-radius: var(--radius-md);
   color: var(--text-muted);
   transition: var(--transition);
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -253,7 +264,7 @@
 
 .voteScore {
   font-weight: 800;
-  font-size: 18px;
+  font-size: 16px;
   margin: var(--space-sm) 0;
   color: var(--text-primary);
   padding: var(--space-sm);
@@ -292,7 +303,7 @@
 }
 
 .postTitle {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text-primary);
   margin: 0 0 var(--space-lg) 0;
@@ -350,7 +361,7 @@
 }
 
 .postContentPreview {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-secondary);
   line-height: 1.7;
   margin: var(--space-lg) 0;
@@ -370,11 +381,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   background: var(--bg-hover);
   border: 1px solid var(--border-light);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   text-decoration: none;
   border-radius: var(--radius-full);
   transition: var(--transition);
@@ -406,56 +417,48 @@
   left: 100%;
 }
 
-/* Pagination */
-.pagination {
+/* Infinite Scroll Loading States */
+.loadingMoreContainer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-md);
-  margin-top: var(--space-xl);
   padding: var(--space-xl) 0;
+  margin-top: var(--space-lg);
 }
 
-.pageBtn {
-  padding: var(--space-md) var(--space-lg);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: var(--transition);
-  min-width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.pageBtn:hover:not(:disabled) {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.pageBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pageBtn.activePage {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  color: white;
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-accent);
-}
-
-.pageInfo {
-  padding: var(--space-md);
+.loadingMoreText {
   color: var(--text-muted);
   font-size: 14px;
+  font-weight: 500;
+}
+
+.noMorePosts {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--bg-glass);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  margin-top: var(--space-lg);
 }
 
 /* Create Post */
@@ -464,15 +467,15 @@
 }
 
 .createPostCard {
-  padding: var(--space-xl);
+  padding: var(--space-lg);
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .userAvatar {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -489,7 +492,7 @@
 
 .createPostInput input {
   width: 100%;
-  padding: var(--space-lg) var(--space-xl);
+  padding: var(--space-md) var(--space-lg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-full);
   background: var(--bg-hover);
@@ -535,7 +538,7 @@
   padding: 4px;
   border-radius: 16px;
   border: 1px solid rgba(33, 150, 243, 0.2);
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   position: relative;
@@ -554,16 +557,21 @@
 }
 
 @keyframes shimmer {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 .sortButton {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 18px;
-  font-size: 13px;
+  padding: 6px 14px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -605,7 +613,7 @@
 .sortButton.activeSort {
   color: #ffffff;
   background: linear-gradient(135deg, #2196f3, #1565c0);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(33, 150, 243, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
@@ -667,12 +675,10 @@
   border-radius: 16px;
   bottom: 0;
   left: 0;
-  background: radial-gradient(
-    circle 60px at 0% 100%,
-    #3fe9ff,
-    #0000ff80,
-    transparent
-  );
+  background: radial-gradient(circle 60px at 0% 100%,
+      #3fe9ff,
+      #0000ff80,
+      transparent);
   box-shadow: -10px 10px 30px #0051ff2d;
   z-index: 1;
 }
@@ -681,12 +687,12 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 25px;
-  border-radius: 14px;
+  padding: 10px 18px;
+  border-radius: 12px;
   color: #fff;
   z-index: 3;
   position: relative;
-  background: radial-gradient(circle 80px at 80% -50%, #777777, #0f1111);
+  background: radial-gradient(circle 60px at 80% -50%, #777777, #0f1111);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -699,12 +705,10 @@
   left: 0;
   top: 0;
   border-radius: 14px;
-  background: radial-gradient(
-    circle 60px at 0% 100%,
-    #00e1ff1a,
-    #0000ff11,
-    transparent
-  );
+  background: radial-gradient(circle 60px at 0% 100%,
+      #00e1ff1a,
+      #0000ff11,
+      transparent);
   position: absolute;
   z-index: -1;
 }
@@ -718,22 +722,18 @@
 }
 
 .overviewButton:hover:not(:disabled)::before {
-  background: radial-gradient(
-    circle 60px at 0% 100%,
-    #5fe9ff,
-    #2020ff80,
-    transparent
-  );
+  background: radial-gradient(circle 60px at 0% 100%,
+      #5fe9ff,
+      #2020ff80,
+      transparent);
   box-shadow: -10px 10px 40px #0051ff4d;
 }
 
 .overviewButton:hover:not(:disabled) .overviewButtonInner::before {
-  background: radial-gradient(
-    circle 60px at 0% 100%,
-    #00e1ff3a,
-    #0000ff22,
-    transparent
-  );
+  background: radial-gradient(circle 60px at 0% 100%,
+      #00e1ff3a,
+      #0000ff22,
+      transparent);
 }
 
 .overviewButton:active {
@@ -747,12 +747,10 @@
 }
 
 .overviewButton:disabled::before {
-  background: radial-gradient(
-    circle 60px at 0% 100%,
-    #666666,
-    #33333380,
-    transparent
-  );
+  background: radial-gradient(circle 60px at 0% 100%,
+      #666666,
+      #33333380,
+      transparent);
   box-shadow: none;
 }
 
@@ -781,7 +779,7 @@
   .postCard:hover {
     transform: none;
   }
-  
+
   .postCard::before {
     display: none;
   }
@@ -796,19 +794,27 @@
     2. Biến nó thành một hàng ngang, độc lập.
   */
   .voteSection {
-    order: 3; /* Đặt nó xuống dưới cùng, sau cả footer */
+    order: 3;
+    /* Đặt nó xuống dưới cùng, sau cả footer */
     flex-direction: row;
     align-items: center;
-    justify-content: center; /* Căn giữa các nút bên trong */
-    align-self: center;   /* Căn giữa chính block này trong card */
-    margin: var(--space-md) 0 0 0; /* Thêm khoảng cách với content */
+    justify-content: center;
+    /* Căn giữa các nút bên trong */
+    align-self: center;
+    /* Căn giữa chính block này trong card */
+    margin: var(--space-md) 0 0 0;
+    /* Thêm khoảng cách với content */
     padding: var(--space-sm) var(--space-lg);
     gap: var(--space-md);
-    background: var(--bg-secondary); /* Trả lại nền để tạo thành 1 block riêng */
+    background: var(--bg-secondary);
+    /* Trả lại nền để tạo thành 1 block riêng */
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-full); /* Bo tròn như viên thuốc */
-    width: auto; /* Để block co lại vừa với nội dung */
-    min-width: 150px; /* Chiều rộng tối thiểu */
+    border-radius: var(--radius-full);
+    /* Bo tròn như viên thuốc */
+    width: auto;
+    /* Để block co lại vừa với nội dung */
+    min-width: 150px;
+    /* Chiều rộng tối thiểu */
   }
 
   /* 
@@ -816,20 +822,23 @@
     Gán thứ tự tĩnh và không bao giờ thay đổi cho các phần tử.
   */
   .voteButton {
-    order: 1; /* Nút upvote luôn ở vị trí 1 */
+    order: 1;
+    /* Nút upvote luôn ở vị trí 1 */
     width: 44px;
     height: 44px;
   }
 
   .voteScore {
-    order: 2; /* Điểm số luôn ở vị trí 2 */
+    order: 2;
+    /* Điểm số luôn ở vị trí 2 */
     font-size: 16px;
     margin: 0;
   }
-  
+
   /* Dùng selector > :last-of-type để nhắm chính xác vào nút downvote */
-  .voteSection > .voteButton:last-of-type {
-    order: 3; /* Nút downvote luôn ở vị trí 3 */
+  .voteSection>.voteButton:last-of-type {
+    order: 3;
+    /* Nút downvote luôn ở vị trí 3 */
   }
 
   .postTitle {
@@ -857,11 +866,14 @@
 
   /* Footer giờ sẽ là một hàng riêng biệt */
   .postFooter {
-    order: 2; /* Đặt nó ngay dưới content và trên khu vực vote */
-    justify-content: flex-start; /* Nút comment ở bên trái */
+    order: 2;
+    /* Đặt nó ngay dưới content và trên khu vực vote */
+    justify-content: flex-start;
+    /* Nút comment ở bên trái */
     padding-top: var(--space-md);
     margin-top: var(--space-md);
-    margin-left: 0; /* Reset margin */
+    margin-left: 0;
+    /* Reset margin */
   }
 
   .actionButton {
@@ -875,8 +887,10 @@
   .pagination {
     display: flex;
     align-items: center;
-    justify-content: center; /* Vẫn giữ căn giữa */
-    gap: 6px; /* Giảm khoảng cách giữa các nút để tiết kiệm không gian */
+    justify-content: center;
+    /* Vẫn giữ căn giữa */
+    gap: 6px;
+    /* Giảm khoảng cách giữa các nút để tiết kiệm không gian */
     padding: var(--space-md) var(--space-sm);
     margin-top: var(--space-lg);
     border-top: 1px solid var(--border-light);
@@ -885,36 +899,41 @@
     /* Cho phép cuộn ngang nhẹ nếu màn hình CỰC KỲ hẹp, thay vì làm vỡ layout */
     overflow-x: auto;
   }
-  
+
   /* Ẩn thanh cuộn ngang (nếu có) để giao diện sạch sẽ */
   .pagination::-webkit-scrollbar {
     display: none;
   }
+
   .pagination {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 
   .pageBtn {
-    flex-shrink: 0; /* Ngăn các nút bị co lại quá mức */
+    flex-shrink: 0;
+    /* Ngăn các nút bị co lại quá mức */
     min-width: 44px;
     height: 44px;
-    padding: 0 10px; /* Giảm padding ngang một chút */
+    padding: 0 10px;
+    /* Giảm padding ngang một chút */
     font-size: 14px;
     border: 1px solid transparent;
     background: transparent;
   }
-  
+
   .pageBtn:hover:not(:disabled) {
-     background: var(--bg-hover);
+    background: var(--bg-hover);
   }
-  
+
   .pageBtn.activePage {
     background: var(--bg-secondary);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
   }
-  
+
   .pageInfo {
     display: none;
   }

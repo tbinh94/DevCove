@@ -59,10 +59,21 @@ class Command(BaseCommand):
             'Graphic Design'
         ]
 
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        admin_user = User.objects.filter(is_superuser=True).first()
+
+        if not admin_user:
+            self.stdout.write(self.style.ERROR("No superuser found. Please create an admin user first."))
+            return
+
         created_count = 0
         self.stdout.write("Starting to create communities...")
         for name in communities:
-            community, created = Community.objects.get_or_create(name=name)
+            community, created = Community.objects.get_or_create(
+                name=name,
+                defaults={'owner': admin_user}
+            )
             if created:
                 created_count += 1
                 self.stdout.write(

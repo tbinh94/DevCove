@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy, ChevronDown, ClipboardCheck, Search } from 'lucide-react';
-import apiService from '../../../services/api'; 
+import { Bell, Plus, User, LogOut, Settings, Key, X, Menu, MessageSquare, FlaskConical, Bug, Trophy, ChevronDown, ClipboardCheck, Search, Bookmark } from 'lucide-react';
+import apiService from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Header.module.css';
 
@@ -15,16 +15,16 @@ import Logo from '../../../assets/imgs/logo.svg';
 
 const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop mới
   onCloseMobileSearch, // Prop mới
-  isMobileSearchOpen  }) => {
+  isMobileSearchOpen }) => {
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const [headerProfile, setHeaderProfile] = useState(null); 
+  const [headerProfile, setHeaderProfile] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  
+
 
   const userMenuRef = useRef(null);
   const toolsMenuRef = useRef(null);
@@ -98,19 +98,19 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
     return (
       <div className={className}>
         {avatarUrl ? (
-          <img 
-            src={avatarUrl} 
+          <img
+            src={avatarUrl}
             className={styles.avatarImg}
             alt={`${user?.username}'s avatar`}
             onError={(e) => {
               e.target.style.display = 'none';
               if (e.target.nextSibling) {
-                  e.target.nextSibling.style.display = 'flex';
+                e.target.nextSibling.style.display = 'flex';
               }
             }}
           />
         ) : null}
-        <div 
+        <div
           className={styles.defaultAvatarFallback}
           style={avatarUrl ? { display: 'none' } : {}}
         >
@@ -134,7 +134,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
               {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             {/* --- END: Mobile Menu Button --- */}
-            
+
             <div className={styles.logoWrapper}>
               <div className={styles.logoLink} onClick={() => window.location.href = 'http://localhost:3000'} style={{ cursor: 'pointer' }}>
                 <img src={Logo} alt="DevCove Logo" className={styles.logoIcon} />
@@ -153,7 +153,12 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
                   <Plus className={styles.buttonIcon} />
                   <span className={styles.createPostButtonText}>Create</span>
                 </button>
-                
+
+                <button onClick={handleChatClick} className={styles.chatButton} title="Chat">
+                  <MessageSquare className={styles.buttonIcon} />
+                  <span className={styles.chatButtonText}>Chat</span>
+                </button>
+
                 {(true || userIsAdmin) && (
                   <div className={styles.toolsMenu} ref={toolsMenuRef}>
                     <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={styles.toolsMenuButton} title="Developer Tools">
@@ -163,7 +168,6 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
                     </button>
                     {isToolsMenuOpen && (
                       <div className={styles.toolsDropdownMenu}>
-                        <button onClick={handleChatClick} className={styles.toolsDropdownItem}><MessageSquare className={styles.dropdownIcon} /><span>Chat</span></button>
                         <button onClick={handleSandboxClick} className={styles.toolsDropdownItem}><FlaskConical className={styles.dropdownIcon} /><span>Code Sandbox</span></button>
                         {userIsAdmin && <hr className={styles.toolsDropdownSeparator} />}
                         {userIsAdmin && (
@@ -194,6 +198,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
                         <div className={styles.userDropdownKarma}>Karma: {user?.karma || 0}</div>
                       </div>
                       <button onClick={() => { navigate(`/profile/${user?.username}`); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}><User className={styles.dropdownIcon} /><span>Profile</span></button>
+                      <button onClick={() => { navigate('/bookmarks'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}><Bookmark className={styles.dropdownIcon} /><span>Bookmarks</span></button>
                       <button onClick={() => { navigate('/settings'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}><Settings className={styles.dropdownIcon} /><span>Settings</span></button>
                       <button onClick={() => { navigate('/change-password'); setIsUserMenuOpen(false); }} className={styles.userDropdownItem}><Key className={styles.dropdownIcon} /><span>Change Password</span></button>
                       <hr className={styles.separator} />
@@ -212,7 +217,7 @@ const Header = ({ onToggleSidebar, isSidebarOpen, onOpenMobileSearch,  // Prop m
           </div>
         </div>
       </header>
-      
+
       {isMobileSearchOpen && ( // Vẫn dùng isMobileSearchOpen từ props để quyết định hiển thị
         <div className={styles.searchOverlay}>
           <div className={styles.searchOverlayContent}>

@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from django.urls import reverse_lazy
 from dotenv import load_dotenv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -144,14 +145,11 @@ DATABASES = {
 """
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': "DevCove", # database name
-        'USER': 'tbinh',
-        'PASSWORD': '123456',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default='postgresql://neondb_owner:npg_tSTPl5GNWIw9@ep-delicate-forest-a17kaugt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = []

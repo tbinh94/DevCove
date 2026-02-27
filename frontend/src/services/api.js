@@ -640,6 +640,14 @@ class APIService {
         body: { prompt },
       });
     }
+
+    async bookmarkPost(postId) {
+      return this.request(`/api/posts/${postId}/bookmark/`, { method: 'POST' });
+    }
+  
+    async getMyBookmarks(page = 1) {
+      return this.request(`/api/posts/my_bookmarks/?page=${page}`);
+    }
   // --- Utility Accessor ---
   get utils() {
     return {

@@ -1,5 +1,5 @@
 // PostList.jsx - PHIÊN BẢN ĐẦY ĐỦ VÀ HOÀN CHỈNH
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams, useOutletContext } from 'react-router-dom';
 import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
 import styles from './PostList.module.css';
@@ -16,16 +16,17 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
   }
 });
 
-const PostList = ({ showAllTags = false }) => {
+const PostList = ({ showAllTags = false, filter = null }) => {
   const { isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { onPostsLoaded } = useOutletContext();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
-  const [totalPosts, setTotalPosts] = useState(0);
-  
-  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1', 10));
+  const [hasMore, setHasMore] = useState(true);
+
+  const [page, setPage] = useState(1);
   const [postsPerPage] = useState(10);
 
   const [latestChallenge, setLatestChallenge] = useState(null);
@@ -39,45 +40,62 @@ const PostList = ({ showAllTags = false }) => {
   }, [searchParams]);
 
   // useEffect để fetch dữ liệu
+  // Reset when filters change
+  useEffect(() => {
+    setPage(1);
+    setPosts([]);
+    setHasMore(true);
+  }, [urlParams.tags, urlParams.search, urlParams.ordering, filter]);
+
+  // Fetch data
   useEffect(() => {
     const fetchAllData = async () => {
-      setLoading(true);
+      if (page === 1) setLoading(true);
+      else setLoadingMore(true);
       setError(null);
-      
-      try {
-        // --- Phần fetch posts giữ nguyên như của bạn ---
-        const postParams = {
-          page: currentPage,
-          page_size: postsPerPage,
-          ordering: urlParams.ordering,
-        };
-        if (urlParams.tags) postParams.tags = urlParams.tags;
-        if (urlParams.search) postParams.search = urlParams.search;
 
-        // Gọi API fetch posts
-        const postsDataResponse = await apiService.getPosts(postParams);
+      try {
+        let postsDataResponse;
+
+        if (filter === 'bookmarks') {
+          const bookmarksResponse = await apiService.getMyBookmarks(page);
+          const bookmarkResults = Array.isArray(bookmarksResponse) ? bookmarksResponse : bookmarksResponse.results || [];
+          const extractedPosts = bookmarkResults.map(b => (b.post ? { ...b.post, is_bookmarked: true } : null)).filter(Boolean);
+
+          postsDataResponse = Array.isArray(bookmarksResponse)
+            ? { next: null, results: extractedPosts }
+            : { ...bookmarksResponse, results: extractedPosts };
+        } else {
+          const postParams = {
+            page: page,
+            page_size: postsPerPage,
+            ordering: urlParams.ordering,
+          };
+          if (urlParams.tags) postParams.tags = urlParams.tags;
+          if (urlParams.search) postParams.search = urlParams.search;
+
+          postsDataResponse = await apiService.getPosts(postParams);
+        }
+
         const postResults = Array.isArray(postsDataResponse) ? postsDataResponse : postsDataResponse.results || [];
-        setPosts(postResults);
-        setTotalPosts(postsDataResponse.count || postResults.length);
-        
-        if (onPostsLoaded) {
+        setPosts(prev => page === 1 ? postResults : [...prev, ...postResults]);
+        setHasMore(!!postsDataResponse.next);
+
+        if (onPostsLoaded && page === 1) {
           onPostsLoaded(postResults);
         }
 
         // --- Thêm phần fetch challenge ---
-        // Chỉ fetch challenge ở trang đầu tiên và không có filter
-        if (currentPage === 1 && !urlParams.tags && !urlParams.search) {
-            try {
-                const challengeData = await apiService.getLatestChallenge();
-                setLatestChallenge(challengeData);
-            } catch (challengeError) {
-                // Không làm sập cả trang nếu chỉ lỗi fetch challenge
-                console.warn('Could not fetch the latest challenge:', challengeError);
-                setLatestChallenge(null);
-            }
-        } else {
-            // Xóa challenge nếu người dùng chuyển trang hoặc filter
+        if (page === 1 && !urlParams.tags && !urlParams.search) {
+          try {
+            const challengeData = await apiService.getLatestChallenge();
+            setLatestChallenge(challengeData);
+          } catch (challengeError) {
+            console.warn('Could not fetch the latest challenge:', challengeError);
             setLatestChallenge(null);
+          }
+        } else if (page === 1) {
+          setLatestChallenge(null);
         }
 
       } catch (err) {
@@ -85,11 +103,37 @@ const PostList = ({ showAllTags = false }) => {
         setError(err.message || 'Failed to fetch posts');
       } finally {
         setLoading(false);
+        setLoadingMore(false);
       }
     };
 
     fetchAllData();
-  }, [isAuthenticated, currentPage, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering, onPostsLoaded]);
+  }, [isAuthenticated, page, postsPerPage, urlParams.tags, urlParams.search, urlParams.ordering, filter]);
+
+  const observerTarget = useRef(null);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { rootMargin: '200px' } // Trigger earlier before reaching the absolute bottom
+    );
+
+    const target = observerTarget.current;
+    if (target) {
+      observer.observe(target);
+    }
+
+    return () => {
+      if (target) {
+        observer.unobserve(target);
+      }
+    };
+  }, [hasMore, loading, loadingMore]);
 
 
   // HỆ THỐNG VOTE 
@@ -106,7 +150,7 @@ const PostList = ({ showAllTags = false }) => {
           const currentVote = post.user_vote;
           let newVote = voteType;
           let newScore = post.calculated_score || 0;
-          
+
           if (currentVote === voteType) {
             newVote = null;
             newScore += voteType === 'up' ? -1 : 1;
@@ -115,7 +159,7 @@ const PostList = ({ showAllTags = false }) => {
           } else {
             newScore += voteType === 'up' ? 1 : -1;
           }
-          
+
           return { ...post, calculated_score: newScore, user_vote: newVote };
         }
         return post;
@@ -130,10 +174,10 @@ const PostList = ({ showAllTags = false }) => {
         prevPosts.map(post =>
           post.id === postId
             ? {
-                ...post,
-                calculated_score: updated.score ?? updated.calculated_score ?? post.calculated_score,
-                user_vote: updated.user_vote ?? updated.vote_type ?? post.user_vote,
-              }
+              ...post,
+              calculated_score: updated.score ?? updated.calculated_score ?? post.calculated_score,
+              user_vote: updated.user_vote ?? updated.vote_type ?? post.user_vote,
+            }
             : post
         )
       );
@@ -162,50 +206,7 @@ const PostList = ({ showAllTags = false }) => {
     );
   };
 
-  // Hàm thay đổi trang
-  const changePage = (num) => {
-    const totalPages = Math.ceil(totalPosts / postsPerPage);
-    if (num < 1 || num > totalPages) return;
-    
-    // Cập nhật state nội bộ để trigger useEffect
-    setCurrentPage(num);
-
-    // Cập nhật URL
-    setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        newParams.set('page', String(num));
-        return newParams;
-    });
-
-    window.scrollTo(0, 0);
-  };
-
-  // Hàm render phân trang
-  const renderPagination = () => {
-    const totalPages = Math.ceil(totalPosts / postsPerPage);
-    if (totalPages <= 1) return null;
-    const pages = [];
-    const max = 5;
-    let start = Math.max(1, currentPage - Math.floor(max / 2));
-    let end = Math.min(totalPages, start + max - 1);
-    if (end - start + 1 < max) start = Math.max(1, end - max + 1);
-    if (start > 1) {
-      pages.push(1);
-      if (start > 2) pages.push('...');
-    }
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalPages) {
-      if (end < totalPages - 1) pages.push('...');
-      pages.push(totalPages);
-    }
-    return (
-      <div className={styles.pagination}>
-        <button onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1} className={styles.pageBtn}>Previous</button>
-        {pages.map((p, i) => p === '...' ? <span key={`ellipsis-${i}`} className={styles.pageInfo}>...</span> : <button key={`page-${p}`} onClick={() => changePage(p)} className={`${styles.pageBtn} ${currentPage === p ? styles.activePage : ''}`}>{p}</button>)}
-        <button onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} className={styles.pageBtn}>Next</button>
-      </div>
-    );
-  };
+  // Removed old pagination logic to support infinite scroll
 
   // ----- RENDER LOGIC -----
   if (loading) return <div className={styles.message}>Loading posts...</div>;
@@ -214,24 +215,24 @@ const PostList = ({ showAllTags = false }) => {
 
   return (
     <div className={styles.postListContainer}>
-      {currentPage === 1 && !urlParams.tags && !urlParams.search && (
-          <ChallengeCard challenge={latestChallenge} />
+      {page === 1 && !urlParams.tags && !urlParams.search && (
+        <ChallengeCard challenge={latestChallenge} />
       )}
       {posts.map(post => (
         <div key={post.id} className={styles.postCard}>
           <div className={styles.voteSection}>
-            <button 
-              onClick={() => handleVote(post.id, 'up')} 
-              className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`} 
+            <button
+              onClick={() => handleVote(post.id, 'up')}
+              className={`${styles.voteButton} ${post.user_vote === 'up' ? styles.activeUp : ''}`}
               disabled={!isAuthenticated}
               title={!isAuthenticated ? "Login to vote" : (post.user_vote === 'up' ? "Remove upvote" : "Upvote")}
             >
               <ChevronUp size={22} />
             </button>
             <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-            <button 
-              onClick={() => handleVote(post.id, 'down')} 
-              className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`} 
+            <button
+              onClick={() => handleVote(post.id, 'down')}
+              className={`${styles.voteButton} ${post.user_vote === 'down' ? styles.activeDown : ''}`}
               disabled={!isAuthenticated}
               title={!isAuthenticated ? "Login to vote" : (post.user_vote === 'down' ? "Remove downvote" : "Downvote")}
             >
@@ -265,8 +266,19 @@ const PostList = ({ showAllTags = false }) => {
           </div>
         </div>
       ))}
-      
-      {totalPosts > postsPerPage && renderPagination()}
+
+      {loadingMore && (
+        <div className={styles.loadingMoreContainer}>
+          <div className={styles.loadingSpinner}></div>
+          <span className={styles.loadingMoreText}>Fetching more posts...</span>
+        </div>
+      )}
+      {!hasMore && posts.length > 0 && (
+        <div className={styles.noMorePosts}>You've reached the end! 🎉</div>
+      )}
+
+      {/* Target for IntersectionObserver */}
+      <div ref={observerTarget} style={{ height: '20px' }}></div>
 
     </div>
   );

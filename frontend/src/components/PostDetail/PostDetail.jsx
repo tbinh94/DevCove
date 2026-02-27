@@ -2,16 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { MessageCircle, Bot, Share2, Bookmark, ChevronUp, ChevronDown, Heart, Eye, Clock, X, ZoomIn, Tag, Trash2, CheckCircle, EyeOff } from 'lucide-react';
 import styles from './PostDetail.module.css';
-import apiService from '../../services/api'; 
+import apiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import DOMPurify from 'dompurify';
 import BotChatInterface from './BotChatInterface';
+import {
+    FacebookShareButton, FacebookIcon,
+    TwitterShareButton, TwitterIcon,
+    LinkedinShareButton, LinkedinIcon,
+    WhatsappShareButton, WhatsappIcon,
+    TelegramShareButton, TelegramIcon,
+    RedditShareButton, RedditIcon
+} from 'react-share';
 
 DOMPurify.addHook('afterSanitizeAttributes', function (node) {
-  if (node.tagName === 'A' && node.hasAttribute('href')) {
-    node.setAttribute('target', '_blank');
-    node.setAttribute('rel', 'noopener noreferrer');
-  }
+    if (node.tagName === 'A' && node.hasAttribute('href')) {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+    }
 });
 
 const PostDetail = () => {
@@ -25,6 +33,9 @@ const PostDetail = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [relatedPosts, setRelatedPosts] = useState([]);
+    const [relatedLoading, setRelatedLoading] = useState(false);
 
     const [botLoading, setBotLoading] = useState(false);
     const [botError, setBotError] = useState(null);
@@ -34,10 +45,10 @@ const PostDetail = () => {
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    
+
     const [showBotComments, setShowBotComments] = useState(true);
 
-    const outletContext = useOutletContext(); 
+    const outletContext = useOutletContext();
 
     useEffect(() => {
         const handleCommentAreaClick = (event) => {
@@ -80,11 +91,11 @@ const PostDetail = () => {
             // Logic for the Run button (already works correctly)
             if (action === 'run') {
                 const codeText = codeTag.innerText;
-                
+
                 const container = button.closest('.code-block-container');
                 const langElement = container?.querySelector('.code-language');
                 const language = langElement ? langElement.textContent.toLowerCase() : 'javascript';
-                
+
                 try {
                     sessionStorage.setItem('sandbox_code', codeText);
                     sessionStorage.setItem('sandbox_language', language); // Can send the language so the sandbox knows how to run it
@@ -120,6 +131,12 @@ const PostDetail = () => {
                     postData.comments.sort((a, b) => new Date(b.created_at || b.created) - new Date(a.created_at || a.created));
                 }
                 setPost(postData);
+                setIsBookmarked(postData.is_bookmarked);
+
+                // Fetch related posts if there are tags
+                if (postData.tags && postData.tags.length > 0) {
+                    fetchRelatedPosts(postData.tags[0].name, postData.id);
+                }
             } catch (err) {
                 console.error('Error fetching post details:', err);
                 setError(err.message || 'Failed to load post details.');
@@ -129,6 +146,23 @@ const PostDetail = () => {
         };
         fetchData();
     }, [postId]);
+
+    const fetchRelatedPosts = async (tagName, currentPostId) => {
+        setRelatedLoading(true);
+        try {
+            const data = await apiService.getPosts({ tags: tagName });
+            const posts = Array.isArray(data) ? data : (data.results || []);
+            // Filter out current post and limit to 4
+            const filtered = posts
+                .filter(p => p.id !== currentPostId)
+                .slice(0, 4);
+            setRelatedPosts(filtered);
+        } catch (err) {
+            console.error('Error fetching related posts:', err);
+        } finally {
+            setRelatedLoading(false);
+        }
+    };
 
     useEffect(() => {
         const isAnyModalOpen = isImageModalOpen || isChatModalOpen;
@@ -155,26 +189,26 @@ const PostDetail = () => {
                 outletContext.setBodyScrollLock(false);
             }
         };
-    // FIX 3: Add outletContext to the dependencies array
+        // FIX 3: Add outletContext to the dependencies array
     }, [isImageModalOpen, isChatModalOpen, outletContext]);
-    
+
     const sanitizeBotComment = (commentText) => {
-        return DOMPurify.sanitize(commentText, { 
+        return DOMPurify.sanitize(commentText, {
             ADD_TAGS: ['style', 'button'],
             // Add data-action and data-target-id to the allowed list
             ADD_ATTR: ['class', 'id', 'title', 'style', 'data-action', 'data-target-id'],
         });
     };
-    
+
     const handleVote = async (voteType) => {
         if (!isAuthenticated) return alert("You need to log in to vote.");
-        
+
         const originalVote = post.user_vote;
         const originalScore = post.calculated_score;
 
         let newVoteStatus = voteType;
         let newScore = originalScore;
-        
+
         if (originalVote === voteType) {
             newVoteStatus = null;
             newScore += (voteType === 'up' ? -1 : 1);
@@ -183,7 +217,7 @@ const PostDetail = () => {
         } else {
             newScore += (voteType === 'up' ? 1 : -1);
         }
-        
+
         setPost(p => ({ ...p, user_vote: newVoteStatus, calculated_score: newScore }));
 
         try {
@@ -199,12 +233,12 @@ const PostDetail = () => {
             alert(err.message || "An error occurred while voting.");
         }
     };
-    
+
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim()) return;
         if (!isAuthenticated) return alert("You need to log in to comment.");
-        
+
         setIsSubmitting(true);
         try {
             const newCommentData = await apiService.createComment({ post: postId, text: newComment });
@@ -218,9 +252,20 @@ const PostDetail = () => {
         }
     };
 
-    const handleBookmark = () => {
-        setIsBookmarked(!isBookmarked);
-        alert("Bookmark feature is under development!");
+    const handleBookmark = async () => {
+        if (!isAuthenticated) return alert("You need to log in to bookmark posts.");
+
+        const previousState = isBookmarked;
+        setIsBookmarked(!previousState);
+
+        try {
+            const response = await apiService.bookmarkPost(post.id);
+            setIsBookmarked(response.is_bookmarked);
+        } catch (err) {
+            console.error('Bookmark error:', err);
+            setIsBookmarked(previousState);
+            alert(err.message || "Failed to update bookmark.");
+        }
     };
 
     const handleDeletePost = () => setShowDeleteConfirm(true);
@@ -234,8 +279,7 @@ const PostDetail = () => {
                 setShowSuccessModal(false);
                 navigate('/');
             }, 2000);
-        } catch (err)
-        {
+        } catch (err) {
             console.error('Failed to delete post:', err);
             alert(err.message || 'An error occurred while deleting the post.');
         }
@@ -249,7 +293,7 @@ const PostDetail = () => {
         const now = new Date();
         const past = new Date(dateString);
         const diffInSeconds = Math.floor((now - past) / 1000);
-        
+
         if (diffInSeconds < 60) return "just now";
         const diffInMinutes = Math.floor(diffInSeconds / 60);
         if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
@@ -265,8 +309,8 @@ const PostDetail = () => {
         setLatestBotResponse(null);
 
         try {
-            const languageForBot = post.language || 'javascript'; 
-            
+            const languageForBot = post.language || 'javascript';
+
             const payload = {
                 prompt_type: promptType,
                 prompt_text: promptText,
@@ -295,9 +339,9 @@ const PostDetail = () => {
         } catch (err) {
             console.error('Bot message error:', err);
             const errorMessage = err.response?.data?.error ||
-                                 err.response?.data?.message ||
-                                 err.message ||
-                                 "An error occurred while asking the bot.";
+                err.response?.data?.message ||
+                err.message ||
+                "An error occurred while asking the bot.";
             setBotError(errorMessage);
             setLatestBotResponse(null);
         } finally {
@@ -342,7 +386,7 @@ const PostDetail = () => {
             </div>
         );
     }
-    
+
     if (error) {
         return (
             <div className={styles.errorContainer}>
@@ -363,14 +407,32 @@ const PostDetail = () => {
         );
     }
 
-    const isOwner = isAuthenticated && user?.id === post?.author?.id;
+    const isOwner = isAuthenticated && (user?.id === post?.author?.id || user?.username === post?.author?.username || user?.is_admin || user?.role === 'admin');
     const comments = post.comments || [];
-    const hasBotComments = comments.some(comment => comment.is_bot);
-    const filteredComments = comments.filter(comment => showBotComments || !comment.is_bot);
+    const hasBotComments = comments.some(comment => comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI' || comment.author?.username === 'AI Assitant' || comment.author?.is_bot);
+    const filteredComments = comments.filter(comment => showBotComments || !(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI' || comment.author?.username === 'AI Assitant' || comment.author?.is_bot));
 
     return (
         <div className={styles.container}>
             <div className={styles.maxWidth}>
+                {/* Breadcrumb */}
+                <nav className={styles.breadcrumb}>
+                    <Link to="/" className={styles.breadcrumbItem}>Home</Link>
+                    <span className={styles.breadcrumbSeparator}>/</span>
+                    {post.tags && post.tags.length > 0 && (
+                        <>
+                            <Link
+                                to={`/?tags=${(post.tags[0].slug || post.tags[0].name).toLowerCase().replace(/\s+/g, '-')}`}
+                                className={styles.breadcrumbItem}
+                            >
+                                {post.tags[0].name}
+                            </Link>
+                            <span className={styles.breadcrumbSeparator}>/</span>
+                        </>
+                    )}
+                    <span className={`${styles.breadcrumbItem} ${styles.active}`}>{post.title}</span>
+                </nav>
+
                 {/* Main Post Card */}
                 <div className={styles.postCard}>
                     {/* Post Header */}
@@ -379,8 +441,8 @@ const PostDetail = () => {
                             <h1 className={styles.postTitle}>
                                 {post.title}
                                 {post.is_bot_reviewed && (
-                                    <span 
-                                        className={styles.botReviewedBadgeDetail} 
+                                    <span
+                                        className={styles.botReviewedBadgeDetail}
                                         title={`This post has been reviewed by the bot ${post.bot_reviews_count} times. Latest review: ${formatTimeAgo(post.latest_bot_review_date)} - "${post.bot_review_summary}"`}
                                     >
                                         🤖 Reviewed ({post.bot_reviews_count})
@@ -429,13 +491,13 @@ const PostDetail = () => {
                     {/* Post Content */}
                     {post.content && (
                         <div className={styles.postContent}>
-                            <div 
+                            <div
                                 className={styles.contentText}
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
                             />
                         </div>
                     )}
-                    
+
                     {/* Post Tags */}
                     {post.tags && post.tags.length > 0 && (
                         <div className={styles.tagsContainer}>
@@ -457,23 +519,23 @@ const PostDetail = () => {
                     <div className={styles.postActions}>
                         <div className={styles.leftActions}>
                             <div className={styles.voteSection}>
-                                <button 
-                                    onClick={() => handleVote('up')} 
+                                <button
+                                    onClick={() => handleVote('up')}
                                     className={`${styles.voteButton} ${styles.upvote} ${post.user_vote === 'up' ? styles.active : ''}`}
                                     disabled={!isAuthenticated}
                                 >
                                     <ChevronUp size={18} />
                                 </button>
                                 <span className={styles.voteScore}>{post.calculated_score || 0}</span>
-                                <button 
-                                    onClick={() => handleVote('down')} 
+                                <button
+                                    onClick={() => handleVote('down')}
                                     className={`${styles.voteButton} ${styles.downvote} ${post.user_vote === 'down' ? styles.active : ''}`}
                                     disabled={!isAuthenticated}
                                 >
                                     <ChevronDown size={18} />
                                 </button>
                             </div>
-                            
+
                             <button className={styles.actionButton}>
                                 <MessageCircle size={16} />
                                 <span>{filteredComments.length}</span>
@@ -489,17 +551,17 @@ const PostDetail = () => {
                                     <span className={styles.loadingSpinnerSmall}></span>
                                 ) : (
                                     <Bot size={18} />
-                                )} 
+                                )}
                                 Ask Bot
                             </button>
-                            
+
                             {botError && !isChatModalOpen && (
                                 <div className={styles.botError}>
                                     {botError}
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className={styles.rightActions}>
                             {isOwner && (
                                 <button
@@ -519,14 +581,18 @@ const PostDetail = () => {
                                     {showBotComments ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             )}
-                            <button 
+                            <button
                                 onClick={handleBookmark}
                                 className={`${styles.actionButton} ${isBookmarked ? styles.bookmarked : ''}`}
-                                title="Bookmark this post"
+                                title={isBookmarked ? "Remove bookmark" : "Bookmark this post"}
                             >
-                                <Bookmark size={16} />
+                                <Bookmark size={16} fill={isBookmarked ? "currentColor" : "none"} />
                             </button>
-                            <button className={styles.actionButton} title="Share this post">
+                            <button
+                                className={styles.actionButton}
+                                title="Share this post"
+                                onClick={() => setIsShareModalOpen(true)}
+                            >
                                 <Share2 size={16} />
                             </button>
                         </div>
@@ -540,22 +606,22 @@ const PostDetail = () => {
                             Comments ({filteredComments.length})
                         </h2>
                     </div>
-                    
+
                     {isAuthenticated ? (
                         <div className={styles.commentFormContainer}>
                             <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
                                 <div className={styles.commentInputWrapper}>
-                                    <textarea 
-                                        value={newComment} 
-                                        onChange={(e) => setNewComment(e.target.value)} 
-                                        placeholder="Share your thoughts..." 
-                                        className={styles.commentTextarea} 
-                                        required 
+                                    <textarea
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Share your thoughts..."
+                                        className={styles.commentTextarea}
+                                        required
                                     />
                                     <div className={styles.commentFormActions}>
-                                        <button 
-                                            type="submit" 
-                                            className={styles.commentSubmitButton} 
+                                        <button
+                                            type="submit"
+                                            className={styles.commentSubmitButton}
                                             disabled={isSubmitting || !newComment.trim()}
                                         >
                                             {isSubmitting ? (
@@ -575,65 +641,97 @@ const PostDetail = () => {
                             </p>
                         </div>
                     )}
-                    
+
                     <div id="comments-list-container" className={styles.commentsList}>
-                {filteredComments.length > 0 ? (
-                    filteredComments.map((comment) => (
-                        <div
-                            key={comment.id}
-                            id={`comment-${comment.id}`}
-                            className={`${styles.commentItem} ${comment.is_bot ? styles.botComment : ''}`}
-                        >
-                            <div className={styles.commentHeader}>
-                                <div className={styles.commentAuthor}>
-                                    <div className={`${styles.commentAvatar} ${comment.is_bot ? styles.botAvatar : ''}`}>
-                                        {comment.is_bot ? '🤖' : (comment.author?.username?.[0]?.toUpperCase() || 'U')}
+                        {filteredComments.length > 0 ? (
+                            filteredComments.map((comment) => (
+                                <div
+                                    key={comment.id}
+                                    id={`comment-${comment.id}`}
+                                    className={`${styles.commentItem} ${(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') ? styles.botComment : ''}`}
+                                >
+                                    <div className={styles.commentHeader}>
+                                        <div className={styles.commentAuthor}>
+                                            <div className={`${styles.commentAvatar} ${(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') ? styles.botAvatar : ''}`}>
+                                                {(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') ? '🤖' : (comment.author?.username?.[0]?.toUpperCase() || 'U')}
+                                            </div>
+                                            <div className={styles.commentAuthorInfo}>
+                                                <span className={styles.commentAuthorName}>
+                                                    {(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') ? (comment.author?.username || 'VegaAI') : (comment.author?.username || 'Anonymous')}
+                                                </span>
+                                                <span className={styles.commentTime}>
+                                                    {formatTimeAgo(comment.created_at || comment.created)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className={styles.commentAuthorInfo}>
-                                        <span className={styles.commentAuthorName}>
-                                            {comment.is_bot ? 'DevAlly Bot' : (comment.author?.username || 'Anonymous')}
-                                        </span>
-                                        <span className={styles.commentTime}>
-                                            {formatTimeAgo(comment.created_at || comment.created)}
-                                        </span>
+                                    <div className={styles.commentContent}>
+                                        {(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') ? (
+                                            <div
+                                                className={styles.commentText}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: sanitizeBotComment(comment.text)
+                                                }}
+                                            />
+                                        ) : (
+                                            <p className={styles.commentText}>{comment.text}</p>
+                                        )}
+                                        {!(comment.is_bot || comment.author?.username === 'DevAlly Bot' || comment.author?.username === 'VegaAI') && (
+                                            <div className={styles.commentActions}>
+                                                <button className={styles.commentActionButton}>
+                                                    <Heart size={12} />
+                                                    <span>Like</span>
+                                                </button>
+                                                <button className={styles.commentActionButton}>
+                                                    <MessageCircle size={12} />
+                                                    <span>Reply</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className={styles.noComments}>
+                                <div className={styles.noCommentsIcon}>💬</div>
+                                <h3 className={styles.noCommentsTitle}>No comments yet</h3>
+                                <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
                             </div>
-                            <div className={styles.commentContent}>
-                                {comment.is_bot ? (
-                                    <div
-                                        className={styles.commentText}
-                                        dangerouslySetInnerHTML={{ 
-                                            __html: sanitizeBotComment(comment.text)
-                                        }}
-                                    />
-                                ) : (
-                                    <p className={styles.commentText}>{comment.text}</p>
-                                )}
-                                {!comment.is_bot && (
-                                    <div className={styles.commentActions}>
-                                        <button className={styles.commentActionButton}>
-                                            <Heart size={12} />
-                                            <span>Like</span>
-                                        </button>
-                                        <button className={styles.commentActionButton}>
-                                            <MessageCircle size={12} />
-                                            <span>Reply</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Related Posts Section */}
+                {relatedPosts.length > 0 && (
+                    <div className={styles.relatedSection}>
+                        <div className={styles.relatedHeader}>
+                            <h2 className={styles.relatedTitle}>Related Posts</h2>
+                            <p className={styles.relatedSubtitle}>Explore more content based on similar tags</p>
                         </div>
-                    ))
-                ) : (
-                    <div className={styles.noComments}>
-                        <div className={styles.noCommentsIcon}>💬</div>
-                        <h3 className={styles.noCommentsTitle}>No comments yet</h3>
-                        <p className={styles.noCommentsText}>Be the first to share your thoughts!</p>
+                        <div className={styles.relatedGrid}>
+                            {relatedPosts.map(relatedPost => (
+                                <Link
+                                    to={`/posts/${relatedPost.id}`}
+                                    key={relatedPost.id}
+                                    className={styles.relatedCard}
+                                >
+                                    {relatedPost.image_url && (
+                                        <div className={styles.relatedImageContainer}>
+                                            <img src={relatedPost.image_url} alt={relatedPost.title} className={styles.relatedImage} />
+                                        </div>
+                                    )}
+                                    <div className={styles.relatedContent}>
+                                        <h3 className={styles.relatedPostTitle}>{relatedPost.title}</h3>
+                                        <div className={styles.relatedMeta}>
+                                            <span className={styles.relatedAuthor}>By {relatedPost.author?.username}</span>
+                                            <span className={styles.relatedDate}>{formatTimeAgo(relatedPost.created_at)}</span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                 )}
-            </div>
-                </div>
             </div>
 
             {/* Delete Confirmation Modal */}
@@ -645,14 +743,14 @@ const PostDetail = () => {
                             Are you sure you want to delete this post? This action cannot be undone.
                         </p>
                         <div className={styles.deleteConfirmActions}>
-                            <button 
-                                onClick={() => setShowDeleteConfirm(false)} 
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
                                 className={styles.deleteConfirmCancel}
                             >
                                 Cancel
                             </button>
-                            <button 
-                                onClick={handleDeletePostConfirm} 
+                            <button
+                                onClick={handleDeletePostConfirm}
                                 className={styles.deleteConfirmButton}
                             >
                                 Delete
@@ -681,17 +779,92 @@ const PostDetail = () => {
                             <X size={24} />
                         </button>
                         <div className={styles.imageModalWrapper}>
-                            <img 
-                                src={post.image_url} 
-                                alt={post.title} 
-                                className={styles.modalImage} 
+                            <img
+                                src={post.image_url}
+                                alt={post.title}
+                                className={styles.modalImage}
                             />
                         </div>
                     </div>
                 </div>
             )}
-            
+
+            {/* Share Modal */}
+            {isShareModalOpen && (
+                <div className={styles.shareModalOverlay} onClick={() => setIsShareModalOpen(false)}>
+                    <div className={styles.shareModal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.shareModalHeader}>
+                            <h3 className={styles.shareModalTitle}>Share this post</h3>
+                            <button className={styles.closeButton} onClick={() => setIsShareModalOpen(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className={styles.shareOptions}>
+                            <div className={styles.shareOptionItem}>
+                                <FacebookShareButton url={window.location.href} quote={post.title}>
+                                    <FacebookIcon size={40} round />
+                                </FacebookShareButton>
+                                <span>Facebook</span>
+                            </div>
+
+                            <div className={styles.shareOptionItem}>
+                                <TwitterShareButton url={window.location.href} title={post.title}>
+                                    <TwitterIcon size={40} round />
+                                </TwitterShareButton>
+                                <span>Twitter</span>
+                            </div>
+
+                            <div className={styles.shareOptionItem}>
+                                <LinkedinShareButton url={window.location.href} title={post.title}>
+                                    <LinkedinIcon size={40} round />
+                                </LinkedinShareButton>
+                                <span>LinkedIn</span>
+                            </div>
+
+                            <div className={styles.shareOptionItem}>
+                                <RedditShareButton url={window.location.href} title={post.title}>
+                                    <RedditIcon size={40} round />
+                                </RedditShareButton>
+                                <span>Reddit</span>
+                            </div>
+
+                            <div className={styles.shareOptionItem}>
+                                <TelegramShareButton url={window.location.href} title={post.title}>
+                                    <TelegramIcon size={40} round />
+                                </TelegramShareButton>
+                                <span>Telegram</span>
+                            </div>
+
+                            <div className={styles.shareOptionItem}>
+                                <WhatsappShareButton url={window.location.href} title={post.title}>
+                                    <WhatsappIcon size={40} round />
+                                </WhatsappShareButton>
+                                <span>WhatsApp</span>
+                            </div>
+                        </div>
+                        <div className={styles.copyLinkSection}>
+                            <input
+                                type="text"
+                                readOnly
+                                value={window.location.href}
+                                className={styles.shareLinkInput}
+                            />
+                            <button
+                                className={styles.copyLinkButton}
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    alert("Link copied to clipboard!");
+                                }}
+                            >
+                                Copy Link
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bot Chat Interface Component */}
+
             <BotChatInterface
                 isOpen={isChatModalOpen}
                 onClose={handleCloseChatModal}

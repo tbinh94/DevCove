@@ -17,9 +17,10 @@
 }
 
 .sidebar {
-  width: 280px;
+  width: 250px;
   position: sticky;
-  top: 84px; /* 64px header + 20px padding */
+  top: 84px;
+  /* 64px header + 20px padding */
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -27,29 +28,34 @@
 }
 
 /* Unified Card System */
-.controlsSection, .tagsSection, .filterStatus, .userSection {
+.controlsSection,
+.tagsSection,
+.filterStatus,
+.userSection {
   background: var(--surface);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
   box-shadow: var(--shadow);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
   overflow: hidden;
 }
 
-.controlsSection::before, .tagsSection::before, .filterStatus::before, .userSection::before {
+.controlsSection::before,
+.tagsSection::before,
+.filterStatus::before,
+.userSection::before {
   content: '';
   position: absolute;
   inset: 0;
   padding: 1px;
-  background: linear-gradient(135deg, 
-    transparent 20%, 
-    var(--border-active) 50%, 
-    transparent 80%
-  );
+  background: linear-gradient(135deg,
+      transparent 20%,
+      var(--border-active) 50%,
+      transparent 80%);
   border-radius: inherit;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
@@ -57,23 +63,29 @@
   transition: opacity 0.4s ease;
 }
 
-.controlsSection:hover::before, 
-.tagsSection:hover::before, 
-.filterStatus:hover::before, 
+.controlsSection:hover::before,
+.tagsSection:hover::before,
+.filterStatus:hover::before,
 .userSection:hover::before {
   opacity: 1;
 }
 
-.controlsSection:hover, .tagsSection:hover, .filterStatus:hover, .userSection:hover {
+.controlsSection:hover,
+.tagsSection:hover,
+.filterStatus:hover,
+.userSection:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow), var(--glow);
   border-color: var(--border-active);
 }
 
 /* Consistent Headers */
-.controlsSection h3, .tagsSection h3, .filterStatus h4, .userSection h3 {
-  margin: 0 0 20px 0;
-  font-size: 16px;
+.controlsSection h3,
+.tagsSection h3,
+.filterStatus h4,
+.userSection h3 {
+  margin: 0 0 16px 0;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   display: flex;
@@ -92,11 +104,10 @@
 /* ===== NEW: AI OVERVIEW & CONTROLS SECTION ===== */
 .controlsSection {
   border-color: var(--warning);
-  background: linear-gradient(135deg, 
-    rgba(15, 23, 42, 0.95) 0%, 
-    rgba(30, 41, 59, 0.9) 50%, 
-    rgba(245, 158, 11, 0.05) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(15, 23, 42, 0.95) 0%,
+      rgba(30, 41, 59, 0.9) 50%,
+      rgba(245, 158, 11, 0.05) 100%);
 }
 
 .controlsSection:hover {
@@ -110,11 +121,11 @@
   background: linear-gradient(135deg, var(--warning), #d97706);
   border: 1px solid var(--warning);
   border-radius: 16px;
-  padding: 16px 20px;
-  margin-bottom: 24px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
   color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
@@ -126,11 +137,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.2) 0%, 
-    transparent 50%, 
-    rgba(0, 0, 0, 0.1) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.1) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -157,8 +167,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .overviewButtonInner {
@@ -206,12 +223,12 @@
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: var(--surface-light);
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
@@ -231,7 +248,8 @@
   z-index: 0;
 }
 
-.sortButton span, .sortButton svg {
+.sortButton span,
+.sortButton svg {
   position: relative;
   z-index: 1;
 }
@@ -284,6 +302,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -302,13 +321,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 10px 14px;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   border: 1px solid transparent;
   border-radius: 12px;
   color: white;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
@@ -321,11 +340,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.2) 0%, 
-    transparent 50%, 
-    rgba(0, 0, 0, 0.1) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.1) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -354,7 +372,7 @@
 .tagCount {
   background: var(--surface);
   color: var(--text-muted);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -365,7 +383,9 @@
 }
 
 /* Unified Button System */
-.viewAllButton, .actionBtn, .clearAllBtn {
+.viewAllButton,
+.actionBtn,
+.clearAllBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -404,7 +424,9 @@
   padding: 8px 16px;
 }
 
-.viewAllButton:hover, .actionBtn:hover, .clearAllBtn:hover {
+.viewAllButton:hover,
+.actionBtn:hover,
+.clearAllBtn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
@@ -467,7 +489,8 @@
   border: 1px solid var(--primary-dark);
 }
 
-.clearFilter, .tagRemove {
+.clearFilter,
+.tagRemove {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: none;
@@ -483,7 +506,8 @@
   flex-shrink: 0;
 }
 
-.clearFilter:hover, .tagRemove:hover {
+.clearFilter:hover,
+.tagRemove:hover {
   background: white;
   color: var(--primary);
   transform: scale(1.1);
@@ -509,7 +533,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
@@ -552,54 +578,67 @@
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: var(--border-active);
 }
+
 .sidebarOverlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.7); /* Giáº£m Ä‘á»™ Ä‘áº­m cá»§a ná»n Ä‘en */
-  backdrop-filter: blur(4px); /* ThÃªm hiá»‡u á»©ng má» phÃ­a sau */
-  z-index: 1001; /* Pháº£i tháº¥p hÆ¡n z-index cá»§a sidebar */
+  background-color: rgba(15, 23, 42, 0.7);
+  /* Giáº£m Ä‘á»™ Ä‘áº­m cá»§a ná»n Ä‘en */
+  backdrop-filter: blur(4px);
+  /* ThÃªm hiá»‡u á»©ng má» phÃ­a sau */
+  z-index: 1001;
+  /* Pháº£i tháº¥p hÆ¡n z-index cá»§a sidebar */
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
 }
+
 .sidebarOverlayActive {
   opacity: 1;
   visibility: visible;
 }
+
 /* --- Responsive Styles for Mobile Sidebar --- */
 @media (max-width: 991px) {
+
   /* Trên màn hình nhỏ, sidebar sẽ chuyển thành một modal ở giữa màn hình */
   .sidebar {
     position: fixed;
-    
+
     /* 1. Đặt góc trên bên trái của element vào giữa màn hình */
     top: 50%;
     left: 50%;
-    
+
     /* 2. Dùng transform để kéo element về lại đúng tâm dựa trên kích thước của chính nó */
     /*    Trạng thái ẩn: Vẫn giữ vị trí dọc, nhưng đẩy hẳn sang trái */
     transform: translate(-150%, -50%);
 
     /* Bỏ các thuộc tính co giãn toàn màn hình */
-    bottom: unset; 
+    bottom: unset;
     height: auto;
 
     /* Thêm giới hạn chiều cao và bo tròn góc cho đẹp hơn */
-    max-height: 90vh; /* Không cao quá 90% chiều cao màn hình */
-    border-radius: 20px; /* Bo tròn các góc */
-    border-right: none; /* Bỏ border bên phải vì giờ nó đã là một box riêng */
-    
+    max-height: 90vh;
+    /* Không cao quá 90% chiều cao màn hình */
+    border-radius: 20px;
+    /* Bo tròn các góc */
+    border-right: none;
+    /* Bỏ border bên phải vì giờ nó đã là một box riêng */
+
     /* Các thuộc tính cũ vẫn giữ nguyên */
     z-index: 1002;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     background: var(--surface);
     transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-    width: 90vw; /* Chiếm 90% chiều rộng màn hình cho rộng rãi hơn */
-    max-width: 320px; /* Có thể tăng max-width một chút */
+    width: 90vw;
+    /* Chiếm 90% chiều rộng màn hình cho rộng rãi hơn */
+    max-width: 320px;
+    /* Có thể tăng max-width một chút */
 
     /* Thêm thuộc tính để ẩn ban đầu, giúp hiệu ứng mượt hơn */
     opacity: 0;
-    pointer-events: none; /* Không thể tương tác khi đang ẩn */
+    pointer-events: none;
+    /* Không thể tương tác khi đang ẩn */
   }
 
   /* Khi có class .sidebarOpen, sidebar sẽ hiện ra ở giữa */
@@ -607,6 +646,7 @@
     /* Dịch chuyển về đúng tâm màn hình */
     transform: translate(-50%, -50%);
     opacity: 1;
-    pointer-events: auto; /* Cho phép tương tác khi hiện ra */
+    pointer-events: auto;
+    /* Cho phép tương tác khi hiện ra */
   }
 }
